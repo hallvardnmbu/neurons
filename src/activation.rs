@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Function {
     ReLU(ReLU),
     LeakyReLU(LeakyReLU),
@@ -43,6 +44,7 @@ impl Function {
     }
 }
 
+#[derive(Debug)]
 pub struct ReLU {}
 
 impl ReLU {
@@ -55,6 +57,7 @@ impl ReLU {
     }
 }
 
+#[derive(Debug)]
 pub struct LeakyReLU {
     alpha: f32,
 }
@@ -69,6 +72,7 @@ impl LeakyReLU {
     }
 }
 
+#[derive(Debug)]
 pub struct Sigmoid {}
 
 impl Sigmoid {
@@ -84,6 +88,7 @@ impl Sigmoid {
     }
 }
 
+#[derive(Debug)]
 pub struct Softmax {}
 
 impl Softmax {
@@ -98,6 +103,7 @@ impl Softmax {
     }
 }
 
+#[derive(Debug)]
 pub struct Tanh {}
 
 impl Tanh {
@@ -113,6 +119,7 @@ impl Tanh {
     }
 }
 
+#[derive(Debug)]
 pub struct Linear {}
 
 impl Linear {
