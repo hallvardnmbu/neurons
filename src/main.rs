@@ -1,5 +1,6 @@
 use neurons::activation;
 use neurons::layer;
+use neurons::network;
 
 fn main() {
     /*
@@ -22,6 +23,9 @@ fn main() {
     println!("{:?}\n{:?}", out, back);
      */
 
+    /*
+    Layer:
+
     let inputs = 3;
     let outputs = 4;
 
@@ -31,7 +35,21 @@ fn main() {
 
     let x = vec![1.0, 2.0, 3.0];
 
-    let out = lay.forward(x);
+    let (_, out) = lay.forward(&x);
 
     println!("{:?}", out);
+     */
+
+    let nodes = vec![3, 4, 2];
+    let activations = vec!["relu", "relu"];
+    let optimizer = "sgd";
+    let objective = "mse";
+    let mut net = network::Network::create(nodes, activations, optimizer, objective);
+
+    println!("{:?}", net);
+
+    let x = vec![1.0, 2.0, 3.0];
+    let out = net.forward(x);
+    println!("{:?}", out);
+    println!("{:?}", net.state);
 }
