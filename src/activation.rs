@@ -54,12 +54,12 @@ impl Function {
         }
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>, gradient: Option<&Vec<f32>>) -> Vec<f32> {
         match self {
             Function::ReLU(act) => act.backward(x),
             Function::LeakyReLU(act) => act.backward(x),
             Function::Sigmoid(act) => act.backward(x),
-            Function::Softmax(act) => act.backward(x),
+            Function::Softmax(act) => act.backward(x, gradient.unwrap()),
             Function::Tanh(act) => act.backward(x),
             Function::Linear(act) => act.backward(x),
         }
@@ -116,8 +116,28 @@ impl Softmax {
         exps.iter().map(|v| v / sum).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        unimplemented!("Softmax backward")
+    pub fn backward(&self, x: &Vec<f32>, gradient: &Vec<f32>) -> Vec<f32> {
+        // Created by GitHub Copilot.
+        let softmax = self.forward(x.clone());
+        let mut jacobian = vec![vec![0.0; x.len()]; x.len()];
+
+        for i in 0..x.len() {
+            for j in 0..x.len() {
+                if i == j {
+                    jacobian[i][j] = softmax[i] * (1.0 - softmax[j]);
+                } else {
+                    jacobian[i][j] = -softmax[i] * softmax[j];
+                }
+            }
+        }
+
+        let mut _gradient = vec![0.0; x.len()];
+        for i in 0..x.len() {
+            for j in 0..x.len() {
+                _gradient[i] += jacobian[i][j] * gradient[j];
+            }
+        }
+        _gradient
     }
 }
 
