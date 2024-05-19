@@ -12,11 +12,8 @@ include = ["**/*.rs", "Carg.toml"]
 
 [dependencies]
 rand = "0.8.5"
-
-[[bin]]
-name = "neurons"
-path = "src/main.rs"
+csv = "1.3.0"
 
 [[example]]
-name = "example_train"
-path = "examples/example_train.rs"
+name = "train"
+path = "examples/train.rs"
