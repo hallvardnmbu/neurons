@@ -32,16 +32,16 @@ fn main() {
     let nodes = vec![2, 2, 1];
     let biases = vec![false, false];
     let activations = vec![Activation::Sigmoid, Activation::Sigmoid];
-    let lr = 0.9f32;
+    let lr = 9.0f32;
     let optimizer = Optimizer::SGD;
-    let objective = Objective::BinaryCrossEntropy;
+    let objective = Objective::MSE;
 
     let mut net = network::Network::create(
         nodes, biases, activations, lr, optimizer, objective
     );
 
     // Train the network
-    let epoch_loss = net.train(&inputs, &targets, 1000);
+    let _epoch_loss = net.train(&inputs, &targets, 1000);
 
     // Validate the network
     let val_loss = net.validate(&inputs, &targets);
