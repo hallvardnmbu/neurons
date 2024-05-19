@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug)]
 pub enum Function {
     ReLU(ReLU),
@@ -6,6 +8,19 @@ pub enum Function {
     Softmax(Softmax),
     Tanh(Tanh),
     Linear(Linear),
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Function::ReLU(_) => write!(f, "ReLU"),
+            Function::LeakyReLU(_) => write!(f, "LeakyReLU"),
+            Function::Sigmoid(_) => write!(f, "Sigmoid"),
+            Function::Softmax(_) => write!(f, "Softmax"),
+            Function::Tanh(_) => write!(f, "Tanh"),
+            Function::Linear(_) => write!(f, "Linear"),
+        }
+    }
 }
 
 impl Function {
@@ -32,7 +47,7 @@ impl Function {
         }
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         match self {
             Function::ReLU(act) => act.backward(x),
             Function::LeakyReLU(act) => act.backward(x),
@@ -52,7 +67,7 @@ impl ReLU {
         x.iter().map(|&v| if v > 0.0 { v } else { 0.0 }).collect()
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         x.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect()
     }
 }
@@ -67,7 +82,7 @@ impl LeakyReLU {
         x.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect()
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         x.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect()
     }
 }
@@ -80,7 +95,7 @@ impl Sigmoid {
         x.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect()
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         x.iter().map(|&v| {
             let y = self.forward(vec![v])[0];
             y * (1.0 - y)
@@ -98,9 +113,8 @@ impl Softmax {
         exps.iter().map(|v| v / sum).collect()
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
-        println!("Not implemented!");
-        x
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
+        unimplemented!("Softmax backward")
     }
 }
 
@@ -112,7 +126,7 @@ impl Tanh {
         x.iter().map(|&v| v.tanh()).collect()
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         x.iter().map(|&v| {
             let y = v.tanh();
             1.0 - (y * y)
@@ -128,7 +142,7 @@ impl Linear {
         x
     }
 
-    pub fn backward(&self, x: Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
         vec![1.0; x.len()]
     }
 }
