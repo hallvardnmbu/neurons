@@ -16,7 +16,7 @@ fn main() {
     println!("{}", net);
 
     let x = vec![1.0];
-    let (inters, outs, out) = net.forward(&x);
+    let (_, _, out) = net.forward(&x);
 
     let y = vec![1000.0];
     let ((_, gradient), inters, outs, _) = net.loss(&y, &out);
