@@ -70,6 +70,25 @@ impl Network {
         }
     }
 
+    pub fn train(&mut self, x: &Vec<Vec<f32>>, y: &Vec<Vec<f32>>, epochs: u32) -> Vec<f32> {
+        let mut losses = Vec::new();
+        for _ in 0..epochs {
+            losses.push(x.iter().zip(y.iter()).map(|(input, target)| {
+                let ((loss, gradient), inters, outs, _) = self.loss(input, target);
+                self.backward(gradient, inters, outs);
+                loss
+            }).sum::<f32>() / x.len() as f32);
+        }
+        losses
+    }
+
+    pub fn validate(&mut self, x: &Vec<Vec<f32>>, y: &Vec<Vec<f32>>) -> f32 {
+        x.iter().zip(y.iter()).map(|(input, target)| {
+            let ((loss, _), ..) = self.loss(input, target);
+            loss
+        }).sum::<f32>() / x.len() as f32
+    }
+
     pub fn predict(&self, x: &Vec<f32>) -> Vec<f32> {
         let mut out = x.clone();
         for layer in &self.layers {
@@ -79,7 +98,11 @@ impl Network {
         out
     }
 
-    pub fn forward(&mut self, x: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<f32>) {
+    pub fn predict_batch(&self, x: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+        x.iter().map(|input| self.predict(input)).collect()
+    }
+
+    fn forward(&mut self, x: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<f32>) {
 
         let mut out = x.clone();
         let mut inters: Vec<Vec<f32>> = Vec::new();
@@ -96,13 +119,13 @@ impl Network {
         (inters, outs, out)
     }
 
-    pub fn loss(&mut self, x: &Vec<f32>, y: &Vec<f32>) -> ((f32, Vec<f32>), Vec<Vec<f32>>,
+    fn loss(&mut self, x: &Vec<f32>, y: &Vec<f32>) -> ((f32, Vec<f32>), Vec<Vec<f32>>,
     Vec<Vec<f32>>, Vec<f32>) {
         let (inters, outs, out) = self.forward(x);
         (self.objective.loss(y, &out), inters, outs, out)
     }
 
-    pub fn backward(&mut self, loss: Vec<f32>, inters: Vec<Vec<f32>>, outs: Vec<Vec<f32>>) {
+    fn backward(&mut self, loss: Vec<f32>, inters: Vec<Vec<f32>>, outs: Vec<Vec<f32>>) {
 
         let mut gradient = loss;
         let inputs = outs.clone();
