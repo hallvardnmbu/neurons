@@ -41,18 +41,17 @@ fn main() {
     );
 
     // Train the network
-    let epochs = 1000;
-    for _ in 0..epochs {
-        for (input, target) in inputs.iter().zip(targets.iter()) {
-            let ((_, gradient), inters, outs, _) = net.loss(input, target);
+    let epoch_loss = net.train(&inputs, &targets, 1000);
 
-            net.backward(gradient, inters, outs);
-        }
-    }
+    // Validate the network
+    let val_loss = net.validate(&inputs, &targets);
+    println!("1. Validation loss: {:?}", val_loss);
 
-    // Test the network
-    for (input, target) in inputs.iter().zip(targets.iter()) {
-        let out = net.predict(input);
-        println!("Input: {:?}, Target: {:?}, Output: {:?}", input, target, out);
-    }
+    // Use the network
+    let prediction = net.predict(inputs.get(0).unwrap());
+    println!("2. Input: {:?}, Target: {:?}, Output: {:?}", inputs[0], targets[0], prediction);
+
+    // Use the network on batch
+    let predictions = net.predict_batch(&inputs);
+    println!("3. Input: {:?},\n   Target: {:?},\n   Output: {:?}", inputs, targets, predictions);
 }
