@@ -1,6 +1,14 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+pub enum Activation {
+    ReLU,
+    LeakyReLU,
+    Sigmoid,
+    Softmax,
+    Tanh,
+    Linear,
+}
+
 pub enum Function {
     ReLU(ReLU),
     LeakyReLU(LeakyReLU),
@@ -24,15 +32,14 @@ impl Display for Function {
 }
 
 impl Function {
-    pub fn create(name: &str) -> Self {  // TODO: Improve this, and account for parameters.
-        match name.to_lowercase().as_str() {
-            "relu" => Function::ReLU(ReLU {}),
-            "leakyrelu" => Function::LeakyReLU(LeakyReLU { alpha: 0.01 }),
-            "sigmoid" => Function::Sigmoid(Sigmoid {}),
-            "softmax" => Function::Softmax(Softmax {}),
-            "tanh" => Function::Tanh(Tanh {}),
-            "linear" => Function::Linear(Linear {}),
-            _ => panic!("Invalid activation function"),
+    pub fn create(activation: &Activation) -> Self {
+        match activation {
+            Activation::ReLU => Function::ReLU(ReLU {}),
+            Activation::LeakyReLU => Function::LeakyReLU(LeakyReLU { alpha: 0.01 }),
+            Activation::Sigmoid => Function::Sigmoid(Sigmoid {}),
+            Activation::Softmax => Function::Softmax(Softmax {}),
+            Activation::Tanh => Function::Tanh(Tanh {}),
+            Activation::Linear => Function::Linear(Linear {}),
         }
     }
 
@@ -59,7 +66,6 @@ impl Function {
     }
 }
 
-#[derive(Debug)]
 pub struct ReLU {}
 
 impl ReLU {
@@ -72,7 +78,6 @@ impl ReLU {
     }
 }
 
-#[derive(Debug)]
 pub struct LeakyReLU {
     alpha: f32,
 }
@@ -87,7 +92,6 @@ impl LeakyReLU {
     }
 }
 
-#[derive(Debug)]
 pub struct Sigmoid {}
 
 impl Sigmoid {
@@ -103,7 +107,6 @@ impl Sigmoid {
     }
 }
 
-#[derive(Debug)]
 pub struct Softmax {}
 
 impl Softmax {
@@ -118,7 +121,6 @@ impl Softmax {
     }
 }
 
-#[derive(Debug)]
 pub struct Tanh {}
 
 impl Tanh {
@@ -134,7 +136,6 @@ impl Tanh {
     }
 }
 
-#[derive(Debug)]
 pub struct Linear {}
 
 impl Linear {

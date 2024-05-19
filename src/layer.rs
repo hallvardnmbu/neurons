@@ -17,7 +17,7 @@ impl Display for Layer {
 }
 
 impl Layer {
-    pub fn create(inputs: u16, outputs: u16, activation: &str) -> Self {
+    pub fn create(inputs: u16, outputs: u16, activation: &activation::Activation) -> Self {
         let mut rng = rand::thread_rng();
         Layer {
             weights: vec![vec![rand::Rng::gen::<f32>(&mut rng); inputs as usize]; outputs as usize],
@@ -26,7 +26,7 @@ impl Layer {
             //     false => vec![0.0f32; outputs as usize],
             // },  // TODO: Implement optional bias.
             bias: vec![rand::Rng::gen::<f32>(&mut rng); outputs as usize],
-            activation: activation::Function::create(activation),
+            activation: activation::Function::create(&activation),
         }
     }
 

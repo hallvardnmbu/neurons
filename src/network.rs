@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::ptr::write;
+use crate::activation::Activation;
 use crate::layer::Layer;
 use crate::optimizer::Optimizer;
 use crate::objective::Objective;
@@ -29,7 +29,7 @@ impl Display for Network {
 impl Network {
     pub fn create(
         nodes: Vec<u16>,
-        activations: Vec<&str>,
+        activations: Vec<Activation>,
         learning_rate: f32,
         optimizer: &str,
         objective: &str
@@ -38,7 +38,7 @@ impl Network {
 
         let mut layers = Vec::new();
         for i in 0..nodes.len() - 1 {
-            layers.push(Layer::create(nodes[i], nodes[i + 1], activations[i]));
+            layers.push(Layer::create(nodes[i], nodes[i + 1], &activations[i]));
         }
 
         Network {
@@ -46,6 +46,14 @@ impl Network {
             optimizer: Optimizer::create(optimizer, learning_rate),
             objective: Objective::create(objective),
         }
+    }
+
+    pub fn predict(&self, mut x: Vec<f32>) -> Vec<f32> {
+        for layer in &self.layers {
+            let (_, out) = layer.forward(&x);
+            x = out;
+        }
+        x
     }
 
     pub fn forward(&mut self, mut out: Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<f32>) {
