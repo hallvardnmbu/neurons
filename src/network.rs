@@ -1,13 +1,13 @@
 use std::fmt::Display;
-use crate::activation::Activation;
-use crate::layer::Layer;
-use crate::optimizer::Optimizer;
-use crate::objective::Objective;
+use crate::activation;
+use crate::layer;
+use crate::optimizer;
+use crate::objective;
 
 pub struct Network {
-    layers: Vec<Layer>,
-    optimizer: Optimizer,
-    objective: Objective,
+    layers: Vec<layer::Layer>,
+    optimizer: optimizer::Optimizer,
+    objective: objective::Function,
 }
 
 impl Display for Network {
@@ -29,22 +29,26 @@ impl Display for Network {
 impl Network {
     pub fn create(
         nodes: Vec<u16>,
-        activations: Vec<Activation>,
+        biases: Vec<bool>,
+        activations: Vec<activation::Activation>,
         learning_rate: f32,
         optimizer: &str,
-        objective: &str
+        objective: objective::Objective,
     ) -> Self {
         assert_eq!(nodes.len(), activations.len() + 1, "Invalid number of activations");
+        assert_eq!(nodes.len(), biases.len(), "Invalid number of biases");
 
         let mut layers = Vec::new();
         for i in 0..nodes.len() - 1 {
-            layers.push(Layer::create(nodes[i], nodes[i + 1], &activations[i]));
+            layers.push(layer::Layer::create(
+                nodes[i], nodes[i + 1],
+                &activations[i], biases[i]));
         }
 
         Network {
             layers,
-            optimizer: Optimizer::create(optimizer, learning_rate),
-            objective: Objective::create(objective),
+            optimizer: optimizer::Optimizer::create(optimizer, learning_rate),
+            objective: objective::Function::create(objective),
         }
     }
 
@@ -95,9 +99,14 @@ impl Network {
                 }
             }
 
-            // TODO: Optional bias update.
-            for (bias, gradient) in layer.bias.iter_mut().zip(bias_gradient.iter()) {
-                *bias -= self.optimizer.learning_rate * *gradient;
+            // Bias update.
+            match layer.bias {
+                Some(ref mut bias) => {
+                    for (bias, gradient) in bias.iter_mut().zip(bias_gradient.unwrap().iter()) {
+                        *bias -= self.optimizer.learning_rate * *gradient;
+                    }
+                },
+                None => (),
             }
         }
 
