@@ -34,8 +34,8 @@ impl Layer {
         }
     }
 
-    pub fn forward(&self, x: &Vec<f32>) -> (Vec<f32>, Vec<f32>) {
-        let inter: Vec<f32> = self.weights.iter().map(|w| dot(&w, x)).collect();
+    pub fn forward(&self, x: Vec<f32>) -> (Vec<f32>, Vec<f32>) {
+        let inter: Vec<f32> = self.weights.iter().map(|w| dot(&w, &x)).collect();
         let out: Vec<f32> = match &self.bias {
             Some(b) => add(&self.activation.forward(inter.clone()), b),
             None => self.activation.forward(inter.clone()),
@@ -47,7 +47,10 @@ impl Layer {
         &self, gradient: &Vec<f32>, inter: &Vec<f32>, input: &Vec<f32>
     ) -> (Vec<Vec<f32>>, Option<Vec<f32>>, Vec<f32>) {
 
-        let activation = self.activation.backward(inter);
+        let activation = match self.activation {
+            activation::Function::Softmax(_) => self.activation.backward(inter, Some(gradient)),
+            _ => self.activation.backward(inter, None),
+        };
         let delta = mul(gradient, &activation);
         let weight_gradient: Vec<Vec<f32>> = delta
             .iter().map(|d| input

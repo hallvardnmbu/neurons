@@ -101,7 +101,7 @@ impl Function {
                 let loss: f32 = -y.iter().zip(out.iter())
                     .map(|(actual, predicted)| {
                             let predicted = predicted.clamp(eps, 1.0 - eps);
-                            (actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln())
+                            actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
                     }).sum::<f32>() / y.len() as f32;
                 let gradient: Vec<f32> = y.iter().zip(out.iter())
                     .map(|(actual, predicted)| {
