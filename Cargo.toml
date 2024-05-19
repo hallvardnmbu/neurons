@@ -16,3 +16,7 @@ rand = "0.8.5"
 [[bin]]
 name = "neurons"
 path = "src/main.rs"
+
+[[example]]
+name = "example_train"
+path = "examples/example_train.rs"
