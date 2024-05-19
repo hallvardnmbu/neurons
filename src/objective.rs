@@ -19,10 +19,10 @@ use std::fmt::Display;
 pub enum Objective {
     AE,
     MAE,
-    MSE,
+    // MSE,
     RMSE,
-    BinaryCrossEntropy,
-    MulticlassCrossEntropy,
+    // BinaryCrossEntropy,
+    CategoricalCrossEntropy,
 }
 
 pub struct Function {
@@ -34,10 +34,10 @@ impl Display for Function {
         match self.objective {
             Objective::AE => write!(f, "AE"),
             Objective::MAE => write!(f, "MAE"),
-            Objective::MSE => write!(f, "MSE"),
+            // Objective::MSE => write!(f, "MSE"),
             Objective::RMSE => write!(f, "RMSE"),
-            Objective::BinaryCrossEntropy => write!(f, "BinaryCrossEntropy"),
-            Objective::MulticlassCrossEntropy => write!(f, "MulticlassCrossEntropy"),
+            // Objective::BinaryCrossEntropy => write!(f, "BinaryCrossEntropy"),
+            Objective::CategoricalCrossEntropy => write!(f, "CategoricalCrossEntropy"),
         }
     }
 }
@@ -47,10 +47,10 @@ impl Function {
         match objective {
             Objective::AE => Function { objective: Objective::AE },
             Objective::MAE => Function { objective: Objective::MAE },
-            Objective::MSE => Function { objective: Objective::MSE },
+            // Objective::MSE => Function { objective: Objective::MSE },
             Objective::RMSE => Function { objective: Objective::RMSE },
-            Objective::BinaryCrossEntropy => Function { objective: Objective::BinaryCrossEntropy },
-            Objective::MulticlassCrossEntropy => Function { objective: Objective::MulticlassCrossEntropy },
+            // Objective::BinaryCrossEntropy => Function { objective: Objective::BinaryCrossEntropy },
+            Objective::CategoricalCrossEntropy => Function { objective: Objective::CategoricalCrossEntropy },
         }
     }
 
@@ -65,9 +65,9 @@ impl Function {
                         if actual == predicted {
                             0.0
                         } else if actual > predicted {
-                            1.0
-                        } else {
                             -1.0
+                        } else {
+                            1.0
                         }
                     ).collect();
                 (loss, gradient)
@@ -81,22 +81,22 @@ impl Function {
                         if actual == predicted {
                             0.0
                         } else if actual > predicted {
-                            1.0
-                        } else {
                             -1.0
+                        } else {
+                            1.0
                         }
                     ).collect();
                 (loss, gradient)
             },
-            Objective::MSE => {
-                let loss: f32 = y.iter().zip(out.iter())
-                    .map(|(actual, predicted)| (actual - predicted).powi(2))
-                    .sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
-                    .map(|(actual, predicted)| 2.0 * (actual - predicted) / y.len() as f32)
-                    .collect();
-                (loss, gradient)
-            },
+            // Objective::MSE => {
+            //     let loss: f32 = y.iter().zip(out.iter())
+            //         .map(|(actual, predicted)| (actual - predicted).powi(2))
+            //         .sum::<f32>() / y.len() as f32;
+            //     let gradient: Vec<f32> = y.iter().zip(out.iter())
+            //         .map(|(actual, predicted)| 2.0 * (actual - predicted) / y.len() as f32)
+            //         .collect();
+            //     (loss, gradient)
+            // },
             Objective::RMSE => {
                 let loss: f32 = y.iter().zip(out.iter())
                     .map(|(actual, predicted)| (actual - predicted).powi(2))
@@ -106,27 +106,27 @@ impl Function {
                         if actual == predicted {
                             0.0
                         } else {
-                            (actual - predicted) /
+                            -(actual - predicted) /
                                 ((actual - predicted).powi(2).sqrt() * y.len() as f32)
                         }
                     ).collect();
                 (loss, gradient)
             },
-            Objective::BinaryCrossEntropy => {
-                let eps: f32 = 1e-7;
-                let loss: f32 = -y.iter().zip(out.iter())
-                    .map(|(actual, predicted)| {
-                            let predicted = predicted.clamp(eps, 1.0 - eps);
-                            actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
-                    }).sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
-                    .map(|(actual, predicted)| {
-                        let predicted = predicted.clamp(eps, 1.0 - eps);
-                        -(actual / predicted - (1.0 - actual) / (1.0 - predicted))
-                    }).collect();
-                (loss, gradient)
-            },
-            Objective::MulticlassCrossEntropy => {
+            // Objective::BinaryCrossEntropy => {
+            //     let eps: f32 = 1e-7;
+            //     let loss: f32 = -y.iter().zip(out.iter())
+            //         .map(|(actual, predicted)| {
+            //                 let predicted = predicted.clamp(eps, 1.0 - eps);
+            //                 actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
+            //         }).sum::<f32>() / y.len() as f32;
+            //     let gradient: Vec<f32> = y.iter().zip(out.iter())
+            //         .map(|(actual, predicted)| {
+            //             let predicted = predicted.clamp(eps, 1.0 - eps);
+            //             (predicted - actual) / (predicted * (1.0 - predicted))
+            //         }).collect();
+            //     (loss, gradient)
+            // },
+            Objective::CategoricalCrossEntropy => {
                 let eps: f32 = 1e-7;
                 let loss: f32 = -y.iter().zip(out.iter())
                     .map(|(actual, predicted)|
@@ -134,7 +134,7 @@ impl Function {
                     ).sum::<f32>() / y.len() as f32;
                 let gradient: Vec<f32> = y.iter().zip(out.iter())
                     .map(|(actual , predicted)|
-                        -actual / (predicted + eps)
+                        predicted - actual
                     ).collect();
                 (loss, gradient)
             },

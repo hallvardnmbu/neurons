@@ -92,7 +92,7 @@ impl Network {
     pub fn predict(&self, x: &Vec<f32>) -> Vec<f32> {
         let mut out = x.clone();
         for layer in &self.layers {
-            let (_, _out) = layer.forward(out);
+            let (_, _out) = layer.forward(&out);
             out = _out;
         }
         out
@@ -109,13 +109,12 @@ impl Network {
         let mut outs: Vec<Vec<f32>> = vec![out.clone()];
 
         for layer in &self.layers {
-            let (inter, next) = layer.forward(out);
+            let (inter, next) = layer.forward(&out);
             out = next;
 
             inters.push(inter);
             outs.push(out.clone());
         }
-
         (inters, outs, out)
     }
 
@@ -125,16 +124,16 @@ impl Network {
         (self.objective.loss(y, &out), inters, outs, out)
     }
 
-    fn backward(&mut self, loss: Vec<f32>, inters: Vec<Vec<f32>>, outs: Vec<Vec<f32>>) {
+    fn backward(&mut self, gradient: Vec<f32>, inters: Vec<Vec<f32>>, inputs: Vec<Vec<f32>>) {
 
-        let mut gradient = loss;
-        let inputs = outs.clone();
+        let mut gradient = gradient;
 
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
 
             let input = &inputs[inputs.len() - i - 2];
             let inter = &inters[inters.len() - i - 1];
-            let (weight_gradient, bias_gradient, _gradient) = layer.backward(&gradient, inter, input);
+            let (weight_gradient, bias_gradient, _gradient) =
+                layer.backward(&gradient, inter, input);
             gradient = _gradient;
 
             // Weight update.
@@ -143,11 +142,8 @@ impl Network {
             }
 
             // Bias update.
-            match layer.bias {
-                Some(ref mut bias) => {
-                    self.optimizer.update(bias, bias_gradient.as_ref().unwrap());
-                },
-                None => {},
+            if let Some(ref mut bias) = layer.bias {
+                self.optimizer.update(bias, bias_gradient.as_ref().unwrap());
             }
         }
     }
