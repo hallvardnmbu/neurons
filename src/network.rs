@@ -5,8 +5,8 @@ use crate::optimizer;
 use crate::objective;
 
 pub struct Network {
-    layers: Vec<layer::Layer>,
-    optimizer: optimizer::Optimizer,
+    pub layers: Vec<layer::Layer>,
+    optimizer: optimizer::Function,
     objective: objective::Function,
 }
 
@@ -32,11 +32,11 @@ impl Network {
         biases: Vec<bool>,
         activations: Vec<activation::Activation>,
         learning_rate: f32,
-        optimizer: &str,
+        optimizer: optimizer::Optimizer,
         objective: objective::Objective,
     ) -> Self {
         assert_eq!(nodes.len(), activations.len() + 1, "Invalid number of activations");
-        assert_eq!(nodes.len(), biases.len(), "Invalid number of biases");
+        assert_eq!(nodes.len(), biases.len() + 1, "Invalid number of biases");
 
         let mut layers = Vec::new();
         for i in 0..nodes.len() - 1 {
@@ -47,26 +47,30 @@ impl Network {
 
         Network {
             layers,
-            optimizer: optimizer::Optimizer::create(optimizer, learning_rate),
+            optimizer: optimizer::Function::create(
+                optimizer, learning_rate, None, None
+            ),
             objective: objective::Function::create(objective),
         }
     }
 
-    pub fn predict(&self, mut x: Vec<f32>) -> Vec<f32> {
+    pub fn predict(&self, x: &Vec<f32>) -> Vec<f32> {
+        let mut out = x.clone();
         for layer in &self.layers {
-            let (_, out) = layer.forward(&x);
-            x = out;
+            let (_, _out) = layer.forward(out);
+            out = _out;
         }
-        x
+        out
     }
 
-    pub fn forward(&mut self, mut out: Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<f32>) {
+    pub fn forward(&mut self, x: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<f32>) {
 
+        let mut out = x.clone();
         let mut inters: Vec<Vec<f32>> = Vec::new();
         let mut outs: Vec<Vec<f32>> = vec![out.clone()];
 
         for layer in &self.layers {
-            let (inter, next) = layer.forward(&out);
+            let (inter, next) = layer.forward(out);
             out = next;
 
             inters.push(inter);
@@ -76,14 +80,16 @@ impl Network {
         (inters, outs, out)
     }
 
-    pub fn loss(&self, y: &Vec<f32>, out: &Vec<f32>) -> (f32, Vec<f32>) {
-        self.objective.loss(y, out)
+    pub fn loss(&mut self, x: &Vec<f32>, y: &Vec<f32>) -> ((f32, Vec<f32>), Vec<Vec<f32>>,
+    Vec<Vec<f32>>, Vec<f32>) {
+        let (inters, outs, out) = self.forward(x);
+        (self.objective.loss(y, &out), inters, outs, out)
     }
 
     pub fn backward(&mut self, loss: Vec<f32>, inters: Vec<Vec<f32>>, outs: Vec<Vec<f32>>) {
 
         let mut gradient = loss;
-        let mut inputs = outs.clone();
+        let inputs = outs.clone();
 
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
 
@@ -94,21 +100,16 @@ impl Network {
 
             // Weight update.
             for (weights, gradients) in layer.weights.iter_mut().zip(weight_gradient.iter()) {
-                for (weight, gradient) in weights.iter_mut().zip(gradients.iter()) {
-                    *weight -= self.optimizer.learning_rate * *gradient;
-                }
+                self.optimizer.update(weights, gradients);
             }
 
             // Bias update.
             match layer.bias {
                 Some(ref mut bias) => {
-                    for (bias, gradient) in bias.iter_mut().zip(bias_gradient.unwrap().iter()) {
-                        *bias -= self.optimizer.learning_rate * *gradient;
-                    }
+                    self.optimizer.update(bias, bias_gradient.as_ref().unwrap());
                 },
-                None => (),
+                None => {},
             }
         }
-
     }
 }
