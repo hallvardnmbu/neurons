@@ -24,8 +24,8 @@ pub struct Function {
     optimizer: Optimizer,
 
     pub learning_rate: f32,
-    pub(crate) momentum: Option<f32>,
-    pub(crate) decay: Option<f32>,
+    pub momentum: Option<f32>,
+    pub decay: Option<f32>,
 }
 
 impl Display for Function {

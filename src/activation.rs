@@ -59,25 +59,25 @@ impl Function {
         }
     }
 
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
         match self {
-            Function::ReLU(act) => act.forward(x),
-            Function::LeakyReLU(act) => act.forward(x),
-            Function::Sigmoid(act) => act.forward(x),
-            Function::Softmax(act) => act.forward(x),
-            Function::Tanh(act) => act.forward(x),
-            Function::Linear(act) => act.forward(x.clone()),
+            Function::ReLU(act) => act.forward(input),
+            Function::LeakyReLU(act) => act.forward(input),
+            Function::Sigmoid(act) => act.forward(input),
+            Function::Softmax(act) => act.forward(input),
+            Function::Tanh(act) => act.forward(input),
+            Function::Linear(act) => act.forward(input.clone()),
         }
     }
 
-    pub fn backward(&self, x: &Vec<f32>, gradient: Option<&Vec<f32>>) -> Vec<f32> {
+    pub fn backward(&self, input: &Vec<f32>, gradient: Option<&Vec<f32>>) -> Vec<f32> {
         match self {
-            Function::ReLU(act) => act.backward(x),
-            Function::LeakyReLU(act) => act.backward(x),
-            Function::Sigmoid(act) => act.backward(x),
-            Function::Softmax(act) => act.backward(x, gradient.unwrap()),
-            Function::Tanh(act) => act.backward(x),
-            Function::Linear(act) => act.backward(x),
+            Function::ReLU(act) => act.backward(input),
+            Function::LeakyReLU(act) => act.backward(input),
+            Function::Sigmoid(act) => act.backward(input),
+            Function::Softmax(act) => act.backward(input, gradient.unwrap()),
+            Function::Tanh(act) => act.backward(input),
+            Function::Linear(act) => act.backward(input),
         }
     }
 }
@@ -85,12 +85,12 @@ impl Function {
 pub struct ReLU {}
 
 impl ReLU {
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| if v > 0.0 { v } else { 0.0 }).collect()
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| if v > 0.0 { v } else { 0.0 }).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect()
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect()
     }
 }
 
@@ -99,24 +99,24 @@ pub struct LeakyReLU {
 }
 
 impl LeakyReLU {
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect()
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect()
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect()
     }
 }
 
 pub struct Sigmoid {}
 
 impl Sigmoid {
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect()
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| {
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| {
             let y = self.forward(&vec![v])[0];
             y * (1.0 - y)
         }).collect()
@@ -126,16 +126,20 @@ impl Sigmoid {
 pub struct Softmax {}
 
 impl Softmax {
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
-        let exps = x.iter().map(|v| v.exp()).collect::<Vec<f32>>();
-        let sum = exps.iter().sum::<f32>();
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        // let exps = input.iter().map(|v| v.exp()).collect::<Vec<f32>>();
+        // let sum = exps.iter().sum::<f32>();
+        // exps.iter().map(|v| v / sum).collect()
+        let max_input = input.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = input.iter().map(|v| (v - max_input).exp()).collect();
+        let sum: f32 = exps.iter().sum();
         exps.iter().map(|v| v / sum).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>, gradient: &Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, input: &Vec<f32>, gradient: &Vec<f32>) -> Vec<f32> {
         // With help from GitHub Copilot.
 
-        let softmax = self.forward(x);
+        let softmax = self.forward(input);
         let mut grad = vec![0.0; softmax.len()];
 
         for i in 0..softmax.len() {
@@ -154,14 +158,13 @@ impl Softmax {
 pub struct Tanh {}
 
 impl Tanh {
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| v.tanh()).collect()
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| v.tanh()).collect()
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        x.iter().map(|&v| {
-            let y = v.tanh();
-            1.0 - (y * y)
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.iter().map(|&v| {
+            1.0 - v.tanh().powi(2)
         }).collect()
     }
 }
@@ -169,11 +172,11 @@ impl Tanh {
 pub struct Linear {}
 
 impl Linear {
-    pub fn forward(&self, x: Vec<f32>) -> Vec<f32> {
-        x
+    pub fn forward(&self, input: Vec<f32>) -> Vec<f32> {
+        input
     }
 
-    pub fn backward(&self, x: &Vec<f32>) -> Vec<f32> {
-        vec![1.0; x.len()]
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+        vec![1.0; input.len()]
     }
 }

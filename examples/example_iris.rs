@@ -81,7 +81,7 @@ fn main() {
     network.add_layer(4, 5, Activation::ReLU, true);
     network.add_layer(5, 3, Activation::Softmax, false);
 
-    network.set_optimizer(Optimizer::SGD, 0.5);
+    network.set_optimizer(Optimizer::SGD, 0.001);
     network.set_objective(Objective::RMSE);
 
     // Train the network

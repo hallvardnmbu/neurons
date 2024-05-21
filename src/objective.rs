@@ -54,13 +54,13 @@ impl Function {
         }
     }
 
-    pub fn loss(&self, y: &Vec<f32>, out: &Vec<f32>) -> (f32, Vec<f32>) {
+    pub fn loss(&self, prediction: &Vec<f32>, target: &Vec<f32>) -> (f32, Vec<f32>) {
         match self.objective {
             Objective::AE => {
-                let loss: f32 = y.iter().zip(out.iter())
+                let loss: f32 = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| (actual - predicted).abs() )
                     .sum::<f32>();
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)|
                         if actual == predicted {
                             0.0
@@ -73,10 +73,10 @@ impl Function {
                 (loss, gradient)
             },
             Objective::MAE => {
-                let loss: f32 = y.iter().zip(out.iter())
+                let loss: f32 = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| (actual - predicted).abs())
-                    .sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
+                    .sum::<f32>() / target.len() as f32;
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)|
                         if actual == predicted {
                             0.0
@@ -89,37 +89,37 @@ impl Function {
                 (loss, gradient)
             },
             Objective::MSE => {
-                let loss: f32 = y.iter().zip(out.iter())
+                let loss: f32 = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| (actual - predicted).powi(2))
-                    .sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
-                    .map(|(actual, predicted)| -2.0 * (actual - predicted) / y.len() as f32)
+                    .sum::<f32>() / target.len() as f32;
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
+                    .map(|(actual, predicted)| -2.0 * (actual - predicted) / target.len() as f32)
                     .collect();
                 (loss, gradient)
             },
             Objective::RMSE => {
-                let loss: f32 = y.iter().zip(out.iter())
+                let loss: f32 = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| (actual - predicted).powi(2))
-                    .sum::<f32>().sqrt() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
+                    .sum::<f32>().sqrt() / target.len() as f32;
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)|
                         if actual == predicted {
                             0.0
                         } else {
                             -(actual - predicted) /
-                                ((actual - predicted).powi(2).sqrt() * y.len() as f32)
+                                ((actual - predicted).powi(2).sqrt() * target.len() as f32)
                         }
                     ).collect();
                 (loss, gradient)
             },
             Objective::BinaryCrossEntropy => {
                 let eps: f32 = 1e-7;
-                let loss: f32 = -y.iter().zip(out.iter())
+                let loss: f32 = -target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| {
                             let predicted = predicted.clamp(eps, 1.0 - eps);
                             actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
-                    }).sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
+                    }).sum::<f32>() / target.len() as f32;
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| {
                         let predicted = predicted.clamp(eps, 1.0 - eps);
                         (predicted - actual) / (predicted * (1.0 - predicted))
@@ -128,11 +128,12 @@ impl Function {
             },
             Objective::CategoricalCrossEntropy => {
                 let eps: f32 = 1e-7;
-                let loss: f32 = -y.iter().zip(out.iter())
-                    .map(|(actual, predicted)|
-                        actual * (predicted + eps).ln()
-                    ).sum::<f32>() / y.len() as f32;
-                let gradient: Vec<f32> = y.iter().zip(out.iter())
+                let loss: f32 = -target.iter().zip(prediction.iter())
+                    .map(|(actual, predicted)| {
+                        let predicted = predicted.clamp(eps, 1.0 - eps);
+                        actual * predicted.ln()
+                    }).sum::<f32>() / target.len() as f32;
+                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual , predicted)|
                         predicted - actual
                     ).collect();
