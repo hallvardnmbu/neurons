@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use std::fmt::Display;
-
 pub enum Objective {
     AE,
     MAE,
@@ -29,7 +27,7 @@ pub struct Function {
     pub objective: Objective,
 }
 
-impl Display for Function {
+impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self.objective {
             Objective::AE => write!(f, "AE"),

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use std::fmt::Display;
 use crate::activation;
 use crate::layer;
 use crate::optimizer;
@@ -26,7 +25,7 @@ pub struct Network {
     pub(crate) objective: objective::Function,
 }
 
-impl Display for Network {
+impl std::fmt::Display for Network {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Network (\n")?;
 
@@ -64,7 +63,12 @@ impl Network {
         Network {
             layers,
             optimizer: optimizer::Function::create(
-                optimizer, learning_rate, None, None
+                optimizer::Optimizer::SGD(
+                    optimizer::SGDParams {
+                        learning_rate,
+                        decay: None,
+                    }
+                )
             ),
             objective: objective::Function::create(objective),
         }
@@ -74,7 +78,12 @@ impl Network {
         Network {
             layers: Vec::new(),
             optimizer: optimizer::Function::create(
-                optimizer::Optimizer::SGD, 0.01.into(), None, None
+                optimizer::Optimizer::SGD(
+                    optimizer::SGDParams {
+                        learning_rate: 0.1,
+                        decay: None,
+                    }
+                )
             ),
             objective: objective::Function::create(objective::Objective::MSE),
         }
@@ -103,8 +112,8 @@ impl Network {
         self.layers[layer].activation = activation::Function::create(&activation);
     }
 
-    pub fn set_optimizer(&mut self, optimizer: optimizer::Optimizer, learning_rate: f32) {
-        self.optimizer = optimizer::Function::create(optimizer, learning_rate, None, None);
+    pub fn set_optimizer(&mut self, optimizer: optimizer::Optimizer) {
+        self.optimizer = optimizer::Function::create(optimizer);
     }
 
     pub fn set_objective(&mut self, objective: objective::Objective) {
@@ -125,12 +134,6 @@ impl Network {
                 _losses.push(loss);
             }
             losses.push(_losses.iter().sum::<f32>() / inputs.len() as f32);
-
-            // losses.push(x.iter().zip(y.iter()).map(|(input, target)| {
-            //     let ((loss, gradient), inters, outs, _) = self.loss(input, target);
-            //     self.backward(gradient, inters, outs);
-            //     loss
-            // }).sum::<f32>() / x.len() as f32);
         }
         losses
     }
@@ -187,18 +190,18 @@ impl Network {
             let input: &Vec<f32> = &activated[activated.len() - i - 2];
             let output: &Vec<f32> = &unactivated[unactivated.len() - i - 1];
 
-            let (weight_gradient, bias_gradient, _gradient) =
+            let (mut weight_gradient, bias_gradient, _gradient) =
                 layer.backward(&gradient, input, output);
             gradient = _gradient;
 
             // Weight update.
-            for (weights, gradients) in layer.weights.iter_mut().zip(weight_gradient.iter()) {
+            for (weights, gradients) in layer.weights.iter_mut().zip(weight_gradient.iter_mut()) {
                 self.optimizer.update(weights, gradients);
             }
 
             // Bias update.
             if let Some(ref mut bias) = layer.bias {
-                self.optimizer.update(bias, bias_gradient.as_ref().unwrap());
+                self.optimizer.update(bias, &mut bias_gradient.unwrap());
             }
         }
     }

@@ -16,7 +16,6 @@ limitations under the License.
 
 extern crate rand;
 
-use std::fmt::Display;
 use crate::activation;
 use crate::algebra::*;
 
@@ -26,7 +25,7 @@ pub struct Layer {
     pub(crate) activation: activation::Function,
 }
 
-impl Display for Layer {
+impl std::fmt::Display for Layer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}(in: {}, out: {}, bias: {})",
                self.activation, self.weights[0].len(), self.weights.len(), self.bias.is_some())

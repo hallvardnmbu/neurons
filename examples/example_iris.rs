@@ -20,9 +20,9 @@ extern crate rand;
 use rand::prelude::SliceRandom;
 
 use neurons::network;
-use neurons::activation::Activation;
-use neurons::objective::Objective;
-use neurons::optimizer::Optimizer;
+use neurons::activation;
+use neurons::objective;
+use neurons::optimizer;
 
 fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>) {
     let mut reader = csv::Reader::from_path(path).unwrap();
@@ -78,11 +78,20 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(4, 5, Activation::ReLU, true);
-    network.add_layer(5, 3, Activation::Softmax, false);
+    network.add_layer(4, 5, activation::Activation::ReLU, true);
+    network.add_layer(5, 3, activation::Activation::Softmax, false);
 
-    network.set_optimizer(Optimizer::SGD, 0.001);
-    network.set_objective(Objective::RMSE);
+    network.set_optimizer(
+        optimizer::Optimizer::SGDM(
+            optimizer::SGDMParams {
+                learning_rate: 0.0001,
+                momentum: 0.9,
+                velocity: 0.0,
+                decay: None,
+            }
+        )
+    );
+    network.set_objective(objective::Objective::RMSE);
 
     // Train the network
     let _epoch_loss = network.train(&x_train, &y_train, 1000);

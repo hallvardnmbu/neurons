@@ -2,9 +2,9 @@
 
 # Modular neural network in Rust.
 
----
-
 This is a simple neural network implementation in Rust. It is modular and can be easily extended to support different types of layers and activation functions.
+
+---
 
 ## Quickstart
 
@@ -36,7 +36,6 @@ Examples can be found in the `examples` directory.
 
 - Layer types
   - [x] Dense
-  - [ ] Recurrent
   - [ ] Feedback
   - [ ] Convolutional
 
@@ -59,8 +58,7 @@ Examples can be found in the `examples` directory.
   - [ ] Huber
 
 - Optimization techniques
-  - [x] Gradient descent
-  - [ ] SGD
+  - [x] SGD
   - [ ] Adam
   - [ ] RMSprop
 
@@ -83,6 +81,25 @@ Examples can be found in the `examples` directory.
   - [ ] Logging
   - [ ] Data from file
   - [ ] Custom tensor/matrix types
+  - [ ] Custom random weight initialization
   - [ ] Plotting
+
+---
+
+## Inspiration
+
+* [candle](https://github.com/huggingface/candle/tree/main)
+* [rust-simple-nn](https://github.com/danhper/rust-simple-nn/tree/master)
+
+### Sources
+
+* [backpropagation](https://towardsdatascience.com/backpropagation-from-scratch-how-neural-networks-really-work-36ee4af202bf)
+* [momentum](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
+
+Along with help from
+
+* [GitHub Copilot](https://github.com/features/copilot)
+* [ChatGPT](https://chatgpt.com/?oai-dm=1)
+* [Mistral](https://chat.mistral.ai/chat)
 
 </body>

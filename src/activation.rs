@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use std::fmt::Display;
-
 pub enum Activation {
     ReLU,
     LeakyReLU,
@@ -34,7 +32,7 @@ pub enum Function {
     Linear(Linear),
 }
 
-impl Display for Function {
+impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Function::ReLU(_) => write!(f, "ReLU"),
@@ -127,9 +125,6 @@ pub struct Softmax {}
 
 impl Softmax {
     pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        // let exps = input.iter().map(|v| v.exp()).collect::<Vec<f32>>();
-        // let sum = exps.iter().sum::<f32>();
-        // exps.iter().map(|v| v / sum).collect()
         let max_input = input.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
         let exps: Vec<f32> = input.iter().map(|v| (v - max_input).exp()).collect();
         let sum: f32 = exps.iter().sum();

@@ -14,53 +14,107 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use std::fmt::Display;
-
-pub enum Optimizer {
-    SGD,
-}
-
-pub struct Function {
-    optimizer: Optimizer,
-
+pub struct SGDParams {
     pub learning_rate: f32,
-    pub momentum: Option<f32>,
     pub decay: Option<f32>,
 }
 
-impl Display for Function {
+pub struct SGDMParams {
+    pub learning_rate: f32,
+    pub momentum: f32,
+    pub velocity: f32,
+    pub decay: Option<f32>,
+}
+
+pub struct AdamParams {
+    pub learning_rate: f32,
+    pub beta1: f32,
+    pub beta2: f32,
+    pub epsilon: f32,
+}
+
+pub struct RMSpropParams {
+    pub learning_rate: f32,
+    pub rho: f32,
+    pub epsilon: f32,
+    pub decay: Option<f32>,
+}
+
+pub enum Optimizer {
+    SGD(SGDParams),
+    SGDM(SGDMParams),
+    Adam(AdamParams),
+    RMSprop(RMSpropParams),
+}
+
+pub struct Function {
+    pub optimizer: Optimizer,
+}
+
+impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "\t\tlearning_rate: {}\n", self.learning_rate)?;
-        write!(f, "\t\tmomentum: {}\n", self.momentum.unwrap_or(0.0))?;
-        write!(f, "\t\tdecay: {}\n", self.decay.unwrap_or(0.0))?;
-        write!(f, "\t)")
+        match &self.optimizer {
+            Optimizer::SGD(parameter) => {
+                write!(f, "\t\tSGD (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::SGDM(parameter) => {
+                write!(f, "\t\tSGDM (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
+                write!(f, "\t\t\tmomentum: {}\n", parameter.momentum)?;
+                write!(f, "\t\t\tvelocity: {}\n", parameter.velocity)?;
+                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::Adam(parameter) => {
+                write!(f, "\t\tAdam (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
+                write!(f, "\t\t\tbeta1: {}\n", parameter.beta1)?;
+                write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
+                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::RMSprop(parameter) => {
+                write!(f, "\t\tRMSprop (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
+                write!(f, "\t\t\trho: {}\n", parameter.rho)?;
+                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
+                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t)")
+            },
+        }
     }
 }
 
 impl Function {
-    pub fn create(
-        optimizer: Optimizer,
-        learning_rate: f32,
-        momentum: Option<f32>,
-        decay: Option<f32>
-    ) -> Self {
-        match optimizer {
-            Optimizer::SGD => Function {
-                optimizer: Optimizer::SGD,
-                learning_rate,
-                momentum,
-                decay,
-            },
-        }
+    pub fn create(optimizer: Optimizer) -> Self {
+        Function { optimizer }
     }
 
-    pub fn update(&self, values: &mut Vec<f32>, gradients: &Vec<f32>) {
-        match self.optimizer {
-            Optimizer::SGD => {
-                values.iter_mut().zip(gradients.iter()).for_each(|(value, gradient)| {
-                    *value -= self.learning_rate * gradient;
-                });
-            }
+    pub fn update(&mut self, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
+        match &mut self.optimizer {
+            Optimizer::SGD(parameter) => {
+                values.iter_mut().zip(gradients.iter_mut())
+                    .for_each(|(value, gradient)| {
+                        if let Some(decay) = parameter.decay {
+                            *gradient += decay * *value;
+                        }
+                        *value -= parameter.learning_rate * *gradient;
+                    });
+            },
+            Optimizer::SGDM(parameter) => {
+                values.iter_mut().zip(gradients.iter_mut())
+                    .for_each(|(value, gradient)| {
+                        if let Some(decay) = parameter.decay {
+                            *gradient += decay * *value;
+                        }
+                        parameter.velocity = parameter.momentum * parameter.velocity
+                            + parameter.learning_rate * *gradient;
+                        *value -= parameter.velocity;
+                    });
+            },
+            _ => unimplemented!(),
         }
     }
 }
