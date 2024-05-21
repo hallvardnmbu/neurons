@@ -46,7 +46,6 @@ impl Network {
         nodes: Vec<u16>,
         biases: Vec<bool>,
         activations: Vec<activation::Activation>,
-        learning_rate: f32,
         optimizer: optimizer::Optimizer,
         objective: objective::Objective,
     ) -> Self {
@@ -62,14 +61,7 @@ impl Network {
 
         Network {
             layers,
-            optimizer: optimizer::Function::create(
-                optimizer::Optimizer::SGD(
-                    optimizer::SGDParams {
-                        learning_rate,
-                        decay: None,
-                    }
-                )
-            ),
+            optimizer: optimizer::Function::create(optimizer),
             objective: objective::Function::create(objective),
         }
     }
