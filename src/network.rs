@@ -22,8 +22,8 @@ use crate::objective;
 
 pub struct Network {
     pub layers: Vec<layer::Layer>,
-    optimizer: optimizer::Function,
-    objective: objective::Function,
+    pub optimizer: optimizer::Function,
+    pub objective: objective::Function,
 }
 
 impl Display for Network {
@@ -68,6 +68,47 @@ impl Network {
             ),
             objective: objective::Function::create(objective),
         }
+    }
+
+    pub fn new() -> Self {
+        Network {
+            layers: Vec::new(),
+            optimizer: optimizer::Function::create(
+                optimizer::Optimizer::SGD, 0.01.into(), None, None
+            ),
+            objective: objective::Function::create(objective::Objective::MSE),
+        }
+    }
+
+    pub fn add_layer(
+        &mut self, inputs: u16, outputs: u16, activation: activation::Activation, bias: bool
+    ) {
+        if self.layers.is_empty() {
+            self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias));
+            return;
+        }
+        let previous = match self.layers.last() {
+            Some(layer) => layer.weights.len() as u16,
+            None => inputs,
+        };
+        assert_eq!(previous, inputs,
+                   "Invalid number of inputs. Last layer has {} inputs.", previous);
+        self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias));
+    }
+
+    pub fn set_activation(&mut self, layer: usize, activation: activation::Activation) {
+        if layer >= self.layers.len() {
+            panic!("Invalid layer index");
+        }
+        self.layers[layer].activation = activation::Function::create(&activation);
+    }
+
+    pub fn set_optimizer(&mut self, optimizer: optimizer::Optimizer, learning_rate: f32) {
+        self.optimizer = optimizer::Function::create(optimizer, learning_rate, None, None);
+    }
+
+    pub fn set_objective(&mut self, objective: objective::Objective) {
+        self.objective = objective::Function::create(objective);
     }
 
     pub fn train(&mut self, x: &Vec<Vec<f32>>, y: &Vec<Vec<f32>>, epochs: u32) -> Vec<f32> {

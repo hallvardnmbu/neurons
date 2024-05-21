@@ -26,7 +26,7 @@ pub enum Objective {
 }
 
 pub struct Function {
-    objective: Objective,
+    pub objective: Objective,
 }
 
 impl Display for Function {

@@ -23,7 +23,7 @@ pub enum Optimizer {
 pub struct Function {
     optimizer: Optimizer,
 
-    pub(crate) learning_rate: f32,
+    pub learning_rate: f32,
     pub(crate) momentum: Option<f32>,
     pub(crate) decay: Option<f32>,
 }

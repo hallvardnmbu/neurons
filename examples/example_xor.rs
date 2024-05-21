@@ -29,29 +29,26 @@ fn main() {
     ];
 
     // Create the network
-    let nodes = vec![2, 2, 1];
-    let biases = vec![false, false];
-    let activations = vec![Activation::Sigmoid, Activation::Sigmoid];
-    let lr = 9.0f32;
-    let optimizer = Optimizer::SGD;
-    let objective = Objective::MSE;
+    let mut network = network::Network::new();
 
-    let mut net = network::Network::create(
-        nodes, biases, activations, lr, optimizer, objective
-    );
+    network.add_layer(2, 2, Activation::Sigmoid, false);
+    network.add_layer(2, 1, Activation::Sigmoid, false);
+
+    network.set_optimizer(Optimizer::SGD, 9.0);
+    network.set_objective(Objective::MSE);
 
     // Train the network
-    let _epoch_loss = net.train(&inputs, &targets, 1000);
+    let _epoch_loss = network.train(&inputs, &targets, 1000);
 
     // Validate the network
-    let val_loss = net.validate(&inputs, &targets);
+    let val_loss = network.validate(&inputs, &targets);
     println!("1. Validation loss: {:?}", val_loss);
 
     // Use the network
-    let prediction = net.predict(inputs.get(0).unwrap());
+    let prediction = network.predict(inputs.get(0).unwrap());
     println!("2. Input: {:?}, Target: {:?}, Output: {:?}", inputs[0], targets[0], prediction);
 
     // Use the network on batch
-    let predictions = net.predict_batch(&inputs);
+    let predictions = network.predict_batch(&inputs);
     println!("3. Input: {:?},\n   Target: {:?},\n   Output: {:?}", inputs, targets, predictions);
 }

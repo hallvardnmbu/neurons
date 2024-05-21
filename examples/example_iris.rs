@@ -38,14 +38,14 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
             record.get(3).unwrap().parse::<f32>().unwrap(),
             record.get(4).unwrap().parse::<f32>().unwrap(),
         ]);
-        y.push(vec![
+        y.push(
             match record.get(5).unwrap() {
-                "Iris-setosa" => 0.0,
-                "Iris-versicolor" => 1.0,
-                "Iris-virginica" => 2.0,
+                "Iris-setosa" => vec![1.0, 0.0, 0.0],
+                "Iris-versicolor" => vec![0.0, 1.0, 0.0],
+                "Iris-virginica" => vec![0.0, 0.0, 1.0],
                 _ => panic!("Unknown class"),
             }
-        ]);
+        );
     });
 
     let mut rng = rand::thread_rng();
@@ -71,31 +71,28 @@ fn main() {
     // Load the iris dataset
     let (x_train, y_train, x_test, y_test) = data("./datasets/iris.csv");
     println!("Train data {}x{}: {:?} => {:?}",
-             x_train[0].len(), x_train.len(), x_train[0], x_train[0]);
+             x_train[0].len(), x_train.len(), x_train[0], y_train[0]);
     println!("Test data {}x{}: {:?} => {:?}",
-             x_test[0].len(), x_test.len(), x_test[0], x_test[0]);
+             x_test[0].len(), x_test.len(), x_test[0], y_test[0]);
 
     // Create the network
-    let nodes = vec![4, 5, 3, 1];
-    let biases = vec![true, true, false];
-    let activations = vec![Activation::Sigmoid, Activation::Sigmoid, Activation::Linear];
-    let lr = 0.00008f32;
-    let optimizer = Optimizer::SGD;
-    let objective = Objective::RMSE;
+    let mut network = network::Network::new();
 
-    let mut net = network::Network::create(
-        nodes, biases, activations, lr, optimizer, objective
-    );
+    network.add_layer(4, 5, Activation::ReLU, true);
+    network.add_layer(5, 3, Activation::Softmax, false);
+
+    network.set_optimizer(Optimizer::SGD, 0.5);
+    network.set_objective(Objective::RMSE);
 
     // Train the network
-    let _epoch_loss = net.train(&x_train, &y_train, 1000);
+    let _epoch_loss = network.train(&x_train, &y_train, 1000);
 
     // Validate the network
-    let val_loss = net.validate(&x_test, &y_test);
+    let val_loss = network.validate(&x_test, &y_test);
     println!("1. Validation loss: {:?}", val_loss);
 
     // Use the network
-    let prediction = net.predict(x_test.get(0).unwrap());
+    let prediction = network.predict(x_test.get(0).unwrap());
     println!("2. Input: {:?}, Target: {:?}, Output: {:?}", x_test[0], y_test[0], prediction);
 
     // // Use the network on batch

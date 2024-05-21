@@ -23,7 +23,7 @@ use crate::algebra::*;
 pub struct Layer {
     pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
-    activation: activation::Function,
+    pub(crate) activation: activation::Function,
 }
 
 impl Display for Layer {

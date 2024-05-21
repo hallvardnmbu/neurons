@@ -2,11 +2,12 @@
 name = "neurons"
 version = "0.0.3"
 edition = "2021"
-description = "A simple neural network implementation in Rust"
+description = "Modular neural network in Rust."
 authors = ["Hallvard Høyland Lavik"]
 homepage = "https://github.com/hallvardnmbu/neurons"
-readme = "README.txt"
+readme = "README.md"
 license = "Apache-2.0"
+license-file = "LICENSE"
 repository = "https://github.com/hallvardnmbu/neurons"
 include = ["**/*.rs", "Carg.toml"]
 
@@ -15,5 +16,13 @@ rand = "0.8.5"
 csv = "1.3.0"
 
 [[example]]
-name = "train"
-path = "examples/train.rs"
+name = "example_network"
+path = "examples/example_network.rs"
+
+[[example]]
+name = "example_xor"
+path = "examples/example_xor.rs"
+
+[[example]]
+name = "example_iris"
+path = "examples/example_iris.rs"
