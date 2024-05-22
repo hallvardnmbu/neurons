@@ -22,8 +22,9 @@ pub struct SGDParams {
 pub struct SGDMParams {
     pub learning_rate: f32,
     pub momentum: f32,
-    pub velocity: f32,
     pub decay: Option<f32>,
+
+    pub velocity: Vec<Vec<f32>>,
 }
 
 pub struct AdamParams {
@@ -31,6 +32,10 @@ pub struct AdamParams {
     pub beta1: f32,
     pub beta2: f32,
     pub epsilon: f32,
+    pub decay: Option<f32>,
+
+    pub velocity: Vec<Vec<f32>>,
+    pub momentum: Vec<Vec<f32>>,
 }
 
 pub struct RMSpropParams {
@@ -44,6 +49,7 @@ pub enum Optimizer {
     SGD(SGDParams),
     SGDM(SGDMParams),
     Adam(AdamParams),
+    AdamW(AdamParams),
     RMSprop(RMSpropParams),
 }
 
@@ -63,7 +69,7 @@ impl std::fmt::Display for Function {
                 write!(f, "\t\tSGDM (\n")?;
                 write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
                 write!(f, "\t\t\tmomentum: {}\n", parameter.momentum)?;
-                write!(f, "\t\t\tvelocity: {}\n", parameter.velocity)?;
+                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
                 write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t)")
             },
@@ -72,6 +78,20 @@ impl std::fmt::Display for Function {
                 write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
                 write!(f, "\t\t\tbeta1: {}\n", parameter.beta1)?;
                 write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
+                write!(f, "\t\t\tmomentum: {:?}\n", parameter.momentum.clone().reverse())?;
+                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
+                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::AdamW(parameter) => {
+                write!(f, "\t\tAdamW (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
+                write!(f, "\t\t\tbeta1: {}\n", parameter.beta1)?;
+                write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
+                write!(f, "\t\t\tmomentum: {:?}\n", parameter.momentum.clone().reverse())?;
+                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
+                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
                 write!(f, "\t\t)")
             },
@@ -92,7 +112,7 @@ impl Function {
         Function { optimizer }
     }
 
-    pub fn update(&mut self, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
+    pub fn update(&mut self, layer: usize, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
         match &mut self.optimizer {
             Optimizer::SGD(parameter) => {
                 values.iter_mut().zip(gradients.iter_mut())
@@ -104,14 +124,51 @@ impl Function {
                     });
             },
             Optimizer::SGDM(parameter) => {
-                values.iter_mut().zip(gradients.iter_mut())
-                    .for_each(|(value, gradient)| {
+                values.iter_mut().zip(gradients.iter_mut()).enumerate()
+                    .for_each(|(i, (value, gradient))| {
                         if let Some(decay) = parameter.decay {
                             *gradient += decay * *value;
                         }
-                        parameter.velocity = parameter.momentum * parameter.velocity
+                        parameter.velocity[layer][i] = parameter.momentum * parameter
+                            .velocity[layer][i]
                             + parameter.learning_rate * *gradient;
-                        *value -= parameter.velocity;
+                        *value -= parameter.velocity[layer][i];
+                    });
+            },
+            Optimizer::Adam(parameter) => {
+                // Source: https://pytorch.org/docs/stable/generated/torch.optim.Adam.html
+                values.iter_mut().zip(gradients.iter_mut()).enumerate()
+                    .for_each(|(i, (value, gradient))| {
+                        if let Some(decay) = parameter.decay {
+                            *gradient += decay * *value;
+                        }
+                        parameter.momentum[layer][i] = parameter.beta1 * parameter.momentum[layer][i]
+                            + (1.0 - parameter.beta1) * *gradient;
+                        parameter.velocity[layer][i] = parameter.beta2 * parameter.velocity[layer][i]
+                            + (1.0 - parameter.beta2) * gradient.powi(2);
+
+                        let m = parameter.momentum[layer][i] / (1.0 - parameter.beta1.powi(i as i32 + 1));
+                        let v = parameter.velocity[layer][i] / (1.0 - parameter.beta2.powi(i as i32 + 1));
+
+                        *value -= parameter.learning_rate * m * (v.sqrt() + parameter.epsilon);
+                    });
+            },
+            Optimizer::AdamW(parameter) => {
+                // Source: https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html
+                values.iter_mut().zip(gradients.iter_mut()).enumerate()
+                    .for_each(|(i, (value, gradient))| {
+                        if let Some(decay) = parameter.decay {
+                            *gradient += parameter.learning_rate * decay * *value;
+                        }
+                        parameter.momentum[layer][i] = parameter.beta1 * parameter.momentum[layer][i]
+                            + (1.0 - parameter.beta1) * *gradient;
+                        parameter.velocity[layer][i] = parameter.beta2 * parameter.velocity[layer][i]
+                            + (1.0 - parameter.beta2) * gradient.powi(2);
+
+                        let m = parameter.momentum[layer][i] / (1.0 - parameter.beta1.powi(i as i32 + 1));
+                        let v = parameter.velocity[layer][i] / (1.0 - parameter.beta2.powi(i as i32 + 1));
+
+                        *value -= parameter.learning_rate * m * (v.sqrt() + parameter.epsilon);
                     });
             },
             _ => unimplemented!(),

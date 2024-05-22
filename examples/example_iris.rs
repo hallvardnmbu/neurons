@@ -82,12 +82,16 @@ fn main() {
     network.add_layer(5, 3, activation::Activation::Softmax, false);
 
     network.set_optimizer(
-        optimizer::Optimizer::SGDM(
-            optimizer::SGDMParams {
-                learning_rate: 0.0001,
-                momentum: 0.9,
-                velocity: 0.0,
+        optimizer::Optimizer::Adam(
+            optimizer::AdamParams {
+                learning_rate: 0.0005,
+                beta1: 0.9,
+                beta2: 0.99,
+                epsilon: 0.0000008,
                 decay: None,
+
+                momentum: vec![],
+                velocity: vec![],
             }
         )
     );

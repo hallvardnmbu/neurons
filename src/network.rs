@@ -104,7 +104,64 @@ impl Network {
         self.layers[layer].activation = activation::Function::create(&activation);
     }
 
-    pub fn set_optimizer(&mut self, optimizer: optimizer::Optimizer) {
+    pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
+        match optimizer {
+            optimizer::Optimizer::SGD(ref mut params) => {
+                if params.learning_rate == 0.0 {
+                    params.learning_rate = 0.1;
+                }
+            },
+            optimizer::Optimizer::SGDM(ref mut params) => {
+                if params.learning_rate == 0.0 {
+                    params.learning_rate = 0.1;
+                }
+                if params.momentum == 0.0 {
+                    params.momentum = 0.9;
+                }
+                params.velocity = self.layers.iter().rev().map(|layer| {
+                    vec![0.0; layer.weights[0].len()]
+                }).collect();
+            },
+            optimizer::Optimizer::Adam(ref mut params) => {
+                if params.learning_rate == 0.0 {
+                    params.learning_rate = 0.001;
+                }
+                if params.beta1 == 0.0 {
+                    params.beta1 = 0.9;
+                }
+                if params.beta2 == 0.0 {
+                    params.beta2 = 0.999;
+                }
+                if params.epsilon == 0.0 {
+                    params.epsilon = 1e-8;
+                }
+
+                params.velocity = self.layers.iter().rev().map(|layer| {
+                    vec![0.0; layer.weights[0].len()]
+                }).collect();
+                params.momentum = params.velocity.clone();
+            },
+            optimizer::Optimizer::AdamW(ref mut params) => {
+                if params.learning_rate == 0.0 {
+                    params.learning_rate = 0.001;
+                }
+                if params.beta1 == 0.0 {
+                    params.beta1 = 0.9;
+                }
+                if params.beta2 == 0.0 {
+                    params.beta2 = 0.999;
+                }
+                if params.epsilon == 0.0 {
+                    params.epsilon = 1e-8;
+                }
+
+                params.velocity = self.layers.iter().rev().map(|layer| {
+                    vec![0.0; layer.weights[0].len()]
+                }).collect();
+                params.momentum = params.velocity.clone();
+            },
+            _ => unimplemented!()
+        };
         self.optimizer = optimizer::Function::create(optimizer);
     }
 
@@ -182,18 +239,18 @@ impl Network {
             let input: &Vec<f32> = &activated[activated.len() - i - 2];
             let output: &Vec<f32> = &unactivated[unactivated.len() - i - 1];
 
-            let (mut weight_gradient, bias_gradient, _gradient) =
+            let (mut weight_gradient, bias_gradient, input_gradient) =
                 layer.backward(&gradient, input, output);
-            gradient = _gradient;
+            gradient = input_gradient;
 
             // Weight update.
             for (weights, gradients) in layer.weights.iter_mut().zip(weight_gradient.iter_mut()) {
-                self.optimizer.update(weights, gradients);
+                self.optimizer.update(i, weights, gradients);
             }
 
             // Bias update.
             if let Some(ref mut bias) = layer.bias {
-                self.optimizer.update(bias, &mut bias_gradient.unwrap());
+                self.optimizer.update(i - 1, bias, &mut bias_gradient.unwrap());
             }
         }
     }

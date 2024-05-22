@@ -9,21 +9,34 @@ This is a simple neural network implementation in Rust. It is modular and can be
 ## Quickstart
 
 ```rust
-use neurons::network;
+use neurons::network::Network;
 use neurons::activation::Activation;
 use neurons::optimizer::Optimizer;
 use neurons::objective::Objective;
 
 fn main() {
-    let mut network = network::Network::new();
+    let mut network = Network::new();
 
     network.add_layer(1, 4, Activation::ReLU, false);
     network.add_layer(4, 3, Activation::ReLU, true);
     network.add_layer(3, 1, Activation::Softmax, false);
     
-    network.set_optimizer(Optimizer::SGD, 0.001);
-    network.set_objective(Objective::RMSE);
-    
+    network.set_optimizer(
+        optimizer::Optimizer::Adam(
+            optimizer::AdamParams {
+                learning_rate: 0.0005,
+                beta1: 0.9,
+                beta2: 0.99,
+                epsilon: 0.0000008,
+                decay: None,
+
+                momentum: vec![],
+                velocity: vec![],
+            }
+        )
+    );
+    network.set_objective(objective::Objective::RMSE);
+
     println!("{}", network);
 }
 ```
@@ -59,7 +72,9 @@ Examples can be found in the `examples` directory.
 
 - Optimization techniques
   - [x] SGD
-  - [ ] Adam
+  - [x] SGDM
+  - [x] Adam
+  - [x] AdamW
   - [ ] RMSprop
 
 - Regularization
@@ -95,8 +110,9 @@ Examples can be found in the `examples` directory.
 
 * [backpropagation](https://towardsdatascience.com/backpropagation-from-scratch-how-neural-networks-really-work-36ee4af202bf)
 * [momentum](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
+* [Adam](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
+* [AdamW](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
 
-Along with help from
 
 * [GitHub Copilot](https://github.com/features/copilot)
 * [ChatGPT](https://chatgpt.com/?oai-dm=1)
