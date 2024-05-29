@@ -119,7 +119,8 @@ impl Network {
                     params.momentum = 0.9;
                 }
                 params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![0.0; layer.weights[0].len()]
+                    vec![vec![0.0; layer.weights[0].len()];
+                         layer.weights.len() + if layer.bias.is_some() { 1 } else { 0 }]
                 }).collect();
             },
             optimizer::Optimizer::Adam(ref mut params) => {
@@ -137,7 +138,8 @@ impl Network {
                 }
 
                 params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![0.0; layer.weights[0].len()]
+                    vec![vec![0.0; layer.weights[0].len()];
+                         layer.weights.len() + if layer.bias.is_some() { 1 } else { 0 }]
                 }).collect();
                 params.momentum = params.velocity.clone();
             },
@@ -156,7 +158,8 @@ impl Network {
                 }
 
                 params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![0.0; layer.weights[0].len()]
+                    vec![vec![0.0; layer.weights[0].len()];
+                         layer.weights.len() + if layer.bias.is_some() { 1 } else { 0 }]
                 }).collect();
                 params.momentum = params.velocity.clone();
             },
@@ -170,24 +173,26 @@ impl Network {
     }
 
     pub fn train(
-        &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: u32
+        &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: i32
     ) -> Vec<f32> {
         let mut losses = Vec::new();
-        for i in 1..epochs+1 {
+        for epoch in 1..epochs+1 {
             let mut _losses = Vec::new();
-            for (input, target) in inputs.iter().zip(targets.iter()) {
+            for (input, target) in inputs
+                .iter()
+                .zip(targets.iter()) {
+
                 let (unactivated, activated) = self.forward(input);
                 let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
 
-                // println!("{:?} {:?}", activated.last().unwrap(), target);
-
-                self.backward(gradient, unactivated, activated);
+                // TODO: Backward pass on batch instead of single input.
+                self.backward(epoch, gradient, unactivated, activated);
                 _losses.push(loss);
             }
             losses.push(_losses.iter().sum::<f32>() / inputs.len() as f32);
-            if i % 100 == 0 {
+            if epoch % 100 == 0 {
                 println!("Epoch: {} Loss: {}",
-                         i, losses[(i as usize)-99..(i as usize)].iter().sum::<f32>() / 99.0);
+                         epoch, losses[(epoch as usize)-99..(epoch as usize)].iter().sum::<f32>() / 99.0);
             }
         }
         losses
@@ -246,11 +251,11 @@ impl Network {
     }
 
     fn backward(
-        &mut self, mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated: Vec<Vec<f32>>
+        &mut self, stepnr: i32,
+        mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated: Vec<Vec<f32>>
     ) {
 
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
-
             let input: &Vec<f32> = &activated[activated.len() - i - 2];
             let output: &Vec<f32> = &unactivated[unactivated.len() - i - 1];
 
@@ -259,13 +264,18 @@ impl Network {
             gradient = input_gradient;
 
             // Weight update.
-            for (weights, gradients) in layer.weights.iter_mut().zip(weight_gradient.iter_mut()) {
-                self.optimizer.update(i, weights, gradients);
+            for (j, (weights, gradients)) in layer
+                .weights.iter_mut()
+                .zip(weight_gradient.iter_mut())
+                .enumerate() {
+                self.optimizer.update(i, j, stepnr, weights, gradients);
             }
 
             // Bias update.
             if let Some(ref mut bias) = layer.bias {
-                self.optimizer.update(i, bias, &mut bias_gradient.unwrap());
+                // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
+                self.optimizer.update(i, layer.weights.len(), stepnr,
+                                      bias, &mut bias_gradient.unwrap());
             }
         }
     }

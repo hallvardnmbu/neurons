@@ -86,16 +86,16 @@ fn main() {
     network.add_layer(50, 1, activation::Activation::Linear, false);
 
     network.set_optimizer(
-        optimizer::Optimizer::SGD(
-            optimizer::SGDParams {
+        optimizer::Optimizer::AdamW(
+            optimizer::AdamWParams {
                 learning_rate: 0.001,
-                // beta1: 0.9,
-                // beta2: 0.999,
-                // epsilon: 1e-8,
-                decay: Some(1e-2),
+                beta1: 0.9,
+                beta2: 0.999,
+                epsilon: 1e-8,
+                decay: 0.01,
 
-                // momentum: vec![],           // To be filled by the network
-                // velocity: vec![],           // To be filled by the network
+                momentum: vec![],           // To be filled by the network
+                velocity: vec![],           // To be filled by the network
             }
         )
     );
@@ -114,9 +114,4 @@ fn main() {
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
     println!("2. Input: {:?}, Target: {:?}, Output: {:?}", x_test[0], y_test[0], prediction);
-
-    // Use the network on batch
-    // let predictions = network.predict_batch(&x_test);
-    // println!("3. Input: {:?},\n   Target: {:?},\n   Output: {:?}",
-    //          x_test[..5], y_test[..5],  predictions[..5]);
 }

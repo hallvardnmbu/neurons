@@ -46,7 +46,6 @@ impl Layer {
                     .map(|_| rand::Rng::gen::<f32>(&mut rng))
                     .collect())
                 .collect(),
-            // weights: vec![vec![1.0; inputs as usize]; outputs as usize],
             bias: match bias {
                 true => Some((0..outputs).map(|_| rand::Rng::gen::<f32>(&mut rng)).collect()),
                 false => None,

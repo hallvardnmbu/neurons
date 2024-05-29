@@ -26,7 +26,7 @@ pub struct SGDMParams {
     pub momentum: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<f32>>,
+    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
 }
 
 pub struct AdamParams {
@@ -36,8 +36,19 @@ pub struct AdamParams {
     pub epsilon: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<f32>>,
-    pub momentum: Vec<Vec<f32>>,
+    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub momentum: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+}
+
+pub struct AdamWParams {
+    pub learning_rate: f32,
+    pub beta1: f32,
+    pub beta2: f32,
+    pub epsilon: f32,
+    pub decay: f32,
+
+    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub momentum: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
 }
 
 pub struct RMSpropParams {
@@ -51,7 +62,7 @@ pub enum Optimizer {
     SGD(SGDParams),
     SGDM(SGDMParams),
     Adam(AdamParams),
-    AdamW(AdamParams),
+    AdamW(AdamWParams),
     RMSprop(RMSpropParams),
 }
 
@@ -93,7 +104,7 @@ impl std::fmt::Display for Function {
                 write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
                 write!(f, "\t\t\tmomentum: {:?}\n", parameter.momentum.clone().reverse())?;
                 write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
-                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t\tdecay: {}\n", parameter.decay)?;
                 write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
                 write!(f, "\t\t)")
             },
@@ -115,7 +126,9 @@ impl Function {
     }
 
     pub fn update(
-        &mut self, layer: usize, values: &mut Vec<f32>, gradients: &mut Vec<f32>
+        &mut self,
+        layer: usize, column: usize, stepnr: i32,
+        values: &mut Vec<f32>, gradients: &mut Vec<f32>
     ) {
         match &mut self.optimizer {
             Optimizer::SGD(parameter) => {
@@ -123,20 +136,20 @@ impl Function {
                     // gradients += decay * weights (values)
                     add_inplace(gradients, &mul_scalar(values, decay))
                 }
-
                 // weights (values) -= learning_rate * gradients
                 sub_inplace(values, &mul_scalar(gradients, parameter.learning_rate));
             },
             Optimizer::SGDM(parameter) => {
+                // Source: https://pytorch.org/docs/stable/generated/torch.optim.SGD.html
                 values.iter_mut().zip(gradients.iter_mut()).enumerate()
                     .for_each(|(i, (value, gradient))| {
                         if let Some(decay) = parameter.decay {
                             *gradient += decay * *value;
                         }
-                        parameter.velocity[layer][i] = parameter.momentum * parameter
-                            .velocity[layer][i]
+                        parameter.velocity[layer][column][i] = parameter.momentum * parameter
+                            .velocity[layer][column][i]
                             + parameter.learning_rate * *gradient;
-                        *value -= parameter.velocity[layer][i];
+                        *value -= parameter.velocity[layer][column][i];
                     });
             },
             Optimizer::Adam(parameter) => {
@@ -146,33 +159,42 @@ impl Function {
                         if let Some(decay) = parameter.decay {
                             *gradient += decay * *value;
                         }
-                        parameter.momentum[layer][i] = parameter.beta1 * parameter.momentum[layer][i]
-                            + (1.0 - parameter.beta1) * *gradient;
-                        parameter.velocity[layer][i] = parameter.beta2 * parameter.velocity[layer][i]
-                            + (1.0 - parameter.beta2) * gradient.powi(2);
+                        parameter.momentum[layer][column][i] =
+                            parameter.beta1 * parameter.momentum[layer][column][i]
+                                + (1.0 - parameter.beta1) * *gradient;
 
-                        let m = parameter.momentum[layer][i] / (1.0 - parameter.beta1.powi(i as i32 + 1));
-                        let v = parameter.velocity[layer][i] / (1.0 - parameter.beta2.powi(i as i32 + 1));
+                        parameter.velocity[layer][column][i] =
+                            parameter.beta2 * parameter.velocity[layer][column][i]
+                                + (1.0 - parameter.beta2) * gradient.powi(2);
 
-                        *value -= parameter.learning_rate * m * (v.sqrt() + parameter.epsilon);
+                        let m = parameter.momentum[layer][column][i]
+                            / (1.0 - parameter.beta1.powi(stepnr));
+                        let v = parameter.velocity[layer][column][i]
+                            / (1.0 - parameter.beta2.powi(stepnr));
+
+                        *value -= (parameter.learning_rate * m) / (v.sqrt() + parameter.epsilon);
                     });
             },
             Optimizer::AdamW(parameter) => {
                 // Source: https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html
                 values.iter_mut().zip(gradients.iter_mut()).enumerate()
                     .for_each(|(i, (value, gradient))| {
-                        if let Some(decay) = parameter.decay {
-                            *gradient += parameter.learning_rate * decay * *value;
-                        }
-                        parameter.momentum[layer][i] = parameter.beta1 * parameter.momentum[layer][i]
-                            + (1.0 - parameter.beta1) * *gradient;
-                        parameter.velocity[layer][i] = parameter.beta2 * parameter.velocity[layer][i]
-                            + (1.0 - parameter.beta2) * gradient.powi(2);
+                        *value -= parameter.learning_rate * parameter.decay * *value;
 
-                        let m = parameter.momentum[layer][i] / (1.0 - parameter.beta1.powi(i as i32 + 1));
-                        let v = parameter.velocity[layer][i] / (1.0 - parameter.beta2.powi(i as i32 + 1));
+                        parameter.momentum[layer][column][i] =
+                            parameter.beta1 * parameter.momentum[layer][column][i]
+                                + (1.0 - parameter.beta1) * *gradient;
 
-                        *value -= parameter.learning_rate * m * (v.sqrt() + parameter.epsilon);
+                        parameter.velocity[layer][column][i] =
+                            parameter.beta2 * parameter.velocity[layer][column][i]
+                                + (1.0 - parameter.beta2) * gradient.powi(2);
+
+                        let m = parameter.momentum[layer][column][i]
+                            / (1.0 - parameter.beta1.powi(stepnr));
+                        let v = parameter.velocity[layer][column][i]
+                            / (1.0 - parameter.beta2.powi(stepnr));
+
+                        *value -= (parameter.learning_rate * m) / (v.sqrt() + parameter.epsilon);
                     });
             },
             _ => unimplemented!(),
