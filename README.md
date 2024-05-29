@@ -17,25 +17,28 @@ use neurons::objective::Objective;
 fn main() {
     let mut network = Network::new();
 
-    network.add_layer(1, 4, Activation::ReLU, false);
-    network.add_layer(4, 3, Activation::ReLU, true);
-    network.add_layer(3, 1, Activation::Softmax, false);
+    network.add_layer(4, 50, activation::Activation::Linear, true);
+    network.add_layer(50, 50, activation::Activation::Linear, true);
+    network.add_layer(50, 1, activation::Activation::Linear, false);
     
     network.set_optimizer(
-        optimizer::Optimizer::Adam(
-            optimizer::AdamParams {
-                learning_rate: 0.0005,
+        optimizer::Optimizer::AdamW(
+            optimizer::AdamWParams {
+                learning_rate: 0.001,
                 beta1: 0.9,
-                beta2: 0.99,
-                epsilon: 0.0000008,
-                decay: None,
+                beta2: 0.999,
+                epsilon: 1e-8,
+                decay: 0.01,
 
-                momentum: vec![],
-                velocity: vec![],
+                momentum: vec![],           // To be filled by the network
+                velocity: vec![],           // To be filled by the network
             }
         )
     );
-    network.set_objective(objective::Objective::RMSE);
+    network.set_objective(
+        objective::Objective::MSE,          // Objective function
+        Some((-1f32, 1f32))                 // Gradient clipping
+    );
 
     println!("{}", network);
 }
@@ -76,6 +79,7 @@ Examples can be found in the `examples` directory.
   - [x] Adam
   - [x] AdamW
   - [ ] RMSprop
+  - [ ] Minibatch
 
 - Regularization
   - [ ] Dropout
