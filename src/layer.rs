@@ -20,7 +20,7 @@ use crate::activation;
 use crate::algebra::*;
 
 pub struct Layer {
-    pub(crate) weights: Vec<Vec<f32>>,
+    pub weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
 }
@@ -40,9 +40,15 @@ impl Layer {
     ) -> Self {
         let mut rng = rand::thread_rng();
         Layer {
-            weights: vec![vec![rand::Rng::gen::<f32>(&mut rng); inputs as usize]; outputs as usize],
+            weights: (0..outputs)
+                .map(|_|
+                    (0..inputs)
+                    .map(|_| rand::Rng::gen::<f32>(&mut rng))
+                    .collect())
+                .collect(),
+            // weights: vec![vec![1.0; inputs as usize]; outputs as usize],
             bias: match bias {
-                true => Some(vec![rand::Rng::gen::<f32>(&mut rng); outputs as usize]),
+                true => Some((0..outputs).map(|_| rand::Rng::gen::<f32>(&mut rng)).collect()),
                 false => None,
             },
             activation: activation::Function::create(&activation),
@@ -52,7 +58,7 @@ impl Layer {
     pub fn forward(&self, x: &Vec<f32>) -> (Vec<f32>, Vec<f32> ){
         let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, x)).collect();
         let post: Vec<f32> = match &self.bias {
-            Some(b) => add(&self.activation.forward(&pre), b),
+            Some(bias) => add(&self.activation.forward(&pre), bias),
             None => self.activation.forward(&pre),
         };
         (pre, post)
@@ -68,6 +74,7 @@ impl Layer {
         };
 
         let delta: Vec<f32> = mul(gradient, &derivative);
+
         let weight_gradient: Vec<Vec<f32>> = delta
             .iter().map(|d| input
             .iter().map(|i| i * d)
@@ -78,8 +85,10 @@ impl Layer {
             None => None,
         };
         let input_gradient: Vec<f32> = (0..input.len())
-            .map(|i| delta.iter().zip(self.weights.iter())
-                .map(|(d, w)| d * w[i]).sum())
+            .map(|i| delta
+                .iter().zip(self.weights.iter())
+                .map(|(d, w)| d * w[i])
+                .sum::<f32>())
             .collect();
 
         (weight_gradient, bias_gradient, input_gradient)

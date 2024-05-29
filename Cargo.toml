@@ -26,3 +26,7 @@ path = "examples/example_xor.rs"
 [[example]]
 name = "example_iris"
 path = "examples/example_iris.rs"
+
+[[example]]
+name = "testing"
+path = "examples/testing.rs"

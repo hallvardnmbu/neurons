@@ -25,35 +25,47 @@ pub enum Objective {
 
 pub struct Function {
     pub objective: Objective,
+    pub clamp: Option<(f32, f32)>,
 }
 
 impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self.objective {
-            Objective::AE => write!(f, "AE"),
-            Objective::MAE => write!(f, "MAE"),
-            Objective::MSE => write!(f, "MSE"),
-            Objective::RMSE => write!(f, "RMSE"),
-            Objective::BinaryCrossEntropy => write!(f, "BinaryCrossEntropy"),
-            Objective::CategoricalCrossEntropy => write!(f, "CategoricalCrossEntropy"),
+            Objective::AE => write!(
+                f, "AE(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
+            Objective::MAE => write!(
+                f, "MAE(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
+            Objective::MSE => write!(
+                f, "MSE(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
+            Objective::RMSE => write!(
+                f, "RMSE(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
+            Objective::BinaryCrossEntropy => write!(
+                f, "BinaryCrossEntropy(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
+            Objective::CategoricalCrossEntropy => write!(
+                f, "CategoricalCrossEntropy(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
         }
     }
 }
 
 impl Function {
-    pub fn create(objective: Objective) -> Self {
-        match objective {
-            Objective::AE => Function { objective: Objective::AE },
-            Objective::MAE => Function { objective: Objective::MAE },
-            Objective::MSE => Function { objective: Objective::MSE },
-            Objective::RMSE => Function { objective: Objective::RMSE },
-            Objective::BinaryCrossEntropy => Function { objective: Objective::BinaryCrossEntropy },
-            Objective::CategoricalCrossEntropy => Function { objective: Objective::CategoricalCrossEntropy },
-        }
+    pub fn create(objective: Objective, clamp: Option<(f32, f32)>) -> Self {
+        Function { objective, clamp }
     }
 
     pub fn loss(&self, prediction: &Vec<f32>, target: &Vec<f32>) -> (f32, Vec<f32>) {
-        match self.objective {
+        let (loss, gradient) = match self.objective {
             Objective::AE => {
                 let loss: f32 = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| (actual - predicted).abs() )
@@ -88,11 +100,12 @@ impl Function {
             },
             Objective::MSE => {
                 let loss: f32 = target.iter().zip(prediction.iter())
-                    .map(|(actual, predicted)| (actual - predicted).powi(2))
-                    .sum::<f32>() / target.len() as f32;
+                    .map(|(actual, predicted)| (actual - predicted).powi(2) / target.len() as f32)
+                    .sum::<f32>();
                 let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| -2.0 * (actual - predicted) / target.len() as f32)
                     .collect();
+
                 (loss, gradient)
             },
             Objective::RMSE => {
@@ -137,6 +150,12 @@ impl Function {
                     ).collect();
                 (loss, gradient)
             },
+        };
+        match self.clamp {
+            Some((min, max)) => {
+                (loss, gradient.iter().map(|g| g.clamp(min, max)).collect())
+            },
+            None => (loss, gradient)
         }
     }
 }

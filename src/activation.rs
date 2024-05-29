@@ -64,7 +64,7 @@ impl Function {
             Function::Sigmoid(act) => act.forward(input),
             Function::Softmax(act) => act.forward(input),
             Function::Tanh(act) => act.forward(input),
-            Function::Linear(act) => act.forward(input.clone()),
+            Function::Linear(act) => act.forward(input),
         }
     }
 
@@ -84,7 +84,7 @@ pub struct ReLU {}
 
 impl ReLU {
     pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| if v > 0.0 { v } else { 0.0 }).collect()
+        input.iter().map(|&v| v.max(0.0)).collect()
     }
 
     pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
@@ -133,7 +133,6 @@ impl Softmax {
 
     pub fn backward(&self, input: &Vec<f32>, gradient: &Vec<f32>) -> Vec<f32> {
         // With help from GitHub Copilot.
-
         let softmax = self.forward(input);
         let mut grad = vec![0.0; softmax.len()];
 
@@ -142,7 +141,7 @@ impl Softmax {
                 if i == j {
                     grad[i] += softmax[i] * (1.0 - softmax[j]) * gradient[j];
                 } else {
-                    grad[i] += -softmax[i] * softmax[j] * gradient[j];
+                    grad[i] -= -softmax[i] * softmax[j] * gradient[j];
                 }
             }
         }
@@ -159,7 +158,7 @@ impl Tanh {
 
     pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
         input.iter().map(|&v| {
-            1.0 - v.tanh().powi(2)
+            1.0 / (v.cosh().powi(2))
         }).collect()
     }
 }
@@ -167,8 +166,8 @@ impl Tanh {
 pub struct Linear {}
 
 impl Linear {
-    pub fn forward(&self, input: Vec<f32>) -> Vec<f32> {
-        input
+    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+        input.clone()
     }
 
     pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {

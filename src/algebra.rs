@@ -14,22 +14,38 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-pub fn add(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
-    x.iter().zip(y.iter()).map(|(a, b)| a + b).collect()
+pub fn add(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a + b).collect()
 }
 
-pub fn mul(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
-    x.iter().zip(y.iter()).map(|(a, b)| a * b).collect()
+pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
+    for (a, b) in vec1.iter_mut().zip(vec2.iter()) {
+        *a += b;
+    }
 }
 
-pub fn dot(x: &Vec<f32>, y: &Vec<f32>) -> f32 {
-    x.iter().zip(y.iter()).map(|(a, b)| a * b).sum()
+pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).collect()
 }
 
-pub fn sub(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
-    x.iter().zip(y.iter()).map(|(a, b)| a - b).collect()
+pub fn mul_scalar(vec: &Vec<f32>, scalar: f32) -> Vec<f32> {
+    vec.iter().map(|a| a * scalar).collect()
 }
 
-pub fn div(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
-    x.iter().zip(y.iter()).map(|(a, b)| a / b).collect()
+pub fn dot(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).sum()
+}
+
+pub fn sub(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a - b).collect()
+}
+
+pub fn sub_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
+    for (a, b) in vec1.iter_mut().zip(vec2.iter()) {
+        *a -= b;
+    }
+}
+
+pub fn div(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
+    vec1.iter().zip(vec2.iter()).map(|(a, b)| a / b).collect()
 }

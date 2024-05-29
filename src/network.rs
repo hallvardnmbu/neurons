@@ -62,7 +62,7 @@ impl Network {
         Network {
             layers,
             optimizer: optimizer::Function::create(optimizer),
-            objective: objective::Function::create(objective),
+            objective: objective::Function::create(objective, None),
         }
     }
 
@@ -77,7 +77,7 @@ impl Network {
                     }
                 )
             ),
-            objective: objective::Function::create(objective::Objective::MSE),
+            objective: objective::Function::create(objective::Objective::MSE, None),
         }
     }
 
@@ -165,24 +165,30 @@ impl Network {
         self.optimizer = optimizer::Function::create(optimizer);
     }
 
-    pub fn set_objective(&mut self, objective: objective::Objective) {
-        self.objective = objective::Function::create(objective);
+    pub fn set_objective(&mut self, objective: objective::Objective, clamp: Option<(f32, f32)>) {
+        self.objective = objective::Function::create(objective, clamp);
     }
 
     pub fn train(
         &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: u32
     ) -> Vec<f32> {
         let mut losses = Vec::new();
-        for _ in 0..epochs {
+        for i in 1..epochs+1 {
             let mut _losses = Vec::new();
             for (input, target) in inputs.iter().zip(targets.iter()) {
                 let (unactivated, activated) = self.forward(input);
                 let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
 
+                // println!("{:?} {:?}", activated.last().unwrap(), target);
+
                 self.backward(gradient, unactivated, activated);
                 _losses.push(loss);
             }
             losses.push(_losses.iter().sum::<f32>() / inputs.len() as f32);
+            if i % 100 == 0 {
+                println!("Epoch: {} Loss: {}",
+                         i, losses[(i as usize)-99..(i as usize)].iter().sum::<f32>() / 99.0);
+            }
         }
         losses
     }
@@ -190,12 +196,20 @@ impl Network {
     pub fn validate(&mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>) -> f32 {
 
         let mut losses = Vec::new();
+        let mut accuracy = Vec::new();
+
         for (input, target) in inputs.iter().zip(targets.iter()) {
             let prediction = self.predict(input);
             let (loss, _) = self.loss(&prediction, target);
 
             losses.push(loss);
+            accuracy.push(
+                prediction.iter().zip(target.iter())
+                    .filter(|(p, t)| p.round() == t.round())
+                    .count() as f32 / target.len() as f32
+            );
         }
+        println!("Accuracy: {:?}", accuracy.iter().sum::<f32>() / accuracy.len() as f32);
         losses.iter().sum::<f32>() / inputs.len() as f32
     }
 
@@ -212,7 +226,7 @@ impl Network {
         inputs.iter().map(|input| self.predict(input)).collect()
     }
 
-    fn forward(&mut self, input: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
+    pub fn forward(&mut self, input: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
 
         let mut unactivated: Vec<Vec<f32>> = Vec::new();
         let mut activated: Vec<Vec<f32>> = vec![input.clone()];
@@ -231,8 +245,9 @@ impl Network {
         self.objective.loss(prediction, target)
     }
 
-    fn backward(&mut self, mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated:
-    Vec<Vec<f32>>) {
+    fn backward(
+        &mut self, mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated: Vec<Vec<f32>>
+    ) {
 
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
 
@@ -250,7 +265,7 @@ impl Network {
 
             // Bias update.
             if let Some(ref mut bias) = layer.bias {
-                self.optimizer.update(i - 1, bias, &mut bias_gradient.unwrap());
+                self.optimizer.update(i, bias, &mut bias_gradient.unwrap());
             }
         }
     }

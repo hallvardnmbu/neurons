@@ -40,9 +40,12 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
         ]);
         y.push(
             match record.get(5).unwrap() {
-                "Iris-setosa" => vec![1.0, 0.0, 0.0],
-                "Iris-versicolor" => vec![0.0, 1.0, 0.0],
-                "Iris-virginica" => vec![0.0, 0.0, 1.0],
+                // "Iris-setosa" => vec![1.0, 0.0, 0.0],
+                // "Iris-versicolor" => vec![0.0, 1.0, 0.0],
+                // "Iris-virginica" => vec![0.0, 0.0, 1.0],
+                "Iris-setosa" => vec![0.0],
+                "Iris-versicolor" => vec![1.0],
+                "Iris-virginica" => vec![2.0],
                 _ => panic!("Unknown class"),
             }
         );
@@ -78,27 +81,31 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(4, 5, activation::Activation::ReLU, true);
-    network.add_layer(5, 3, activation::Activation::Softmax, false);
+    network.add_layer(4, 50, activation::Activation::Linear, false);
+    network.add_layer(50, 50, activation::Activation::Linear, false);
+    network.add_layer(50, 1, activation::Activation::Linear, false);
 
     network.set_optimizer(
-        optimizer::Optimizer::Adam(
-            optimizer::AdamParams {
-                learning_rate: 0.0005,
-                beta1: 0.9,
-                beta2: 0.99,
-                epsilon: 0.0000008,
-                decay: None,
+        optimizer::Optimizer::SGD(
+            optimizer::SGDParams {
+                learning_rate: 0.001,
+                // beta1: 0.9,
+                // beta2: 0.999,
+                // epsilon: 1e-8,
+                decay: Some(1e-2),
 
-                momentum: vec![],
-                velocity: vec![],
+                // momentum: vec![],           // To be filled by the network
+                // velocity: vec![],           // To be filled by the network
             }
         )
     );
-    network.set_objective(objective::Objective::RMSE);
+    network.set_objective(
+        objective::Objective::MSE,          // Objective function
+        Some((-1f32, 1f32))                 // Gradient clipping
+    );
 
     // Train the network
-    let _epoch_loss = network.train(&x_train, &y_train, 1000);
+    let _epoch_loss = network.train(&x_train, &y_train, 500);
 
     // Validate the network
     let val_loss = network.validate(&x_test, &y_test);
@@ -108,8 +115,8 @@ fn main() {
     let prediction = network.predict(x_test.get(0).unwrap());
     println!("2. Input: {:?}, Target: {:?}, Output: {:?}", x_test[0], y_test[0], prediction);
 
-    // // Use the network on batch
-    // let predictions = net.predict_batch(&x_test);
+    // Use the network on batch
+    // let predictions = network.predict_batch(&x_test);
     // println!("3. Input: {:?},\n   Target: {:?},\n   Output: {:?}",
     //          x_test[..5], y_test[..5],  predictions[..5]);
 }

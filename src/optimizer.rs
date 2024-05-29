@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
+use crate::algebra::*;
+
 pub struct SGDParams {
     pub learning_rate: f32,
     pub decay: Option<f32>,
@@ -112,16 +114,18 @@ impl Function {
         Function { optimizer }
     }
 
-    pub fn update(&mut self, layer: usize, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
+    pub fn update(
+        &mut self, layer: usize, values: &mut Vec<f32>, gradients: &mut Vec<f32>
+    ) {
         match &mut self.optimizer {
             Optimizer::SGD(parameter) => {
-                values.iter_mut().zip(gradients.iter_mut())
-                    .for_each(|(value, gradient)| {
-                        if let Some(decay) = parameter.decay {
-                            *gradient += decay * *value;
-                        }
-                        *value -= parameter.learning_rate * *gradient;
-                    });
+                if let Some(decay) = parameter.decay {
+                    // gradients += decay * weights (values)
+                    add_inplace(gradients, &mul_scalar(values, decay))
+                }
+
+                // weights (values) -= learning_rate * gradients
+                sub_inplace(values, &mul_scalar(gradients, parameter.learning_rate));
             },
             Optimizer::SGDM(parameter) => {
                 values.iter_mut().zip(gradients.iter_mut()).enumerate()
