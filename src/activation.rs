@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
+use crate::algebra::dot;
+
 pub enum Activation {
     ReLU,
     LeakyReLU,
@@ -132,18 +134,18 @@ impl Softmax {
     }
 
     pub fn backward(&self, logits: &Vec<f32>) -> Vec<f32> {
-        unimplemented!("Softmax backward");
-
         // Source: https://e2eml.school/softmax
         let probability = self.forward(logits);
+        let scalar = dot(&probability, &probability);
+
         let mut derivative = vec![0.0f32; probability.len()];
 
         for i in 0..probability.len() {
             for j in 0..probability.len() {
                 if i == j {
-                    derivative[i] += probability[i] * (1.0 - probability[i]);
+                    derivative[i] += probability[i] * (1.0 - probability[i]) - scalar;
                 } else {
-                    derivative[i] -= probability[i] * probability[j];
+                    derivative[i] -= probability[i] * probability[j] - scalar;
                 }
             }
         }

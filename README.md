@@ -65,7 +65,7 @@ Examples can be found in the `examples` directory.
   - [x] Tanh
   - [x] ReLU
   - [x] LeakyReLU
-  - [ ] Softmax
+  - [x] Softmax
 
 - Objective functions
   - [x] AE

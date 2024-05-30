@@ -40,12 +40,12 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
         ]);
         y.push(
             match record.get(5).unwrap() {
-                // "Iris-setosa" => vec![1.0, 0.0, 0.0],
-                // "Iris-versicolor" => vec![0.0, 1.0, 0.0],
-                // "Iris-virginica" => vec![0.0, 0.0, 1.0],
-                "Iris-setosa" => vec![0.0],
-                "Iris-versicolor" => vec![1.0],
-                "Iris-virginica" => vec![2.0],
+                "Iris-setosa" => vec![1.0, 0.0, 0.0],
+                "Iris-versicolor" => vec![0.0, 1.0, 0.0],
+                "Iris-virginica" => vec![0.0, 0.0, 1.0],
+                // "Iris-setosa" => vec![0.0],
+                // "Iris-versicolor" => vec![1.0],
+                // "Iris-virginica" => vec![2.0],
                 _ => panic!("Unknown class"),
             }
         );
@@ -81,9 +81,9 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(4, 50, activation::Activation::Linear, false);
-    network.add_layer(50, 50, activation::Activation::Linear, false);
-    network.add_layer(50, 1, activation::Activation::Linear, false);
+    network.add_layer(4, 50, activation::Activation::ReLU, false);
+    network.add_layer(50, 50, activation::Activation::ReLU, false);
+    network.add_layer(50, 3, activation::Activation::Softmax, false);
 
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
@@ -100,16 +100,16 @@ fn main() {
         )
     );
     network.set_objective(
-        objective::Objective::MSE,          // Objective function
+        objective::Objective::CrossEntropy, // Objective function
         Some((-1f32, 1f32))                 // Gradient clipping
     );
 
     // Train the network
-    let _epoch_loss = network.train(&x_train, &y_train, 500);
+    let _epoch_loss = network.learn(&x_train, &y_train, 500);
 
     // Validate the network
-    let val_loss = network.validate(&x_test, &y_test);
-    println!("1. Validation loss: {:?}", val_loss);
+    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
+    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
 
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
