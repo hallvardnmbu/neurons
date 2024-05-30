@@ -28,6 +28,12 @@ pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
     vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).collect()
 }
 
+pub fn mul_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
+    for (a, b) in vec1.iter_mut().zip(vec2.iter()) {
+        *a *= b;
+    }
+}
+
 pub fn mul_scalar(vec: &Vec<f32>, scalar: f32) -> Vec<f32> {
     vec.iter().map(|a| a * scalar).collect()
 }
