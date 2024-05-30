@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use neurons::{network, optimizer};
-use neurons::activation::Activation;
-use neurons::objective::Objective;
-use neurons::optimizer::Optimizer;
+use neurons::network;
+use neurons::activation;
+use neurons::objective;
+use neurons::optimizer;
 
 fn main() {
     // Create the training data for the binary AND operation
@@ -31,22 +31,18 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(2, 10, Activation::Linear, true);
-    network.add_layer(10, 1, Activation::ReLU, false);
+    network.add_layer(2, 10, activation::Activation::Linear, true);
+    network.add_layer(10, 1, activation::Activation::ReLU, false);
 
     network.set_optimizer(
-        Optimizer::SGD(
+        optimizer::Optimizer::SGD(
             optimizer::SGDParams {
                 learning_rate: 0.01,
                 decay: Some(0.01),
             }
         )
     );
-    network.set_objective(
-        Objective::MSE,
-        // Some((-1.0f32, 1.0f32))
-        None
-    );
+    network.set_objective(objective::Objective::MSE, None);
 
     // Train the network
     let _epoch_loss = network.learn(&inputs, &targets, 1000);
