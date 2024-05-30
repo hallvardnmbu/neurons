@@ -68,12 +68,12 @@ impl Function {
         }
     }
 
-    pub fn backward(&self, input: &Vec<f32>, gradient: Option<&Vec<f32>>) -> Vec<f32> {
+    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
         match self {
             Function::ReLU(act) => act.backward(input),
             Function::LeakyReLU(act) => act.backward(input),
             Function::Sigmoid(act) => act.backward(input),
-            Function::Softmax(act) => act.backward(input, gradient.unwrap()),
+            Function::Softmax(act) => act.backward(input),
             Function::Tanh(act) => act.backward(input),
             Function::Linear(act) => act.backward(input),
         }
@@ -125,27 +125,30 @@ pub struct Softmax {}
 
 impl Softmax {
     pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        let max_input = input.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-        let exps: Vec<f32> = input.iter().map(|v| (v - max_input).exp()).collect();
+        let max = input.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = input.iter().map(|v| (v - max).exp()).collect();
         let sum: f32 = exps.iter().sum();
         exps.iter().map(|v| v / sum).collect()
     }
 
-    pub fn backward(&self, input: &Vec<f32>, gradient: &Vec<f32>) -> Vec<f32> {
-        // With help from GitHub Copilot.
-        let softmax = self.forward(input);
-        let mut grad = vec![0.0; softmax.len()];
+    pub fn backward(&self, logits: &Vec<f32>) -> Vec<f32> {
+        unimplemented!("Softmax backward");
 
-        for i in 0..softmax.len() {
-            for j in 0..softmax.len() {
+        // Source: https://e2eml.school/softmax
+        let probability = self.forward(logits);
+        let mut derivative = vec![0.0f32; probability.len()];
+
+        for i in 0..probability.len() {
+            for j in 0..probability.len() {
                 if i == j {
-                    grad[i] += softmax[i] * (1.0 - softmax[j]) * gradient[j];
+                    derivative[i] += probability[i] * (1.0 - probability[i]);
                 } else {
-                    grad[i] -= -softmax[i] * softmax[j] * gradient[j];
+                    derivative[i] -= probability[i] * probability[j];
                 }
             }
         }
-        grad
+
+        derivative
     }
 }
 

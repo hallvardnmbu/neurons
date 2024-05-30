@@ -19,8 +19,9 @@ pub enum Objective {
     MAE,
     MSE,
     RMSE,
+    CrossEntropy,
     BinaryCrossEntropy,
-    CategoricalCrossEntropy,
+    KLDivergence,
 }
 
 pub struct Function {
@@ -47,12 +48,16 @@ impl std::fmt::Display for Function {
                 f, "RMSE(gradient_clamp={:?})",
                 self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
+            Objective::CrossEntropy => write!(
+                f, "CrossEntropy(gradient_clamp={:?})",
+                self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+            ),
             Objective::BinaryCrossEntropy => write!(
                 f, "BinaryCrossEntropy(gradient_clamp={:?})",
                 self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
-            Objective::CategoricalCrossEntropy => write!(
-                f, "CategoricalCrossEntropy(gradient_clamp={:?})",
+            Objective::KLDivergence => write!(
+                f, "KLDivergence(gradient_clamp={:?})",
                 self.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
         }
@@ -123,13 +128,26 @@ impl Function {
                     ).collect();
                 (loss, gradient)
             },
+            Objective::CrossEntropy => {
+                let eps: f32 = 1e-7;
+                let loss: f32 = -target.iter().zip(prediction.iter())
+                    .map(|(actual, predicted)| {
+                        let predicted = predicted.clamp(eps, 1.0 - eps);
+                        actual * predicted.ln()
+                    }).sum::<f32>();
+                let gradient: Vec<f32> = prediction.iter().zip(target.iter())
+                    .map(|(predicted, actual)|
+                        predicted - actual
+                    ).collect();
+                (loss, gradient)
+            },
             Objective::BinaryCrossEntropy => {
                 let eps: f32 = 1e-7;
                 let loss: f32 = -target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| {
                             let predicted = predicted.clamp(eps, 1.0 - eps);
                             actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
-                    }).sum::<f32>() / target.len() as f32;
+                    }).sum::<f32>();
                 let gradient: Vec<f32> = target.iter().zip(prediction.iter())
                     .map(|(actual, predicted)| {
                         let predicted = predicted.clamp(eps, 1.0 - eps);
@@ -137,18 +155,20 @@ impl Function {
                     }).collect();
                 (loss, gradient)
             },
-            Objective::CategoricalCrossEntropy => {
-                let eps: f32 = 1e-7;
-                let loss: f32 = -target.iter().zip(prediction.iter())
-                    .map(|(actual, predicted)| {
-                        let predicted = predicted.clamp(eps, 1.0 - eps);
-                        actual * predicted.ln()
-                    }).sum::<f32>() / target.len() as f32;
-                let gradient: Vec<f32> = target.iter().zip(prediction.iter())
-                    .map(|(actual , predicted)|
-                        predicted - actual
-                    ).collect();
-                (loss, gradient)
+            Objective::KLDivergence => {
+                unimplemented!();
+                // https://timvieira.github.io/blog/post/2014/10/06/kl-divergence-as-an-objective-function/
+                // let eps: f32 = 1e-7;
+                // let loss: f32 = target.iter().zip(prediction.iter())
+                //     .map(|(actual, predicted)| {
+                //         let predicted = predicted.clamp(eps, 1.0 - eps);
+                //         actual * (actual / predicted).ln()
+                //     }).sum::<f32>();
+                // let gradient: Vec<f32> = prediction.iter().zip(target.iter())
+                //     .map(|(predicted, actual)|
+                //         actual / predicted
+                //     ).collect();
+                // (loss, gradient)
             },
         };
         match self.clamp {
