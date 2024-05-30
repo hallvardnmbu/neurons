@@ -172,33 +172,36 @@ impl Network {
         self.objective = objective::Function::create(objective, clamp);
     }
 
-    pub fn train(
+    pub fn learn(
         &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: i32
     ) -> Vec<f32> {
+        let checkpoint = epochs / 10;
         let mut losses = Vec::new();
         for epoch in 1..epochs+1 {
-            let mut _losses = Vec::new();
+            let mut _losses = 0.0f32;
             for (input, target) in inputs
                 .iter()
                 .zip(targets.iter()) {
 
                 let (unactivated, activated) = self.forward(input);
                 let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
+                _losses += loss;
 
                 // TODO: Backward pass on batch instead of single input.
                 self.backward(epoch, gradient, unactivated, activated);
-                _losses.push(loss);
             }
-            losses.push(_losses.iter().sum::<f32>() / inputs.len() as f32);
-            if epoch % 100 == 0 {
+            losses.push(_losses / inputs.len() as f32);
+
+            if epoch % checkpoint == 0 && epoch > 0 {
                 println!("Epoch: {} Loss: {}",
-                         epoch, losses[(epoch as usize)-99..(epoch as usize)].iter().sum::<f32>() / 99.0);
+                         epoch, losses[(epoch as usize)-(checkpoint as usize)..(epoch as usize)]
+                             .iter().sum::<f32>() / checkpoint as f32);
             }
         }
         losses
     }
 
-    pub fn validate(&mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>) -> f32 {
+    pub fn validate(&mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32) -> (f32, f32) {
 
         let mut losses = Vec::new();
         let mut accuracy = Vec::new();
@@ -208,14 +211,58 @@ impl Network {
             let (loss, _) = self.loss(&prediction, target);
 
             losses.push(loss);
-            accuracy.push(
-                prediction.iter().zip(target.iter())
-                    .filter(|(p, t)| p.round() == t.round())
-                    .count() as f32 / target.len() as f32
-            );
+
+            match self.layers.last().unwrap().activation {
+                activation::Function::Softmax(_) => {
+                    let predicted = prediction.iter()
+                        .enumerate()
+                        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                        .map(|(index, _)| index).unwrap() as f32;
+                    let actual = target.iter().position(|&v| v == 1.0).unwrap() as f32;
+                    accuracy.push(if (predicted - actual).abs() < tol { 1.0 } else { 0.0 });
+                },
+                _ => {
+                    if target.len() == 1 {
+                        accuracy.push(if (prediction[0] - target[0]).abs() < tol { 1.0 } else { 0.0 });
+                    } else {
+                        target.iter().zip(prediction.iter()).for_each(
+                            |(t, p)| accuracy.push(if (t - p).abs() < tol { 1.0 } else { 0.0 })
+                        );
+                    }
+                },
+            };
         }
-        println!("Accuracy: {:?}", accuracy.iter().sum::<f32>() / accuracy.len() as f32);
-        losses.iter().sum::<f32>() / inputs.len() as f32
+
+        (accuracy.iter().sum::<f32>() / accuracy.len() as f32,
+         losses.iter().sum::<f32>() / inputs.len() as f32)
+    }
+
+    pub fn accuracy(&self, predictions: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32) -> f32 {
+        let mut accuracy: Vec<f32> = Vec::new();
+
+        for (prediction, target) in predictions.iter().zip(targets.iter()) {
+            match self.layers.last().unwrap().activation {
+                activation::Function::Softmax(_) => {
+                    let predicted = prediction.iter()
+                        .enumerate()
+                        .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                        .map(|(index, _)| index).unwrap() as f32;
+                    let actual = target.iter().position(|&v| v == 1.0).unwrap() as f32;
+                    accuracy.push(if (predicted - actual).abs() < tol { 1.0 } else { 0.0 });
+                },
+                _ => {
+                    if target.len() == 1 {
+                        accuracy.push(if (prediction[0] - target[0]).abs() < tol { 1.0 } else { 0.0 });
+                    } else {
+                        target.iter().zip(prediction.iter()).for_each(
+                            |(t, p)| accuracy.push(if (t - p).abs() < tol { 1.0 } else { 0.0 })
+                        );
+                    }
+                },
+            }
+        }
+
+        accuracy.iter().sum::<f32>() / accuracy.len() as f32
     }
 
     pub fn predict(&self, input: &Vec<f32>) -> Vec<f32> {
