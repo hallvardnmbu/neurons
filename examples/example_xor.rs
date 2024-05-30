@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use neurons::network;
+use neurons::{network, optimizer};
 use neurons::activation::Activation;
 use neurons::objective::Objective;
 use neurons::optimizer::Optimizer;
@@ -31,18 +31,29 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(2, 2, Activation::Sigmoid, false);
-    network.add_layer(2, 1, Activation::Sigmoid, false);
+    network.add_layer(2, 10, Activation::Linear, true);
+    network.add_layer(10, 1, Activation::ReLU, false);
 
-    network.set_optimizer(Optimizer::SGD, 9.0);
-    network.set_objective(Objective::MSE);
+    network.set_optimizer(
+        Optimizer::SGD(
+            optimizer::SGDParams {
+                learning_rate: 0.01,
+                decay: Some(0.01),
+            }
+        )
+    );
+    network.set_objective(
+        Objective::MSE,
+        // Some((-1.0f32, 1.0f32))
+        None
+    );
 
     // Train the network
-    let _epoch_loss = network.train(&inputs, &targets, 1000);
+    let _epoch_loss = network.learn(&inputs, &targets, 1000);
 
     // Validate the network
-    let val_loss = network.validate(&inputs, &targets);
-    println!("1. Validation loss: {:?}", val_loss);
+    let (val_acc, val_loss) = network.validate(&inputs, &targets, 0.05);
+    println!("1. Validation acc: {} loss: {}", val_acc, val_loss);
 
     // Use the network
     let prediction = network.predict(inputs.get(0).unwrap());
