@@ -2,7 +2,7 @@
 
 # Modular neural network in Rust.
 
-This is a simple neural network implementation in Rust. It is modular and can be easily extended to support different types of layers and activation functions.
+Create modular neural networks in Rust with ease!
 
 ---
 
@@ -39,8 +39,12 @@ fn main() {
         objective::Objective::MSE,          // Objective function
         Some((-1f32, 1f32))                 // Gradient clipping
     );
-
+  
     println!("{}", network);
+  
+    let (x, y) = ...;                       // Load data
+    let epochs = 1000;
+    let loss = network.learn(x, y, epochs); // Train the network
 }
 ```
 
@@ -61,15 +65,15 @@ Examples can be found in the `examples` directory.
   - [x] Tanh
   - [x] ReLU
   - [x] LeakyReLU
-  - [x] Softmax
+  - [ ] Softmax
 
 - Objective functions
   - [x] AE
   - [x] MAE
   - [x] MSE
   - [x] RMSE
+  - [x] CrossEntropy
   - [x] BinaryCrossEntropy
-  - [x] CategoricalCrossEntropy
   - [ ] KLDivergence
   - [ ] Huber
 
