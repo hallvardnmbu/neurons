@@ -66,17 +66,12 @@ impl Layer {
     pub fn backward(
         &self, gradient: &Vec<f32>, input: &Vec<f32>, output: &Vec<f32>
     ) -> (Vec<Vec<f32>>, Option<Vec<f32>>, Vec<f32>) {
-
-        let derivative = match self.activation {
-            activation::Function::Softmax(_) => self.activation.backward(output, Some(gradient)),
-            _ => self.activation.backward(output, None),
-        };
-
+        let derivative: Vec<f32> = self.activation.backward(output);
         let delta: Vec<f32> = mul(gradient, &derivative);
 
         let weight_gradient: Vec<Vec<f32>> = delta
-            .iter().map(|d| input
-            .iter().map(|i| i * d)
+            .iter().map(|d: &f32| input
+            .iter().map(|i: &f32| i * d)
             .collect())
             .collect();
         let bias_gradient: Option<Vec<f32>> = match self.bias {
@@ -84,7 +79,7 @@ impl Layer {
             None => None,
         };
         let input_gradient: Vec<f32> = (0..input.len())
-            .map(|i| delta
+            .map(|i: usize| delta
                 .iter().zip(self.weights.iter())
                 .map(|(d, w)| d * w[i])
                 .sum::<f32>())
