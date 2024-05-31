@@ -74,7 +74,7 @@ Examples can be found in the `examples` directory.
   - [x] RMSE
   - [x] CrossEntropy
   - [x] BinaryCrossEntropy
-  - [ ] KLDivergence
+  - [x] KLDivergence
   - [ ] Huber
 
 - Optimization techniques
@@ -82,7 +82,7 @@ Examples can be found in the `examples` directory.
   - [x] SGDM
   - [x] Adam
   - [x] AdamW
-  - [ ] RMSprop
+  - [x] RMSprop
   - [ ] Minibatch
 
 - Regularization
@@ -117,9 +117,11 @@ Examples can be found in the `examples` directory.
 ### Sources
 
 * [backpropagation](https://towardsdatascience.com/backpropagation-from-scratch-how-neural-networks-really-work-36ee4af202bf)
+* [softmax](https://e2eml.school/softmax)
 * [momentum](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
 * [Adam](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
 * [AdamW](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
+* [RMSprop](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
 
 
 * [GitHub Copilot](https://github.com/features/copilot)

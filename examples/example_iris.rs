@@ -86,16 +86,19 @@ fn main() {
     network.add_layer(50, 3, activation::Activation::Softmax, false);
 
     network.set_optimizer(
-        optimizer::Optimizer::AdamW(
-            optimizer::AdamWParams {
+        optimizer::Optimizer::RMSprop(
+            optimizer::RMSpropParams {
                 learning_rate: 0.001,
-                beta1: 0.9,
-                beta2: 0.999,
+                alpha: 0.0,
                 epsilon: 1e-8,
-                decay: 0.01,
 
-                momentum: vec![],           // To be filled by the network
+                decay: Some(0.01),
+                momentum: Some(0.01),
+                centered: Some(true),
+
                 velocity: vec![],           // To be filled by the network
+                gradient: vec![],           // To be filled by the network
+                buffer: vec![],             // To be filled by the network
             }
         )
     );

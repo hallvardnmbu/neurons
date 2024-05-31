@@ -53,9 +53,15 @@ pub struct AdamWParams {
 
 pub struct RMSpropParams {
     pub learning_rate: f32,
-    pub rho: f32,
+    pub alpha: f32,
     pub epsilon: f32,
     pub decay: Option<f32>,
+    pub momentum: Option<f32>,
+    pub centered: Option<bool>,
+
+    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub gradient: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub buffer: Vec<Vec<Vec<f32>>>,    // layer, weight row, weight column
 }
 
 pub enum Optimizer {
@@ -111,9 +117,11 @@ impl std::fmt::Display for Function {
             Optimizer::RMSprop(parameter) => {
                 write!(f, "\t\tRMSprop (\n")?;
                 write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t\trho: {}\n", parameter.rho)?;
+                write!(f, "\t\t\talpha: {}\n", parameter.alpha)?;
                 write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
                 write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t\tmomentum: {}\n", parameter.momentum.unwrap_or(0.0))?;
+                write!(f, "\t\t\tcentered: {}\n", parameter.centered.unwrap_or(false))?;
                 write!(f, "\t\t)")
             },
         }
@@ -197,6 +205,36 @@ impl Function {
                         *value -= (parameter.learning_rate * m) / (v.sqrt() + parameter.epsilon);
                     });
             },
+            Optimizer::RMSprop(parameter) => {
+                // Source: https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html
+                values.iter_mut().zip(gradients.iter_mut()).enumerate()
+                    .for_each(|(i, (value, gradient))| {
+                        if let Some(decay) = parameter.decay {
+                            *gradient += decay * *value;
+                        }
+                        parameter.velocity[layer][column][i] =
+                            parameter.alpha * parameter.velocity[layer][column][i]
+                                + (1.0 - parameter.alpha) * gradient.powi(2);
+                        let mut v = parameter.velocity[layer][column][i];
+
+                        if parameter.centered.unwrap_or(false) {
+                            parameter.gradient[layer][column][i] =
+                                parameter.alpha * parameter.gradient[layer][column][i]
+                                    + (1.0 - parameter.alpha) * *gradient;
+                            v -= parameter.gradient[layer][column][i].powi(2);
+                        }
+
+                        let momentum = parameter.momentum.unwrap_or(0.0);
+                        if momentum > 0.0 {
+                            parameter.buffer[layer][column][i] =
+                                momentum * parameter.buffer[layer][column][i]
+                                    + *gradient / (v.sqrt() + parameter.epsilon);
+                            *value -= parameter.learning_rate * parameter.buffer[layer][column][i];
+                        } else {
+                            *value -= parameter.learning_rate * *gradient / (v.sqrt() + parameter.epsilon);
+                        }
+                    });
+            }
             _ => unimplemented!(),
         }
     }

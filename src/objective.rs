@@ -156,19 +156,17 @@ impl Function {
                 (loss, gradient)
             },
             Objective::KLDivergence => {
-                unimplemented!();
-                // https://timvieira.github.io/blog/post/2014/10/06/kl-divergence-as-an-objective-function/
-                // let eps: f32 = 1e-7;
-                // let loss: f32 = target.iter().zip(prediction.iter())
-                //     .map(|(actual, predicted)| {
-                //         let predicted = predicted.clamp(eps, 1.0 - eps);
-                //         actual * (actual / predicted).ln()
-                //     }).sum::<f32>();
-                // let gradient: Vec<f32> = prediction.iter().zip(target.iter())
-                //     .map(|(predicted, actual)|
-                //         actual / predicted
-                //     ).collect();
-                // (loss, gradient)
+                // https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
+                let eps: f32 = 1e-7;
+                let loss: f32 = target.iter().zip(prediction.iter())
+                    .map(|(actual, predicted)| {
+                        actual * (actual / predicted.clamp(eps, 1.0 - eps)).ln()
+                    }).sum::<f32>();
+                let gradient: Vec<f32> = prediction.iter().zip(target.iter())
+                    .map(|(predicted, actual)|
+                        -actual / predicted.clamp(eps, 1.0 - eps)
+                    ).collect();
+                (loss, gradient)
             },
         };
         match self.clamp {

@@ -163,7 +163,24 @@ impl Network {
                 }).collect();
                 params.momentum = params.velocity.clone();
             },
-            _ => unimplemented!()
+            optimizer::Optimizer::RMSprop(ref mut params) => {
+                if params.learning_rate == 0.0 {
+                    params.learning_rate = 0.01;
+                }
+                if params.alpha == 0.0 {
+                    params.alpha = 0.99;
+                }
+                if params.epsilon == 0.0 {
+                    params.epsilon = 1e-8;
+                }
+
+                params.velocity = self.layers.iter().rev().map(|layer| {
+                    vec![vec![0.0; layer.weights[0].len()];
+                         layer.weights.len() + if layer.bias.is_some() { 1 } else { 0 }]
+                }).collect();
+                params.gradient = params.velocity.clone();
+                params.buffer = params.velocity.clone();
+            },
         };
         self.optimizer = optimizer::Function::create(optimizer);
     }
