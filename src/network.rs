@@ -28,7 +28,7 @@ use crate::objective;
 /// * `objective` - The objective function of the network.
 pub struct Network {
     pub(crate) layers: Vec<layer::Layer>,
-    pub(crate) optimizer: optimizer::Function,
+    pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,
 }
 
@@ -87,7 +87,7 @@ impl Network {
 
         Network {
             layers,
-            optimizer: optimizer::Function::create(optimizer),
+            optimizer,
             objective: objective::Function::create(objective, None),
         }
     }
@@ -106,13 +106,11 @@ impl Network {
     pub fn new() -> Self {
         Network {
             layers: Vec::new(),
-            optimizer: optimizer::Function::create(
-                optimizer::Optimizer::SGD(
-                    optimizer::SGDParams {
-                        learning_rate: 0.1,
-                        decay: None,
-                    }
-                )
+            optimizer: optimizer::Optimizer::SGD(
+                optimizer::SGD {
+                    learning_rate: 0.1,
+                    decay: None,
+                }
             ),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -251,7 +249,7 @@ impl Network {
                 params.buffer = params.velocity.clone();
             },
         };
-        self.optimizer = optimizer::Function::create(optimizer);
+        self.optimizer = optimizer;
     }
 
     /// Set the objective function of the network.

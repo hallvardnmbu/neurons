@@ -87,7 +87,7 @@ fn main() {
 
     network.set_optimizer(
         optimizer::Optimizer::RMSprop(
-            optimizer::RMSpropParams {
+            optimizer::RMSprop {
                 learning_rate: 0.001,
                 alpha: 0.0,
                 epsilon: 1e-8,

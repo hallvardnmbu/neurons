@@ -16,42 +16,292 @@ limitations under the License.
 
 use crate::algebra::*;
 
-pub struct SGDParams {
+/// The optimizer function.
+pub enum Optimizer {
+    SGD(SGD),
+    SGDM(SGDM),
+    Adam(Adam),
+    AdamW(AdamW),
+    RMSprop(RMSprop),
+}
+
+impl std::fmt::Display for Optimizer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            Optimizer::SGD(structure) => {
+                write!(f, "\t\tSGD (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::SGDM(structure) => {
+                write!(f, "\t\tSGDM (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tmomentum: {}\n", structure.momentum)?;
+                write!(f, "\t\t\tvelocity: {:?}\n", structure.velocity.clone().reverse())?;
+                write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::Adam(structure) => {
+                write!(f, "\t\tAdam (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
+                write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
+                write!(f, "\t\t\tmomentum: {:?}\n", structure.momentum.clone().reverse())?;
+                write!(f, "\t\t\tvelocity: {:?}\n", structure.velocity.clone().reverse())?;
+                write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::AdamW(structure) => {
+                write!(f, "\t\tAdamW (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
+                write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
+                write!(f, "\t\t\tmomentum: {:?}\n", structure.momentum.clone().reverse())?;
+                write!(f, "\t\t\tvelocity: {:?}\n", structure.velocity.clone().reverse())?;
+                write!(f, "\t\t\tdecay: {}\n", structure.decay)?;
+                write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
+                write!(f, "\t\t)")
+            },
+            Optimizer::RMSprop(structure) => {
+                write!(f, "\t\tRMSprop (\n")?;
+                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\talpha: {}\n", structure.alpha)?;
+                write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
+                write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
+                write!(f, "\t\t\tmomentum: {}\n", structure.momentum.unwrap_or(0.0))?;
+                write!(f, "\t\t\tcentered: {}\n", structure.centered.unwrap_or(false))?;
+                write!(f, "\t\t)")
+            },
+        }
+    }
+}
+
+impl Optimizer {
+
+    pub fn update(
+        &mut self,
+        layer: usize, column: usize, stepnr: i32,
+        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+    ) {
+        match self {
+            Optimizer::SGD(sgd) => sgd.update(values, gradients),
+            Optimizer::SGDM(sgdm) => sgdm.update(layer, column, values, gradients),
+            Optimizer::Adam(adam) => adam.update(layer, column, stepnr, values, gradients),
+            Optimizer::AdamW(adamw) => adamw.update(layer, column, stepnr, values, gradients),
+            Optimizer::RMSprop(rmsprop) => rmsprop.update(layer, column, values, gradients),
+        }
+    }
+}
+
+/// Stochastic gradient descent optimizer.
+///
+/// # Attributes
+///
+/// * `learning_rate` - The learning rate of the optimizer.
+/// * `decay` - The decay of the optimizer.
+pub struct SGD {
     pub learning_rate: f32,
     pub decay: Option<f32>,
 }
 
-pub struct SGDMParams {
+impl SGD {
+
+    /// Updates the weights of the layer.
+    ///
+    /// # Function
+    ///
+    /// * If decay is Some, then gradients += decay * weights (values)
+    /// * weights (values) -= learning_rate * gradients
+    ///
+    /// # Arguments
+    ///
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
+    pub fn update(&mut self, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
+        if let Some(decay) = self.decay {
+            add_inplace(gradients, &mul_scalar(values, decay))
+        }
+        sub_inplace(values, &mul_scalar(gradients, self.learning_rate));
+    }
+}
+
+/// Stochastic gradient descent with momentum optimizer.
+///
+/// # Attributes
+///
+/// * `learning_rate` - The learning rate of the optimizer.
+/// * `momentum` - The momentum of the optimizer.
+/// * `decay` - The decay of the optimizer.
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
+pub struct SGDM {
     pub learning_rate: f32,
     pub momentum: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub velocity: Vec<Vec<Vec<f32>>>,
 }
 
-pub struct AdamParams {
+impl SGDM {
+
+    /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The layer of the network.
+    /// * `column` - The column of the layer.
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
+    pub fn update(
+        &mut self, layer: usize, column: usize,
+        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+    ) {
+        values.iter_mut().zip(gradients.iter_mut()).enumerate()
+            .for_each(|(i, (value, gradient))| {
+                if let Some(decay) = self.decay {
+                    *gradient += decay * *value;
+                }
+                self.velocity[layer][column][i] = self.momentum * self
+                    .velocity[layer][column][i]
+                    + self.learning_rate * *gradient;
+                *value -= self.velocity[layer][column][i];
+            });
+        }
+}
+
+/// Adam optimizer.
+///
+/// # Attributes
+///
+/// * `learning_rate` - The learning rate of the optimizer.
+/// * `beta1` - The beta1 of the optimizer.
+/// * `beta2` - The beta2 of the optimizer.
+/// * `epsilon` - The epsilon of the optimizer.
+/// * `decay` - The decay of the optimizer.
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
+/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_column)
+pub struct Adam {
     pub learning_rate: f32,
     pub beta1: f32,
     pub beta2: f32,
     pub epsilon: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
-    pub momentum: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub velocity: Vec<Vec<Vec<f32>>>,
+    pub momentum: Vec<Vec<Vec<f32>>>,
 }
 
-pub struct AdamWParams {
+impl Adam {
+
+    /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The layer of the network.
+    /// * `column` - The column of the layer.
+    /// * `stepnr` - The step number of the training process (epoch).
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
+    pub fn update(
+        &mut self, layer: usize, column: usize, stepnr: i32,
+        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+    ) {
+        values.iter_mut().zip(gradients.iter_mut()).enumerate()
+            .for_each(|(i, (value, gradient))| {
+                if let Some(decay) = self.decay {
+                    *gradient += decay * *value;
+                }
+                self.momentum[layer][column][i] =
+                    self.beta1 * self.momentum[layer][column][i]
+                        + (1.0 - self.beta1) * *gradient;
+
+                self.velocity[layer][column][i] =
+                    self.beta2 * self.velocity[layer][column][i]
+                        + (1.0 - self.beta2) * gradient.powi(2);
+
+                let m = self.momentum[layer][column][i]
+                    / (1.0 - self.beta1.powi(stepnr));
+                let v = self.velocity[layer][column][i]
+                    / (1.0 - self.beta2.powi(stepnr));
+
+                *value -= (self.learning_rate * m) / (v.sqrt() + self.epsilon);
+            });
+    }
+}
+
+/// AdamW optimizer.
+///
+/// # Attributes
+///
+/// * `learning_rate` - The learning rate of the optimizer.
+/// * `beta1` - The beta1 of the optimizer.
+/// * `beta2` - The beta2 of the optimizer.
+/// * `epsilon` - The epsilon of the optimizer.
+/// * `decay` - The decay of the optimizer.
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
+/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_column)
+pub struct AdamW {
     pub learning_rate: f32,
     pub beta1: f32,
     pub beta2: f32,
     pub epsilon: f32,
     pub decay: f32,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
-    pub momentum: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
+    pub velocity: Vec<Vec<Vec<f32>>>,
+    pub momentum: Vec<Vec<Vec<f32>>>,
 }
 
-pub struct RMSpropParams {
+impl AdamW {
+
+    /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The layer of the network.
+    /// * `column` - The column of the layer.
+    /// * `stepnr` - The step number of the training process (epoch).
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
+    pub fn update(
+        &mut self, layer: usize, column: usize, stepnr: i32,
+        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+    ) {
+        values.iter_mut().zip(gradients.iter_mut()).enumerate()
+            .for_each(|(i, (value, gradient))| {
+                *value -= self.learning_rate * self.decay * *value;
+
+                self.momentum[layer][column][i] =
+                    self.beta1 * self.momentum[layer][column][i]
+                        + (1.0 - self.beta1) * *gradient;
+
+                self.velocity[layer][column][i] =
+                    self.beta2 * self.velocity[layer][column][i]
+                        + (1.0 - self.beta2) * gradient.powi(2);
+
+                let m = self.momentum[layer][column][i]
+                    / (1.0 - self.beta1.powi(stepnr));
+                let v = self.velocity[layer][column][i]
+                    / (1.0 - self.beta2.powi(stepnr));
+
+                *value -= (self.learning_rate * m) / (v.sqrt() + self.epsilon);
+            });
+    }
+}
+
+/// RMSprop optimizer.
+///
+/// # Attributes
+///
+/// * `learning_rate` - The learning rate of the optimizer.
+/// * `alpha` - The alpha of the optimizer.
+/// * `epsilon` - The epsilon of the optimizer.
+/// * `decay` - The decay of the optimizer.
+/// * `momentum` - The momentum of the optimizer.
+/// * `centered` - If the optimizer is centered.
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
+/// * `gradient` - The gradient of the optimizer. (layer, weight_row, weight_column)
+/// * `buffer` - The buffer of the optimizer. (layer, weight_row, weight_column)
+pub struct RMSprop {
     pub learning_rate: f32,
     pub alpha: f32,
     pub epsilon: f32,
@@ -59,183 +309,51 @@ pub struct RMSpropParams {
     pub momentum: Option<f32>,
     pub centered: Option<bool>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
-    pub gradient: Vec<Vec<Vec<f32>>>,  // layer, weight row, weight column
-    pub buffer: Vec<Vec<Vec<f32>>>,    // layer, weight row, weight column
+    pub velocity: Vec<Vec<Vec<f32>>>,
+    pub gradient: Vec<Vec<Vec<f32>>>,
+    pub buffer: Vec<Vec<Vec<f32>>>,
 }
 
-pub enum Optimizer {
-    SGD(SGDParams),
-    SGDM(SGDMParams),
-    Adam(AdamParams),
-    AdamW(AdamWParams),
-    RMSprop(RMSpropParams),
-}
+impl RMSprop {
 
-pub struct Function {
-    pub optimizer: Optimizer,
-}
-
-impl std::fmt::Display for Function {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.optimizer {
-            Optimizer::SGD(parameter) => {
-                write!(f, "\t\tSGD (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t)")
-            },
-            Optimizer::SGDM(parameter) => {
-                write!(f, "\t\tSGDM (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t\tmomentum: {}\n", parameter.momentum)?;
-                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
-                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
-                write!(f, "\t\t)")
-            },
-            Optimizer::Adam(parameter) => {
-                write!(f, "\t\tAdam (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t\tbeta1: {}\n", parameter.beta1)?;
-                write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
-                write!(f, "\t\t\tmomentum: {:?}\n", parameter.momentum.clone().reverse())?;
-                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
-                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
-                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
-                write!(f, "\t\t)")
-            },
-            Optimizer::AdamW(parameter) => {
-                write!(f, "\t\tAdamW (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t\tbeta1: {}\n", parameter.beta1)?;
-                write!(f, "\t\t\tbeta2: {}\n", parameter.beta2)?;
-                write!(f, "\t\t\tmomentum: {:?}\n", parameter.momentum.clone().reverse())?;
-                write!(f, "\t\t\tvelocity: {:?}\n", parameter.velocity.clone().reverse())?;
-                write!(f, "\t\t\tdecay: {}\n", parameter.decay)?;
-                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
-                write!(f, "\t\t)")
-            },
-            Optimizer::RMSprop(parameter) => {
-                write!(f, "\t\tRMSprop (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", parameter.learning_rate)?;
-                write!(f, "\t\t\talpha: {}\n", parameter.alpha)?;
-                write!(f, "\t\t\tepsilon: {}\n", parameter.epsilon)?;
-                write!(f, "\t\t\tdecay: {}\n", parameter.decay.unwrap_or(0.0))?;
-                write!(f, "\t\t\tmomentum: {}\n", parameter.momentum.unwrap_or(0.0))?;
-                write!(f, "\t\t\tcentered: {}\n", parameter.centered.unwrap_or(false))?;
-                write!(f, "\t\t)")
-            },
-        }
-    }
-}
-
-impl Function {
-    pub fn create(optimizer: Optimizer) -> Self {
-        Function { optimizer }
-    }
-
+    /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The layer of the network.
+    /// * `column` - The column of the layer.
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
     pub fn update(
-        &mut self,
-        layer: usize, column: usize, stepnr: i32,
+        &mut self, layer: usize, column: usize,
         values: &mut Vec<f32>, gradients: &mut Vec<f32>
     ) {
-        match &mut self.optimizer {
-            Optimizer::SGD(parameter) => {
-                if let Some(decay) = parameter.decay {
-                    // gradients += decay * weights (values)
-                    add_inplace(gradients, &mul_scalar(values, decay))
+        values.iter_mut().zip(gradients.iter_mut()).enumerate()
+            .for_each(|(i, (value, gradient))| {
+                if let Some(decay) = self.decay {
+                    *gradient += decay * *value;
                 }
-                // weights (values) -= learning_rate * gradients
-                sub_inplace(values, &mul_scalar(gradients, parameter.learning_rate));
-            },
-            Optimizer::SGDM(parameter) => {
-                // Source: https://pytorch.org/docs/stable/generated/torch.optim.SGD.html
-                values.iter_mut().zip(gradients.iter_mut()).enumerate()
-                    .for_each(|(i, (value, gradient))| {
-                        if let Some(decay) = parameter.decay {
-                            *gradient += decay * *value;
-                        }
-                        parameter.velocity[layer][column][i] = parameter.momentum * parameter
-                            .velocity[layer][column][i]
-                            + parameter.learning_rate * *gradient;
-                        *value -= parameter.velocity[layer][column][i];
-                    });
-            },
-            Optimizer::Adam(parameter) => {
-                // Source: https://pytorch.org/docs/stable/generated/torch.optim.Adam.html
-                values.iter_mut().zip(gradients.iter_mut()).enumerate()
-                    .for_each(|(i, (value, gradient))| {
-                        if let Some(decay) = parameter.decay {
-                            *gradient += decay * *value;
-                        }
-                        parameter.momentum[layer][column][i] =
-                            parameter.beta1 * parameter.momentum[layer][column][i]
-                                + (1.0 - parameter.beta1) * *gradient;
+                self.velocity[layer][column][i] =
+                    self.alpha * self.velocity[layer][column][i]
+                        + (1.0 - self.alpha) * gradient.powi(2);
+                let mut v = self.velocity[layer][column][i];
 
-                        parameter.velocity[layer][column][i] =
-                            parameter.beta2 * parameter.velocity[layer][column][i]
-                                + (1.0 - parameter.beta2) * gradient.powi(2);
+                if self.centered.unwrap_or(false) {
+                    self.gradient[layer][column][i] =
+                        self.alpha * self.gradient[layer][column][i]
+                            + (1.0 - self.alpha) * *gradient;
+                    v -= self.gradient[layer][column][i].powi(2);
+                }
 
-                        let m = parameter.momentum[layer][column][i]
-                            / (1.0 - parameter.beta1.powi(stepnr));
-                        let v = parameter.velocity[layer][column][i]
-                            / (1.0 - parameter.beta2.powi(stepnr));
-
-                        *value -= (parameter.learning_rate * m) / (v.sqrt() + parameter.epsilon);
-                    });
-            },
-            Optimizer::AdamW(parameter) => {
-                // Source: https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html
-                values.iter_mut().zip(gradients.iter_mut()).enumerate()
-                    .for_each(|(i, (value, gradient))| {
-                        *value -= parameter.learning_rate * parameter.decay * *value;
-
-                        parameter.momentum[layer][column][i] =
-                            parameter.beta1 * parameter.momentum[layer][column][i]
-                                + (1.0 - parameter.beta1) * *gradient;
-
-                        parameter.velocity[layer][column][i] =
-                            parameter.beta2 * parameter.velocity[layer][column][i]
-                                + (1.0 - parameter.beta2) * gradient.powi(2);
-
-                        let m = parameter.momentum[layer][column][i]
-                            / (1.0 - parameter.beta1.powi(stepnr));
-                        let v = parameter.velocity[layer][column][i]
-                            / (1.0 - parameter.beta2.powi(stepnr));
-
-                        *value -= (parameter.learning_rate * m) / (v.sqrt() + parameter.epsilon);
-                    });
-            },
-            Optimizer::RMSprop(parameter) => {
-                // Source: https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html
-                values.iter_mut().zip(gradients.iter_mut()).enumerate()
-                    .for_each(|(i, (value, gradient))| {
-                        if let Some(decay) = parameter.decay {
-                            *gradient += decay * *value;
-                        }
-                        parameter.velocity[layer][column][i] =
-                            parameter.alpha * parameter.velocity[layer][column][i]
-                                + (1.0 - parameter.alpha) * gradient.powi(2);
-                        let mut v = parameter.velocity[layer][column][i];
-
-                        if parameter.centered.unwrap_or(false) {
-                            parameter.gradient[layer][column][i] =
-                                parameter.alpha * parameter.gradient[layer][column][i]
-                                    + (1.0 - parameter.alpha) * *gradient;
-                            v -= parameter.gradient[layer][column][i].powi(2);
-                        }
-
-                        let momentum = parameter.momentum.unwrap_or(0.0);
-                        if momentum > 0.0 {
-                            parameter.buffer[layer][column][i] =
-                                momentum * parameter.buffer[layer][column][i]
-                                    + *gradient / (v.sqrt() + parameter.epsilon);
-                            *value -= parameter.learning_rate * parameter.buffer[layer][column][i];
-                        } else {
-                            *value -= parameter.learning_rate * *gradient / (v.sqrt() + parameter.epsilon);
-                        }
-                    });
-            }
-            _ => unimplemented!(),
-        }
+                let momentum = self.momentum.unwrap_or(0.0);
+                if momentum > 0.0 {
+                    self.buffer[layer][column][i] =
+                        momentum * self.buffer[layer][column][i]
+                            + *gradient / (v.sqrt() + self.epsilon);
+                    *value -= self.learning_rate * self.buffer[layer][column][i];
+                } else {
+                    *value -= self.learning_rate * *gradient / (v.sqrt() + self.epsilon);
+                }
+            });
     }
 }

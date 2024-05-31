@@ -36,7 +36,7 @@ fn main() {
 
     network.set_optimizer(
         optimizer::Optimizer::SGD(
-            optimizer::SGDParams {
+            optimizer::SGD {
                 learning_rate: 0.1,
                 decay: Some(0.01),
             }

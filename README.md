@@ -2,7 +2,7 @@
 
 # Modular neural network in Rust.
 
-Create modular neural networks in Rust with ease!
+Create modular neural networks in Rust with ease! For educational purposes; vector operations are not throughly optimized.
 
 ---
 
@@ -23,7 +23,7 @@ fn main() {
     
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
-            optimizer::AdamWParams {
+            optimizer::AdamW {
                 learning_rate: 0.001,
                 beta1: 0.9,
                 beta2: 0.999,
@@ -98,6 +98,7 @@ Examples can be found in the `examples` directory.
   - [ ] Integration tests
 
 - Other
+  - [x] Documentation
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading
