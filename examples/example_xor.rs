@@ -32,23 +32,23 @@ fn main() {
     let mut network = network::Network::new();
 
     network.add_layer(2, 10, activation::Activation::Linear, true);
-    network.add_layer(10, 1, activation::Activation::ReLU, false);
+    network.add_layer(10, 1, activation::Activation::Sigmoid, false);
 
     network.set_optimizer(
         optimizer::Optimizer::SGD(
             optimizer::SGDParams {
-                learning_rate: 0.01,
+                learning_rate: 0.1,
                 decay: Some(0.01),
             }
         )
     );
-    network.set_objective(objective::Objective::MSE, None);
+    network.set_objective(objective::Objective::BinaryCrossEntropy, None);
 
     // Train the network
-    let _epoch_loss = network.learn(&inputs, &targets, 1000);
+    let _epoch_loss = network.learn(&inputs, &targets, 250);
 
     // Validate the network
-    let (val_acc, val_loss) = network.validate(&inputs, &targets, 0.05);
+    let (val_acc, val_loss) = network.validate(&inputs, &targets, 0.1);
     println!("1. Validation acc: {} loss: {}", val_acc, val_loss);
 
     // Use the network
