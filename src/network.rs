@@ -19,6 +19,13 @@ use crate::layer;
 use crate::optimizer;
 use crate::objective;
 
+/// A neural network.
+///
+/// # Attributes
+///
+/// * `layers` - The layers of the network.
+/// * `optimizer` - The optimizer function of the network.
+/// * `objective` - The objective function of the network.
 pub struct Network {
     pub(crate) layers: Vec<layer::Layer>,
     pub(crate) optimizer: optimizer::Function,
@@ -42,6 +49,25 @@ impl std::fmt::Display for Network {
 }
 
 impl Network {
+
+    /// Creates a new neural network with the given parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `nodes` - The number of nodes in each layer.
+    /// * `biases` - Whether each layer should have a bias.
+    /// * `activations` - The activation functions of each layer.
+    /// * `optimizer` - The optimizer function of the network.
+    /// * `objective` - The objective function of the network.
+    ///
+    /// # Returns
+    ///
+    /// A new neural network with the given parameters.
+    ///
+    /// # Panics
+    ///
+    /// * If the number of activations is not equal to the number of nodes minus one.
+    /// * If the number of biases is not equal to the number of nodes minus one.
     pub fn create(
         nodes: Vec<u16>,
         biases: Vec<bool>,
@@ -66,6 +92,17 @@ impl Network {
         }
     }
 
+    /// Creates a new (empty) neural network.
+    ///
+    /// Generates a new neural network with no layers, with a standard optimizer and objective,
+    /// respectively:
+    ///
+    /// * Optimizer: Stochastic Gradient Descent (SGD) with a learning rate of 0.1.
+    /// * Objective: Mean Squared Error (MSE).
+    ///
+    /// # Returns
+    ///
+    /// An empty neural network, with no layers.
     pub fn new() -> Self {
         Network {
             layers: Vec::new(),
@@ -81,6 +118,23 @@ impl Network {
         }
     }
 
+    /// Adds a new layer to the network.
+    ///
+    /// The layer is added to the end of the network, and the number of inputs to the layer must
+    /// be equal to the number of outputs from the previous layer. The activation function of the
+    /// layer is set to the given activation function, and the layer may have a bias if specified.
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - The number of inputs to the layer.
+    /// * `outputs` - The number of outputs from the layer.
+    /// * `activation` - The activation function of the layer.
+    /// * `bias` - Whether the layer should have a bias.
+    ///
+    /// # Panics
+    ///
+    /// * If the number of inputs to the layer is not equal to the number of outputs from the
+    /// previous layer.
     pub fn add_layer(
         &mut self, inputs: u16, outputs: u16, activation: activation::Activation, bias: bool
     ) {
@@ -97,6 +151,16 @@ impl Network {
         self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias));
     }
 
+    /// Set the activation function of a layer.
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The index of the layer (in the `self.layers` vector).
+    /// * `activation` - The new activation function to be used.
+    ///
+    /// # Panics
+    ///
+    /// * If the layer index is out of bounds.
     pub fn set_activation(&mut self, layer: usize, activation: activation::Activation) {
         if layer >= self.layers.len() {
             panic!("Invalid layer index");
@@ -104,6 +168,11 @@ impl Network {
         self.layers[layer].activation = activation::Function::create(&activation);
     }
 
+    /// Set the optimizer function of the network.
+    ///
+    /// # Arguments
+    ///
+    /// * `optimizer` - The new optimizer function to be used.
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
         match optimizer {
             optimizer::Optimizer::SGD(ref mut params) => {
@@ -185,10 +254,32 @@ impl Network {
         self.optimizer = optimizer::Function::create(optimizer);
     }
 
+    /// Set the objective function of the network.
+    ///
+    /// # Arguments
+    ///
+    /// * `objective` - The new objective function to be used.
+    /// * `clamp` - The clamp values for the objective function.
     pub fn set_objective(&mut self, objective: objective::Objective, clamp: Option<(f32, f32)>) {
         self.objective = objective::Function::create(objective, clamp);
     }
 
+    /// Train the network on the given inputs and targets.
+    ///
+    /// Computes the forward and backward pass of the network for the given number of epochs,
+    /// with respect to the given inputs and targets. The loss and gradient of the network is
+    /// computed for each sample in the input data, and the weights and biases of the network are
+    /// updated accordingly.
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - The input data (x).
+    /// * `targets` - The targets of the given inputs (y).
+    /// * `epochs` - The number of epochs to train the network for.
+    ///
+    /// # Returns
+    ///
+    /// A vector of the average loss of the network per epoch.
     pub fn learn(
         &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: i32
     ) -> Vec<f32> {
@@ -218,7 +309,24 @@ impl Network {
         losses
     }
 
-    pub fn validate(&mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32) -> (f32, f32) {
+    /// Validate the network on the given inputs and targets.
+    ///
+    /// Computes the forward pass of the network for the given inputs, and compares the output to
+    /// the targets. The accuracy and loss of the network is computed for each sample in the
+    /// input.
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - The input data (x).
+    /// * `targets` - The targets of the given inputs (y).
+    /// * `tol` - The tolerance for the accuracy, see `self.accuracy`.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the total accuracy and loss of the network.
+    pub fn validate(
+        &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32
+    ) -> (f32, f32) {
 
         let mut losses = Vec::new();
         let mut accuracy = Vec::new();
@@ -254,6 +362,21 @@ impl Network {
          losses.iter().sum::<f32>() / inputs.len() as f32)
     }
 
+    /// Compute the accuracy of the network on the given inputs and targets.
+    ///
+    /// The accuracy is computed with respect to the given tolerance. I.e., if the difference
+    /// between the prediction and target is less than the tolerance, it's assumed to be
+    /// correctly predicted.
+    ///
+    /// # Arguments
+    ///
+    /// * `predictions` - The predictions of the network.
+    /// * `targets` - The targets of the given inputs.
+    /// * `tol` - The tolerance for the accuracy, see above.
+    ///
+    /// # Returns
+    ///
+    /// The accuracy of the network on the given inputs and targets.
     pub fn accuracy(&self, predictions: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32) -> f32 {
         let mut accuracy: Vec<f32> = Vec::new();
 
@@ -282,6 +405,18 @@ impl Network {
         accuracy.iter().sum::<f32>() / accuracy.len() as f32
     }
 
+    /// Predict the output of the network for the given input.
+    ///
+    /// Computes the forward pass of the network for the given input, and returns the output.
+    /// That is, the output of the last layer of the network only.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input data (x).
+    ///
+    /// # Returns
+    ///
+    /// The output of the network for the given input.
     pub fn predict(&self, input: &Vec<f32>) -> Vec<f32> {
         let mut output = input.clone();
         for layer in &self.layers {
@@ -291,12 +426,30 @@ impl Network {
         output
     }
 
+    /// Predict the output of the network for the given two-dimensional inputs.
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - The input data (x).
+    ///
+    /// # Returns
+    ///
+    /// The output of the network for each of the given inputs.
     pub fn predict_batch(&self, inputs: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
         inputs.iter().map(|input| self.predict(input)).collect()
     }
 
+    /// Compute the forward pass of the network for the given input, including all intermediate
+    /// pre- and post-activation values.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input data (x).
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the pre-activation and post-activation values of each layer.
     pub fn forward(&mut self, input: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
-
         let mut unactivated: Vec<Vec<f32>> = Vec::new();
         let mut activated: Vec<Vec<f32>> = vec![input.clone()];
 
@@ -310,10 +463,29 @@ impl Network {
         (unactivated, activated)
     }
 
+    /// Compute the loss and gradient of the network for the given prediction and target.
+    ///
+    /// # Arguments
+    ///
+    /// * `prediction` - The prediction of the network.
+    /// * `target` - The target of the given input.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the loss and gradient of the network for the given prediction and target.
     fn loss(&mut self, prediction: &Vec<f32>, target: &Vec<f32>) -> (f32, Vec<f32>) {
         self.objective.loss(prediction, target)
     }
 
+    /// Compute the backward pass of the network for the given gradient, and update the weights
+    /// and biases of the network accordingly.
+    ///
+    /// # Arguments
+    ///
+    /// * `stepnr` - The current step number (i.e., epoch number).
+    /// * `gradient` - The gradient of the output.
+    /// * `unactivated` - The pre-activation values of each layer.
+    /// * `activated` - The post-activation values of each layer.
     fn backward(
         &mut self, stepnr: i32,
         mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated: Vec<Vec<f32>>

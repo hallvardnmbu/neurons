@@ -19,8 +19,15 @@ extern crate rand;
 use crate::activation;
 use crate::algebra::*;
 
+/// A layer in a neural network.
+///
+/// # Attributes
+///
+/// * `weights` - The weights of the layer.
+/// * `bias` - The bias of the layer.
+/// * `activation` - The activation function of the layer.
 pub struct Layer {
-    pub weights: Vec<Vec<f32>>,
+    pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
 }
@@ -33,6 +40,19 @@ impl std::fmt::Display for Layer {
 }
 
 impl Layer {
+
+    /// Creates a new layer with random weights and bias.
+    ///
+    /// # Arguments
+    ///
+    /// * `inputs` - The number of inputs to the layer.
+    /// * `outputs` - The number of outputs from the layer.
+    /// * `activation` - The activation function of the layer.
+    /// * `bias` - Whether the layer should have a bias.
+    ///
+    /// # Returns
+    ///
+    /// A new layer with random weights and bias with the given dimensions.
     pub fn create(inputs: u16,
                   outputs: u16,
                   activation: &activation::Activation,
@@ -54,6 +74,15 @@ impl Layer {
         }
     }
 
+    /// Applies the forward pass of the layer to the input vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The input vector to the layer.
+    ///
+    /// # Returns
+    ///
+    /// The pre-activation and post-activation vectors of the layer.
     pub fn forward(&self, x: &Vec<f32>) -> (Vec<f32>, Vec<f32> ){
         let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, x)).collect();
         let post: Vec<f32> = match &self.bias {
@@ -63,6 +92,17 @@ impl Layer {
         (pre, post)
     }
 
+    /// Applies the backward pass of the layer to the gradient vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `gradient` - The gradient vector to the layer.
+    /// * `input` - The input vector to the layer.
+    /// * `output` - The output vector of the layer.
+    ///
+    /// # Returns
+    ///
+    /// The weight gradient, bias gradient, and input gradient vectors of the layer.
     pub fn backward(
         &self, gradient: &Vec<f32>, input: &Vec<f32>, output: &Vec<f32>
     ) -> (Vec<Vec<f32>>, Option<Vec<f32>>, Vec<f32>) {
