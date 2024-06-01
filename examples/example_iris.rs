@@ -17,7 +17,7 @@ limitations under the License.
 extern crate csv;
 
 use neurons::random;
-use neurons::network;
+use neurons::feedforward;
 use neurons::activation;
 use neurons::objective;
 use neurons::optimizer;
@@ -77,7 +77,7 @@ fn main() {
              x_test[0].len(), x_test.len(), x_test[0], y_test[0]);
 
     // Create the network
-    let mut network = network::Network::new();
+    let mut network = feedforward::Feedforward::new();
 
     network.add_layer(4, 50, activation::Activation::ReLU, false, Some(0.1));
     network.add_layer(50, 50, activation::Activation::ReLU, false, Some(0.1));

@@ -15,25 +15,24 @@ limitations under the License.
  */
 
 use crate::activation;
-use crate::layer;
+use crate::dense;
 use crate::optimizer;
 use crate::objective;
 
-/// A neural network.
+/// A feedforward neural network.
 ///
 /// # Attributes
 ///
 /// * `layers` - The layers of the network.
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
-/// * `training` - Whether the network is currently training.
-pub struct Network {
-    pub(crate) layers: Vec<layer::Layer>,
+pub struct Feedforward {
+    pub(crate) layers: Vec<dense::Dense>,
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,
 }
 
-impl std::fmt::Display for Network {
+impl std::fmt::Display for Feedforward {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Network (\n")?;
 
@@ -49,9 +48,9 @@ impl std::fmt::Display for Network {
     }
 }
 
-impl Network {
+impl Feedforward {
 
-    /// Creates a new neural network with the given parameters.
+    /// Creates a new feedforward neural network with the given parameters.
     ///
     /// # Arguments
     ///
@@ -63,7 +62,7 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A new neural network with the given parameters.
+    /// A new feedforward neural network with the given parameters.
     ///
     /// # Panics
     ///
@@ -81,17 +80,17 @@ impl Network {
 
         let mut layers = Vec::new();
         for i in 0..nodes.len() - 1 {
-            layers.push(layer::Layer::create(nodes[i], nodes[i + 1], &activations[i], biases[i], None));
+            layers.push(dense::Dense::create(nodes[i], nodes[i + 1], &activations[i], biases[i], None));
         }
 
-        Network {
+        Feedforward {
             layers,
             optimizer,
             objective: objective::Function::create(objective, None),
         }
     }
 
-    /// Creates a new (empty) neural network.
+    /// Creates a new (empty) feedforward neural network.
     ///
     /// Generates a new neural network with no layers, with a standard optimizer and objective,
     /// respectively:
@@ -103,7 +102,7 @@ impl Network {
     ///
     /// An empty neural network, with no layers.
     pub fn new() -> Self {
-        Network {
+        Feedforward {
             layers: Vec::new(),
             optimizer: optimizer::Optimizer::SGD(
                 optimizer::SGD {
@@ -127,6 +126,7 @@ impl Network {
     /// * `outputs` - The number of outputs from the layer.
     /// * `activation` - The activation function of the layer.
     /// * `bias` - Whether the layer should have a bias.
+    /// * `dropout` - The dropout rate of the layer.
     ///
     /// # Panics
     ///
@@ -137,7 +137,7 @@ impl Network {
         bias: bool, dropout: Option<f32>
     ) {
         if self.layers.is_empty() {
-            self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias, dropout));
+            self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
             return;
         }
         let previous = match self.layers.last() {
@@ -146,7 +146,7 @@ impl Network {
         };
         assert_eq!(previous, inputs,
                    "Invalid number of inputs. Last layer has {} inputs.", previous);
-        self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias, dropout));
+        self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
     }
 
     /// Set the activation function of a layer.

@@ -1,8 +1,8 @@
-use neurons::network;
+use neurons::feedforward;
 use neurons::activation::Activation::{ReLU, Softmax};
 
 fn main() {
-    let mut network = network::Network::new();
+    let mut network = feedforward::Feedforward::new();
 
     network.add_layer(1, 4, ReLU, false, None);
     network.add_layer(4, 3, ReLU, true, None);

@@ -9,13 +9,13 @@ Create modular neural networks in Rust with ease! For educational purposes; vect
 ## Quickstart
 
 ```rust
-use neurons::network::Network;
+use neurons::feedforward::Feedforward;
 use neurons::activation::Activation;
 use neurons::optimizer::Optimizer;
 use neurons::objective::Objective;
 
 fn main() {
-    let mut network = Network::new();
+    let mut network = Feedforward::new();
 
     // (input, output, activation, bias, Some(dropout))
     network.add_layer(4, 50, activation::Activation::Linear, true, None);
@@ -58,8 +58,6 @@ Examples can be found in the `examples` directory.
 - Layer types
   - [x] Dense
   - [ ] Feedback
-  - [ ] Recurrent
-  - [ ] Convolutional
 
 - Activation functions
   - [x] Linear
@@ -85,6 +83,11 @@ Examples can be found in the `examples` directory.
   - [x] AdamW
   - [x] RMSprop
   - [ ] Minibatch
+
+- Architecture
+  - [x] Feedforward
+  - [ ] Recurrent
+  - [ ] Convolutional
 
 - Regularization
   - [x] Dropout
