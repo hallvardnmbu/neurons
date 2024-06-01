@@ -31,8 +31,8 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(2, 10, activation::Activation::Linear, true);
-    network.add_layer(10, 1, activation::Activation::Sigmoid, false);
+    network.add_layer(2, 10, activation::Activation::Linear, true, None);
+    network.add_layer(10, 1, activation::Activation::Sigmoid, false, None);
 
     network.set_optimizer(
         optimizer::Optimizer::SGD(

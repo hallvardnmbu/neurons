@@ -17,9 +17,10 @@ use neurons::objective::Objective;
 fn main() {
     let mut network = Network::new();
 
-    network.add_layer(4, 50, activation::Activation::Linear, true);
-    network.add_layer(50, 50, activation::Activation::Linear, true);
-    network.add_layer(50, 1, activation::Activation::Linear, false);
+    // (input, output, activation, bias, Some(dropout))
+    network.add_layer(4, 50, activation::Activation::Linear, true, None);
+    network.add_layer(50, 50, activation::Activation::Linear, true, None);
+    network.add_layer(50, 1, activation::Activation::Linear, false, None);
     
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
@@ -86,7 +87,7 @@ Examples can be found in the `examples` directory.
   - [ ] Minibatch
 
 - Regularization
-  - [ ] Dropout
+  - [x] Dropout
   - [ ] Batch normalization
   - [ ] Early stopping
 

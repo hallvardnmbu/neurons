@@ -97,6 +97,5 @@ impl Generator {
             let j = self.generate(0.0, values.len() as f32) as usize;
             values.swap(i, j);
         }
-        println!("{:?}", values);
     }
 }

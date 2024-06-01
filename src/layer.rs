@@ -29,6 +29,10 @@ pub struct Layer {
     pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
+
+    dropout: Option<f32>,
+
+    pub(crate) training: bool,
 }
 
 impl std::fmt::Display for Layer {
@@ -48,6 +52,7 @@ impl Layer {
     /// * `outputs` - The number of outputs from the layer.
     /// * `activation` - The activation function of the layer.
     /// * `bias` - Whether the layer should have a bias.
+    /// * `dropout` - The dropout rate of the layer (when training).
     ///
     /// # Returns
     ///
@@ -55,7 +60,8 @@ impl Layer {
     pub fn create(inputs: u16,
                   outputs: u16,
                   activation: &activation::Activation,
-                  bias: bool
+                  bias: bool,
+                  dropout: Option<f32>,
     ) -> Self {
         let mut generator = random::Generator::create(12345);
         Layer {
@@ -70,6 +76,8 @@ impl Layer {
                 false => None,
             },
             activation: activation::Function::create(&activation),
+            dropout,
+            training: false,
         }
     }
 
@@ -84,10 +92,22 @@ impl Layer {
     /// The pre-activation and post-activation vectors of the layer.
     pub fn forward(&self, x: &Vec<f32>) -> (Vec<f32>, Vec<f32> ){
         let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, x)).collect();
-        let post: Vec<f32> = match &self.bias {
+        let mut post: Vec<f32> = match &self.bias {
             Some(bias) => add(&self.activation.forward(&pre), bias),
             None => self.activation.forward(&pre),
         };
+
+        // Apply dropout if the network is training.
+        if self.training {
+            if let Some(droput) = self.dropout {
+                let mut generator = random::Generator::create(12345);
+                let mask: Vec<f32> = (0..post.len())
+                    .map(|_| if generator.generate(0.0, 1.0) < droput { 0.0 } else { 1.0 })
+                    .collect();
+                mul_inplace(&mut post, &mask);
+            }
+        }
+
         (pre, post)
     }
 

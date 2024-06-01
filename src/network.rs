@@ -26,6 +26,7 @@ use crate::objective;
 /// * `layers` - The layers of the network.
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
+/// * `training` - Whether the network is currently training.
 pub struct Network {
     pub(crate) layers: Vec<layer::Layer>,
     pub(crate) optimizer: optimizer::Optimizer,
@@ -80,9 +81,7 @@ impl Network {
 
         let mut layers = Vec::new();
         for i in 0..nodes.len() - 1 {
-            layers.push(layer::Layer::create(
-                nodes[i], nodes[i + 1],
-                &activations[i], biases[i]));
+            layers.push(layer::Layer::create(nodes[i], nodes[i + 1], &activations[i], biases[i], None));
         }
 
         Network {
@@ -134,10 +133,11 @@ impl Network {
     /// * If the number of inputs to the layer is not equal to the number of outputs from the
     /// previous layer.
     pub fn add_layer(
-        &mut self, inputs: u16, outputs: u16, activation: activation::Activation, bias: bool
+        &mut self, inputs: u16, outputs: u16, activation: activation::Activation,
+        bias: bool, dropout: Option<f32>
     ) {
         if self.layers.is_empty() {
-            self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias));
+            self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias, dropout));
             return;
         }
         let previous = match self.layers.last() {
@@ -146,7 +146,7 @@ impl Network {
         };
         assert_eq!(previous, inputs,
                    "Invalid number of inputs. Last layer has {} inputs.", previous);
-        self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias));
+        self.layers.push(layer::Layer::create(inputs, outputs, &activation, bias, dropout));
     }
 
     /// Set the activation function of a layer.
@@ -281,6 +281,10 @@ impl Network {
     pub fn learn(
         &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: i32
     ) -> Vec<f32> {
+        for layer in &mut self.layers {
+            layer.training = true;
+        }
+
         let checkpoint = epochs / 10;
         let mut losses = Vec::new();
         for epoch in 1..epochs+1 {
@@ -304,6 +308,10 @@ impl Network {
                              .iter().sum::<f32>() / checkpoint as f32);
             }
         }
+        for layer in &mut self.layers {
+            layer.training = false;
+        }
+
         losses
     }
 

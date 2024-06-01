@@ -79,9 +79,9 @@ fn main() {
     // Create the network
     let mut network = network::Network::new();
 
-    network.add_layer(4, 50, activation::Activation::ReLU, false);
-    network.add_layer(50, 50, activation::Activation::ReLU, false);
-    network.add_layer(50, 3, activation::Activation::Softmax, false);
+    network.add_layer(4, 50, activation::Activation::ReLU, false, Some(0.1));
+    network.add_layer(50, 50, activation::Activation::ReLU, false, Some(0.1));
+    network.add_layer(50, 3, activation::Activation::Softmax, false, Some(0.1));
 
     network.set_optimizer(
         optimizer::Optimizer::RMSprop(
