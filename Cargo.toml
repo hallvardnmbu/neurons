@@ -7,9 +7,11 @@ authors = ["Hallvard Høyland Lavik"]
 homepage = "https://github.com/hallvardnmbu/neurons"
 readme = "README.md"
 license = "Apache-2.0"
-license-file = "LICENSE"
 repository = "https://github.com/hallvardnmbu/neurons"
-include = ["**/*.rs", "Carg.toml"]
+include = ["**/*.rs", "Cargo.toml", "neurons.css"]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--theme", "neurons.css"]
 
 [dependencies]
 rand = "0.8.5"
