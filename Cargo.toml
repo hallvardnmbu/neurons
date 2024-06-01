@@ -14,7 +14,6 @@ include = ["**/*.rs", "Cargo.toml", "neurons.css"]
 rustdoc-args = ["--theme", "neurons.css"]
 
 [dependencies]
-rand = "0.8.5"
 csv = "1.3.0"
 
 [[example]]

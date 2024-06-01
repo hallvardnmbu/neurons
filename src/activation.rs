@@ -100,7 +100,7 @@ impl ReLU {
     ///
     /// # Function
     ///
-    /// * f(x) = max(0, x)
+    /// * `f(x) = max(0, x)`
     ///
     /// # Arguments
     ///
@@ -117,7 +117,7 @@ impl ReLU {
     ///
     /// # Function
     ///
-    /// * f'(x) = 1 if x > 0, 0 otherwise
+    /// * `f'(x) = 1 if x > 0, 0 otherwise`
     ///
     /// # Arguments
     ///
@@ -146,7 +146,7 @@ impl LeakyReLU {
     ///
     /// # Function
     ///
-    /// * f(x) = x if x > 0, alpha * x otherwise
+    /// * `f(x) = x if x > 0, alpha * x otherwise`
     ///
     /// # Arguments
     ///
@@ -163,7 +163,7 @@ impl LeakyReLU {
     ///
     /// # Function
     ///
-    /// * f'(x) = 1 if x > 0, alpha otherwise
+    /// * `f'(x) = 1 if x > 0, alpha otherwise`
     ///
     /// # Arguments
     ///
@@ -186,7 +186,7 @@ impl Sigmoid {
     ///
     /// # Function
     ///
-    /// * f(x) = 1 / (1 + e^(-x))
+    /// * `f(x) = 1 / (1 + e^(-x))`
     ///
     /// # Arguments
     ///
@@ -203,7 +203,7 @@ impl Sigmoid {
     ///
     /// # Function
     ///
-    /// * f'(x) = f(x) * (1 - f(x))
+    /// * `f'(x) = f(x) * (1 - f(x))`
     ///
     /// # Arguments
     ///
@@ -229,7 +229,7 @@ impl Softmax {
     ///
     /// # Function
     ///
-    /// * f(x) = e^(x - max(x)) / sum(e^(x - max(x)))
+    /// * `f(x) = e^(x - max(x)) / sum(e^(x - max(x)))`
     ///
     /// # Arguments
     ///
@@ -249,7 +249,7 @@ impl Softmax {
     ///
     /// # Function
     ///
-    /// * f'(x_i) = f(x_i) * (1 - f(x_i)) - f(x) @ f(x) - sum_j(f(x_i) * f(x_j) - f(x) @ f(x))
+    /// * `f'(x_i) = f(x_i) * (1 - f(x_i)) - f(x) @ f(x) - sum_j(f(x_i) * f(x_j) - f(x) @ f(x))`
     ///
     /// # Arguments
     ///
@@ -287,7 +287,7 @@ impl Tanh {
     ///
     /// # Function
     ///
-    /// * f(x) = x.tanh()
+    /// * `f(x) = x.tanh()`
     ///
     /// # Arguments
     ///
@@ -304,7 +304,7 @@ impl Tanh {
     ///
     /// # Function
     ///
-    /// * f'(x) = 1 / cosh(x)^2
+    /// * `f'(x) = 1 / cosh(x)^2`
     ///
     /// # Arguments
     ///
@@ -329,7 +329,7 @@ impl Linear {
     ///
     /// # Function
     ///
-    /// * f(x) = x
+    /// * `f(x) = x`
     ///
     /// # Arguments
     ///
@@ -346,7 +346,7 @@ impl Linear {
     ///
     /// # Function
     ///
-    /// * f'(x) = 1
+    /// * `f'(x) = 1`
     ///
     /// # Arguments
     ///

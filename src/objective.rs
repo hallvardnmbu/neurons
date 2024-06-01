@@ -133,8 +133,8 @@ impl AE {
     ///
     /// # Function
     ///
-    /// * loss = sum(|actual - predicted|)
-    /// * gradient = -1 if actual > predicted, 0 if actual == predicted, 1 if actual < predicted
+    /// * `loss = sum(|actual - predicted|)`
+    /// * `gradient = -1 if actual > predicted, 0 if actual == predicted, 1 if actual < predicted`
     ///
     /// # Arguments
     ///
@@ -184,8 +184,8 @@ impl MAE {
     ///
     /// # Function
     ///
-    /// * loss = sum(|actual - predicted|) / n
-    /// * gradient = -1 if actual > predicted, 0 if actual == predicted, 1 if actual < predicted
+    /// * `loss = sum(|actual - predicted|) / n`
+    /// * `gradient = -1 if actual > predicted, 0 if actual == predicted, 1 if actual < predicted`
     ///
     /// # Arguments
     ///
@@ -235,8 +235,8 @@ impl MSE {
     ///
     /// # Function
     ///
-    /// * loss = sum((actual - predicted)^2) / n
-    /// * gradient = -2 * (actual - predicted) / n
+    /// * `loss = sum((actual - predicted)^2) / n`
+    /// * `gradient = -2 * (actual - predicted) / n`
     ///
     /// # Arguments
     ///
@@ -279,8 +279,8 @@ impl RMSE {
     ///
     /// # Function
     ///
-    /// * loss = sqrt(sum((actual - predicted)^2)) / n
-    /// * gradient = -(actual - predicted) / sqrt((actual - predicted)^2) * n
+    /// * `loss = sqrt(sum((actual - predicted)^2)) / n`
+    /// * `gradient = -(actual - predicted) / sqrt((actual - predicted)^2) * n`
     ///
     /// # Arguments
     ///
@@ -329,8 +329,8 @@ impl CrossEntropy {
     ///
     /// # Function
     ///
-    /// * loss = -sum(actual * log(predicted))
-    /// * gradient = predicted - actual
+    /// * `loss = -sum(actual * log(predicted))`
+    /// * `gradient = predicted - actual`
     ///
     /// # Arguments
     ///
@@ -377,8 +377,8 @@ impl BinaryCrossEntropy {
     ///
     /// # Function
     ///
-    /// * loss = -sum(actual * log(predicted) + (1 - actual) * log(1 - predicted))
-    /// * gradient = (predicted - actual) / (predicted * (1 - predicted))
+    /// * `loss = -sum(actual * log(predicted) + (1 - actual) * log(1 - predicted))`
+    /// * `gradient = (predicted - actual) / (predicted * (1 - predicted))`
     ///
     /// # Arguments
     ///
@@ -426,8 +426,8 @@ impl KLDivergence {
     ///
     /// # Function
     ///
-    /// * loss = sum(actual * log(actual / predicted))
-    /// * gradient = -actual / predicted
+    /// * `loss = sum(actual * log(actual / predicted))`
+    /// * `gradient = -actual / predicted`
     ///
     /// # Arguments
     ///

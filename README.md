@@ -42,7 +42,7 @@ fn main() {
   
     println!("{}", network);
   
-    let (x, y) = ...;                       // Load data
+    let (x, y) = {  };                      // Load data
     let epochs = 1000;
     let loss = network.learn(x, y, epochs); // Train the network
 }
@@ -57,6 +57,7 @@ Examples can be found in the `examples` directory.
 - Layer types
   - [x] Dense
   - [ ] Feedback
+  - [ ] Recurrent
   - [ ] Convolutional
 
 - Activation functions
@@ -75,7 +76,6 @@ Examples can be found in the `examples` directory.
   - [x] CrossEntropy
   - [x] BinaryCrossEntropy
   - [x] KLDivergence
-  - [ ] Huber
 
 - Optimization techniques
   - [x] SGD
@@ -99,13 +99,14 @@ Examples can be found in the `examples` directory.
 
 - Other
   - [x] Documentation
+  - [x] Custom random weight initialization
+  - [ ] Custom icon/image for documentation
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading
   - [ ] Logging
   - [ ] Data from file
   - [ ] Custom tensor/matrix types
-  - [ ] Custom random weight initialization
   - [ ] Plotting
 
 ---

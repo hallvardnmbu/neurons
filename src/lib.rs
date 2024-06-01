@@ -20,3 +20,4 @@ pub mod optimizer;
 pub mod objective;
 pub mod activation;
 pub mod algebra;
+pub mod random;

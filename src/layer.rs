@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-extern crate rand;
-
+use crate::random;
 use crate::activation;
 use crate::algebra::*;
 
@@ -58,16 +57,16 @@ impl Layer {
                   activation: &activation::Activation,
                   bias: bool
     ) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut generator = random::Generator::create(12345);
         Layer {
             weights: (0..outputs)
                 .map(|_|
                     (0..inputs)
-                    .map(|_| rand::Rng::gen::<f32>(&mut rng))
+                    .map(|_| generator.generate(-1.0, 1.0))
                     .collect())
                 .collect(),
             bias: match bias {
-                true => Some((0..outputs).map(|_| rand::Rng::gen::<f32>(&mut rng)).collect()),
+                true => Some((0..outputs).map(|_| generator.generate(-1.0, 1.0)).collect()),
                 false => None,
             },
             activation: activation::Function::create(&activation),

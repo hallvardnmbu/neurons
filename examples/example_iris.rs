@@ -15,10 +15,8 @@ limitations under the License.
  */
 
 extern crate csv;
-extern crate rand;
 
-use rand::prelude::SliceRandom;
-
+use neurons::random;
 use neurons::network;
 use neurons::activation;
 use neurons::objective;
@@ -51,9 +49,9 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
         );
     });
 
-    let mut rng = rand::thread_rng();
+    let mut generator = random::Generator::create(12345);
     let mut indices: Vec<usize> = (0..x.len()).collect();
-    indices.shuffle(&mut rng);
+    generator.shuffle(&mut indices);
 
     let x: Vec<Vec<f32>> = indices.iter().map(|&i| x[i].clone()).collect();
     let y: Vec<Vec<f32>> = indices.iter().map(|&i| y[i].clone()).collect();

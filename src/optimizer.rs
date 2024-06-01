@@ -111,8 +111,8 @@ impl SGD {
     ///
     /// # Function
     ///
-    /// * If decay is Some, then gradients += decay * weights (values)
-    /// * weights (values) -= learning_rate * gradients
+    /// * If `decay` is `Some`, then `gradients += decay * weights (values)`
+    /// * `weights (values) -= learning_rate * gradients`
     ///
     /// # Arguments
     ///
