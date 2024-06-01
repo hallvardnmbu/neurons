@@ -18,14 +18,14 @@ use crate::random;
 use crate::activation;
 use crate::algebra::*;
 
-/// A layer in a neural network.
+/// A dense layer in a neural network.
 ///
 /// # Attributes
 ///
 /// * `weights` - The weights of the layer.
 /// * `bias` - The bias of the layer.
 /// * `activation` - The activation function of the layer.
-pub struct Layer {
+pub struct Dense {
     pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
@@ -35,16 +35,16 @@ pub struct Layer {
     pub(crate) training: bool,
 }
 
-impl std::fmt::Display for Layer {
+impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}(in: {}, out: {}, bias: {})",
                self.activation, self.weights[0].len(), self.weights.len(), self.bias.is_some())
     }
 }
 
-impl Layer {
+impl Dense {
 
-    /// Creates a new layer with random weights and bias.
+    /// Creates a new dense layer with random weights and bias.
     ///
     /// # Arguments
     ///
@@ -64,7 +64,7 @@ impl Layer {
                   dropout: Option<f32>,
     ) -> Self {
         let mut generator = random::Generator::create(12345);
-        Layer {
+        Dense {
             weights: (0..outputs)
                 .map(|_|
                     (0..inputs)
