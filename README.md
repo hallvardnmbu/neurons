@@ -1,6 +1,6 @@
 <body style="font-family:monospace;">
 
-# Modular neural network in Rust.
+# Modular neural networks in Rust.
 
 Create modular neural networks in Rust with ease! For educational purposes; vector operations are not throughly optimized.
 
@@ -86,6 +86,7 @@ Examples can be found in the `examples` directory.
 
 - Architecture
   - [x] Feedforward
+  - [ ] Feedback
   - [ ] Recurrent
   - [ ] Convolutional
 

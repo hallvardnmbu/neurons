@@ -14,12 +14,13 @@ fn main() {
             (0..27)
             .map(|_|
                 (0..27)
-                .map(|_| generator.generate(-1.0, 1.0))
+                .map(|_| 1.0) //generator.generate(-1.0, 1.0))
                 .collect())
             .collect())
         .collect();
 
-    println!("{}x{}x{}", x.len(), x[0].len(), x[0][0].len());
+    println!("x = {}x{}x{}", x.len(), x[0].len(), x[0][0].len());
     let (pre, post) = conv.forward(&x);
-    println!("{}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
+    println!("pre = {}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
+    println!("post = {}x{}x{}", post.len(), post[0].len(), post[0][0].len());
 }

@@ -19,22 +19,24 @@ use crate::dense;
 use crate::optimizer;
 use crate::objective;
 
-/// A feedforward neural network.
+/// A feedback neural network.
 ///
 /// # Attributes
 ///
 /// * `layers` - The layers of the network.
+/// * `feedback` - The feedback neurons of the network (same size as `layers`).
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
-pub struct Feedforward {
+pub struct Feedback {
     pub(crate) layers: Vec<dense::Dense>,
+    pub(crate) feedback: Vec<u16>,
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,
 }
 
-impl std::fmt::Display for Feedforward {
+impl std::fmt::Display for Feedback {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Feedforward (\n")?;
+        write!(f, "Feedback (\n")?;
 
         write!(f, "\toptimizer: (\n{}\n", self.optimizer)?;
         write!(f, "\tobjective: (\n\t\t{}\n\t)\n", self.objective)?;
@@ -48,9 +50,9 @@ impl std::fmt::Display for Feedforward {
     }
 }
 
-impl Feedforward {
+impl Feedback {
 
-    /// Creates a new feedforward neural network with the given parameters.
+    /// Creates a new feedback neural network with the given parameters.
     ///
     /// # Arguments
     ///
@@ -62,7 +64,7 @@ impl Feedforward {
     ///
     /// # Returns
     ///
-    /// A new feedforward neural network with the given parameters.
+    /// A new feedback neural network with the given parameters.
     ///
     /// # Panics
     ///
@@ -83,14 +85,15 @@ impl Feedforward {
             layers.push(dense::Dense::create(nodes[i], nodes[i + 1], &activations[i], biases[i], None));
         }
 
-        Feedforward {
+        Feedback {
             layers,
+            feedback: vec![0; nodes.len() - 1],
             optimizer,
             objective: objective::Function::create(objective, None),
         }
     }
 
-    /// Creates a new (empty) feedforward neural network.
+    /// Creates a new (empty) feedback neural network.
     ///
     /// Generates a new neural network with no layers, with a standard optimizer and objective,
     /// respectively:
@@ -102,8 +105,9 @@ impl Feedforward {
     ///
     /// An empty neural network, with no layers.
     pub fn new() -> Self {
-        Feedforward {
+        Feedback {
             layers: Vec::new(),
+            feedback: Vec::new(),
             optimizer: optimizer::Optimizer::SGD(
                 optimizer::SGD {
                     learning_rate: 0.1,
@@ -127,6 +131,7 @@ impl Feedforward {
     /// * `activation` - The activation function of the layer.
     /// * `bias` - Whether the layer should have a bias.
     /// * `dropout` - The dropout rate of the layer.
+    /// * `feedback` - The number of feedback neurons of the layer.
     ///
     /// # Panics
     ///
@@ -134,19 +139,30 @@ impl Feedforward {
     /// previous layer.
     pub fn add_layer(
         &mut self, inputs: u16, outputs: u16, activation: activation::Activation,
-        bias: bool, dropout: Option<f32>
+        bias: bool, dropout: Option<f32>, feedback: Option<u16>,
     ) {
         if self.layers.is_empty() {
             self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
             return;
         }
+        
         let previous = match self.layers.last() {
             Some(layer) => layer.weights.len() as u16,
             None => inputs,
         };
         assert_eq!(previous, inputs,
                    "Invalid number of inputs. Last layer has {} inputs.", previous);
-        self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
+
+        match feedback {
+            Some(feedback) => {
+                self.feedback.push(if feedback < outputs { feedback } else { outputs });
+                self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
+            },
+            None => {
+                self.feedback.push(0);
+                self.layers.push(dense::Dense::create(inputs, outputs, &activation, bias, dropout));
+            },
+        };
     }
 
     /// Set the activation function of a layer.

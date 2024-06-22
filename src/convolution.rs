@@ -62,20 +62,21 @@ impl Convolution {
     /// # Returns
     ///
     /// A new layer with random weights and bias with the given dimensions.
-    pub fn create(channels: u16,
-                  activation: &activation::Activation,
-                  bias: bool,
-                  kernel: (usize, usize),
-                  stride: (usize, usize),
-                  padding: (usize, usize),
-                  dropout: Option<f32>,
+    pub fn create(
+        channels: u16,
+        activation: &activation::Activation,
+        bias: bool,
+        kernel: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize),
+        dropout: Option<f32>,
     ) -> Self {
         let mut generator = random::Generator::create(12345);
         Convolution {
             kernels: (0..channels)
                 .map(|_| (0..kernel.0)
                     .map(|_| (0..kernel.1)
-                        .map(|_| generator.generate(-1.0, 1.0))
+                        .map(|_| 1.0) //generator.generate(-1.0, 1.0))
                         .collect())
                     .collect())
                 .collect(),
@@ -160,39 +161,74 @@ impl Convolution {
         (pre, post)
     }
 
-    // /// Applies the backward pass of the layer to the gradient vector.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `gradient` - The gradient vector to the layer.
-    // /// * `input` - The input vector to the layer.
-    // /// * `output` - The output vector of the layer.
-    // ///
-    // /// # Returns
-    // ///
-    // /// The weight gradient, bias gradient, and input gradient vectors of the layer.
-    // pub fn backward(
-    //     &self, gradient: &Vec<f32>, input: &Vec<f32>, output: &Vec<f32>
-    // ) -> (Vec<Vec<f32>>, Option<Vec<f32>>, Vec<f32>) {
-    //     let derivative: Vec<f32> = self.activation.backward(output);
-    //     let delta: Vec<f32> = mul(gradient, &derivative);
-    //
-    //     let weight_gradient: Vec<Vec<f32>> = delta
-    //         .iter().map(|d: &f32| input
-    //         .iter().map(|i: &f32| i * d)
-    //         .collect())
-    //         .collect();
-    //     let bias_gradient: Option<Vec<f32>> = match self.bias {
-    //         Some(_) => Some(delta.clone()),
-    //         None => None,
-    //     };
-    //     let input_gradient: Vec<f32> = (0..input.len())
-    //         .map(|i: usize| delta
-    //             .iter().zip(self.weights.iter())
-    //             .map(|(d, w)| d * w[i])
-    //             .sum::<f32>())
-    //         .collect();
-    //
-    //     (weight_gradient, bias_gradient, input_gradient)
+    /// Applies the backward pass (backpropagation) to the convolutional layer.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The input vector to the layer during the forward pass. (channels, height, width)
+    /// * `pre` - The pre-activation output of the forward pass. (channels, height, width)
+    /// * `post` - The post-activation output of the forward pass. (channels, height, width)
+    /// * `dout` - The gradient of the loss with respect to the output of the layer. (channels, height, width)
+    ///
+    /// # Returns
+    ///
+    /// The gradient of the loss with respect to the input vector. (channels, height, width)
+    pub fn backward(
+        &self, x: &Vec<Vec<Vec<f32>>>, 
+        pre: &Vec<Vec<Vec<f32>>>, post: &Vec<Vec<Vec<f32>>>, dout: &Vec<Vec<Vec<f32>>>
+    ) -> Vec<Vec<Vec<f32>>> {
+        let mut dx: Vec<Vec<Vec<f32>>> = vec![vec![vec![0.0; x[0][0].len()]; x[0].len()]; x.len()];
+        let mut dkernels: Vec<Vec<Vec<f32>>> = vec![vec![vec![0.0; self.kernels[0][0].len()]; self.kernels[0].len()]; self.kernels.len()];
+        let mut dbias: Vec<f32> = vec![0.0; self.kernels.len()];
+
+        for (filter, kernel) in self.kernels.iter().enumerate() {
+            for height in 0..x[0].len() - kernel.len() + 1 {
+                for width in 0..x[0][0].len() - kernel[0].len() + 1 {
+                    let dpatch = &dout[filter][height][width];
+                    for i in 0..kernel.len() {
+                        for j in 0..kernel[0].len() {
+                            for channel in 0..x.len() {
+                                dx[channel][height + i][width + j] += kernel[i][j] * dpatch;
+                                dkernels[filter][i][j] += x[channel][height + i][width + j] * dpatch;
+                            }
+                        }
+                    }
+                    dbias[filter] += dpatch;
+                }
+            }
+        }
+
+        // Update weights and biases with gradients.
+        for (filter, kernel) in self.kernels.iter_mut().enumerate() {
+            for i in 0..kernel.len() {
+                for j in 0..kernel[0].len() {
+                    kernel[i][j] -= self.learning_rate * dkernels[filter][i][j];
+                }
+            }
+        }
+        if let Some(bias) = &mut self.bias {
+            for i in 0..bias.len() {
+                bias[i] -= self.learning_rate * dbias[i];
+            }
+        }
+
+        dx
+    }
+
+    // fn convolve2d(a: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+    //     let mut result = vec![
+    //         vec![0.0; a[0].len() - kernel[0].len() + 1]; 
+    //         a.len() - kernel.len() + 1
+    //     ];
+    //     for y in 0..result.len() {
+    //         for x in 0..result[0].len() {
+    //             for ky in 0..kernel.len() {
+    //                 for kx in 0..kernel[0].len() {
+    //                     result[y][x] += a[y + ky][x + kx] * kernel[ky][kx];
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     result
     // }
 }

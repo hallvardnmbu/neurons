@@ -22,7 +22,13 @@ pub mod optimizer;
 pub mod objective;
 pub mod activation;
 
+// Layer types:
 pub mod dense;
-pub mod convolution;
+
+// Network types:
 pub mod feedforward;
+pub mod feedback;
+
+// Unimplemented:
+pub mod convolution;
 pub mod recurrent;
