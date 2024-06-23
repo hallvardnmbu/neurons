@@ -26,6 +26,9 @@ use crate::algebra::*;
 /// * `bias` - The bias of the layer.
 /// * `activation` - The activation function of the layer.
 pub struct Dense {
+    pub(crate) inputs: usize,
+    pub(crate) outputs: usize,
+
     pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
@@ -37,8 +40,8 @@ pub struct Dense {
 
 impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}(in: {}, out: {}, bias: {})",
-               self.activation, self.weights[0].len(), self.weights.len(), self.bias.is_some())
+        write!(f, "Dense{}(in: {}, out: {}, bias: {})",
+               self.activation, self.inputs, self.outputs, self.bias.is_some())
     }
 }
 
@@ -57,14 +60,15 @@ impl Dense {
     /// # Returns
     ///
     /// A new layer with random weights and bias with the given dimensions.
-    pub fn create(inputs: u16,
-                  outputs: u16,
+    pub fn create(inputs: usize,
+                  outputs: usize,
                   activation: &activation::Activation,
                   bias: bool,
                   dropout: Option<f32>,
     ) -> Self {
         let mut generator = random::Generator::create(12345);
         Dense {
+            inputs, outputs,
             weights: (0..outputs)
                 .map(|_|
                     (0..inputs)

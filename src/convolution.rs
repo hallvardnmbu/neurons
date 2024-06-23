@@ -18,6 +18,21 @@ use crate::random;
 use crate::activation;
 use crate::algebra::*;
 
+#[derive(Clone)]
+pub enum Shape {
+    Dense(usize),
+    Convolution(usize, usize, usize),
+}
+
+impl std::fmt::Display for Shape {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Shape::Dense(size) => write!(f, "{}", size),
+            Shape::Convolution(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
+        }
+    }
+}
+
 /// A dense layer in a neural network.
 ///
 /// # Attributes
@@ -26,6 +41,9 @@ use crate::algebra::*;
 /// * `bias` - The bias of the layer.
 /// * `activation` - The activation function of the layer.
 pub struct Convolution {
+    pub(crate) inputs: Shape,
+    pub(crate) outputs: Shape,
+
     pub(crate) kernels: Vec<Vec<Vec<f32>>>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
@@ -34,23 +52,60 @@ pub struct Convolution {
     stride: (usize, usize),
     padding: (usize, usize),
 
+    pub flatten_output: bool,
     pub training: bool,
 }
 
 impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Convolution({}, channels: {}, kernel: {}x{}, stride: {:?}, padding: {:?}, bias: {})",
-               self.activation, self.kernels.len(), self.kernels[0].len(), self.kernels[0][0].len(),
+        write!(f, "Convolution{}(in: {}, out: {}, kernel: {}x{}x{}, stride: {:?}, padding: {:?}, bias: {})",
+               self.activation, self.inputs, self.outputs,
+               self.kernels.len(), self.kernels[0].len(), self.kernels[0][0].len(),
                self.stride, self.padding, self.bias.is_some())
     }
 }
 
 impl Convolution {
 
+    /// Calculates the output size of the convolutional layer.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The `convolution::Shape` of the input to the layer.
+    /// * `channels` - The number of output channels from the layer (i.e., number of filters).
+    /// * `kernel` - The size of each filter.
+    /// * `stride` - The stride of the filter.
+    /// * `padding` - The padding applied to the input before convolving.
+    ///
+    /// # Returns
+    ///
+    /// The shape of the output from the layer.
+    fn calculate_output_size(
+        input: &Shape,
+        channels: &usize,
+        kernel: &(usize, usize),
+        stride: &(usize, usize),
+        padding: &(usize, usize)
+    ) -> Shape {
+        let input: &(usize, usize, usize) = match input {
+            Shape::Dense(shape) => {
+                let root = (*shape as f32).sqrt() as usize;
+                &(1, root, root)
+            },
+            Shape::Convolution(ch, he, wi) => &(*ch, *he, *wi),
+        };
+
+        let height = (input.1 + 2 * padding.0 - kernel.0) / stride.0 + 1;
+        let width = (input.2 + 2 * padding.1 - kernel.1) / stride.1 + 1;
+
+        Shape::Convolution(*channels, height, width)
+    }
+
     /// Creates a new convolutional layer with random weights and bias.
     ///
     /// # Arguments
     ///
+    /// * `input` - The shape of the input to the layer.
     /// * `channels` - The number of output channels from the layer (i.e., number of filters).
     /// * `activation` - The activation function of the layer.
     /// * `bias` - Whether the filters should have a bias.
@@ -62,16 +117,23 @@ impl Convolution {
     /// # Returns
     ///
     /// A new layer with random weights and bias with the given dimensions.
-    pub fn create(channels: u16,
-                  activation: &activation::Activation,
-                  bias: bool,
-                  kernel: (usize, usize),
-                  stride: (usize, usize),
-                  padding: (usize, usize),
-                  dropout: Option<f32>,
+    pub fn create(
+        input: Shape,
+        channels: usize,
+        activation: &activation::Activation,
+        bias: bool,
+        kernel: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize),
+        dropout: Option<f32>,
     ) -> Self {
         let mut generator = random::Generator::create(12345);
         Convolution {
+            inputs: input.clone(),
+            outputs: Convolution::calculate_output_size(
+                &input, &channels, &kernel, &stride, &padding
+            ),
+
             kernels: (0..channels)
                 .map(|_| (0..kernel.0)
                     .map(|_| (0..kernel.1)
@@ -91,6 +153,7 @@ impl Convolution {
             stride,
             padding,
             training: false,
+            flatten_output: false,
         }
     }
 
@@ -157,6 +220,19 @@ impl Convolution {
             post.push(convolution_post);
         }
 
+        if self.flatten_output {
+            let mut flattened: Vec<Vec<f32>> = Vec::new();
+            for i in 0..post[0].len() {
+                for j in 0..post[0][0].len() {
+                    let mut channel: Vec<f32> = Vec::new();
+                    for k in 0..post.len() {
+                        channel.push(post[k][i][j]);
+                    }
+                    flattened.push(channel);
+                }
+            }
+            post = vec![flattened];
+        }
         (pre, post)
     }
 
