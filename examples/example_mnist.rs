@@ -15,39 +15,10 @@ limitations under the License.
  */
 
 use neurons::convolution;
-use neurons::random;
+use neurons::plot;
 
 use std::fs::File;
 use std::io::{Read, BufReader, Result};
-
-use plotters::prelude::*;
-
-fn draw_heatmap(data: &Vec<Vec<f32>>, title: &str, path: &str) -> Result<()> {
-    let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
-
-    let (rows, cols) = (data.len(), data[0].len());
-
-    let mut chart = ChartBuilder::on(&root)
-        .margin(20)
-        .caption(title, ("sans-serif", 40))
-        .build_cartesian_2d(0..cols, 0..rows).unwrap();
-
-    chart.configure_mesh().disable_mesh().draw().unwrap();
-
-    for (y, row) in data.iter().enumerate() {
-        for (x, &value) in row.iter().enumerate() {
-            let color = RGBColor(value as u8, value as u8, value as u8);
-            chart.draw_series(std::iter::once(Rectangle::new(
-                [(x, y), (x + 1, y + 1)],
-                color.filled(),
-            ))).unwrap();
-        }
-    }
-
-    root.present().unwrap();
-    Ok(())
-}
 
 fn read(reader: &mut dyn Read) -> Result<u32> {
     let mut buffer = [0; 4];
@@ -99,6 +70,7 @@ fn main() {
     let y_test = load_labels("./datasets/mnist/train-labels.idx1-ubyte").unwrap();
 
     let mut conv = convolution::Convolution::create(
+        convolution::Shape::Convolution(1, 28, 28),
         5, &neurons::activation::Activation::ReLU, false,
         (3, 3), (1, 1), (1, 1), None
     );
@@ -109,8 +81,7 @@ fn main() {
     let (pre, post) = conv.forward(&_x);
     println!("{}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
 
-    draw_heatmap(&_x[0], &format!("Label: {}", y_train[5].to_string()),"input.png").unwrap();
-    draw_heatmap(&pre[0], &format!("Label: {} pre-activation", y_train[5].to_string()), "pre.png")
-        .unwrap();
-    draw_heatmap(&post[0], &format!("Label: {} post-activation", y_train[5].to_string()), "post.png").unwrap();
+    plot::heatmap(&_x[0], &format!("Label: {}", y_train[5].to_string()),"input.png");
+    plot::heatmap(&pre[0], &format!("Label: {} pre-activation", y_train[5].to_string()), "pre.png");
+    plot::heatmap(&post[0], &format!("Label: {} post-activation", y_train[5].to_string()), "post.png");
 }

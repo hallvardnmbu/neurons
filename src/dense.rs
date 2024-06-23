@@ -40,7 +40,7 @@ pub struct Dense {
 
 impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dense{}(in: {}, out: {}, bias: {})",
+        write!(f, "Dense{}({} -> {}, bias: {})",
                self.activation, self.inputs, self.outputs, self.bias.is_some())
     }
 }

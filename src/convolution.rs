@@ -58,7 +58,7 @@ pub struct Convolution {
 
 impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Convolution{}(in: {}, out: {}, kernel: {}x{}x{}, stride: {:?}, padding: {:?}, bias: {})",
+        write!(f, "Convolution{}({} -> {}, kernel: {}x{}x{}, stride: {:?}, padding: {:?}, bias: {})",
                self.activation, self.inputs, self.outputs,
                self.kernels.len(), self.kernels[0].len(), self.kernels[0][0].len(),
                self.stride, self.padding, self.bias.is_some())

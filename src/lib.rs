@@ -26,3 +26,4 @@ pub mod dense;
 pub mod convolution;
 pub mod feedforward;
 pub mod recurrent;
+pub mod plot;
