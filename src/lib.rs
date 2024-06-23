@@ -27,3 +27,4 @@ pub mod convolution;
 pub mod feedforward;
 pub mod recurrent;
 pub mod plot;
+pub mod tensor;

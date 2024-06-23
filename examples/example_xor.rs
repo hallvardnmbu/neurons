@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
+use neurons::tensor;
 use neurons::feedforward;
 use neurons::activation;
 use neurons::objective;
@@ -29,10 +30,10 @@ fn main() {
     ];
 
     // Create the network
-    let mut network = feedforward::Feedforward::new();
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Dense(2));
 
-    network.add_layer(2, 10, activation::Activation::Linear, true, None);
-    network.add_layer(10, 1, activation::Activation::Sigmoid, false, None);
+    network.add_dense(10, activation::Activation::Linear, true, None);
+    network.add_dense(1, activation::Activation::Sigmoid, false, None);
 
     network.set_optimizer(
         optimizer::Optimizer::SGD(

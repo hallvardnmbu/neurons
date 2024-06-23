@@ -15,23 +15,9 @@ limitations under the License.
  */
 
 use crate::random;
+use crate::tensor;
 use crate::activation;
 use crate::algebra::*;
-
-#[derive(Clone)]
-pub enum Shape {
-    Dense(usize),
-    Convolution(usize, usize, usize),
-}
-
-impl std::fmt::Display for Shape {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Shape::Dense(size) => write!(f, "{}", size),
-            Shape::Convolution(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
-        }
-    }
-}
 
 /// A dense layer in a neural network.
 ///
@@ -41,8 +27,8 @@ impl std::fmt::Display for Shape {
 /// * `bias` - The bias of the layer.
 /// * `activation` - The activation function of the layer.
 pub struct Convolution {
-    pub(crate) inputs: Shape,
-    pub(crate) outputs: Shape,
+    pub(crate) inputs: tensor::Shape,
+    pub(crate) outputs: tensor::Shape,
 
     pub(crate) kernels: Vec<Vec<Vec<f32>>>,
     pub(crate) bias: Option<Vec<f32>>,
@@ -71,7 +57,7 @@ impl Convolution {
     ///
     /// # Arguments
     ///
-    /// * `input` - The `convolution::Shape` of the input to the layer.
+    /// * `input` - The `tensor::Shape` of the input to the layer.
     /// * `channels` - The number of output channels from the layer (i.e., number of filters).
     /// * `kernel` - The size of each filter.
     /// * `stride` - The stride of the filter.
@@ -81,24 +67,24 @@ impl Convolution {
     ///
     /// The shape of the output from the layer.
     fn calculate_output_size(
-        input: &Shape,
+        input: &tensor::Shape,
         channels: &usize,
         kernel: &(usize, usize),
         stride: &(usize, usize),
         padding: &(usize, usize)
-    ) -> Shape {
+    ) -> tensor::Shape {
         let input: &(usize, usize, usize) = match input {
-            Shape::Dense(shape) => {
+            tensor::Shape::Dense(shape) => {
                 let root = (*shape as f32).sqrt() as usize;
                 &(1, root, root)
             },
-            Shape::Convolution(ch, he, wi) => &(*ch, *he, *wi),
+            tensor::Shape::Convolution(ch, he, wi) => &(*ch, *he, *wi),
         };
 
         let height = (input.1 + 2 * padding.0 - kernel.0) / stride.0 + 1;
         let width = (input.2 + 2 * padding.1 - kernel.1) / stride.1 + 1;
 
-        Shape::Convolution(*channels, height, width)
+        tensor::Shape::Convolution(*channels, height, width)
     }
 
     /// Creates a new convolutional layer with random weights and bias.
@@ -118,7 +104,7 @@ impl Convolution {
     ///
     /// A new layer with random weights and bias with the given dimensions.
     pub fn create(
-        input: Shape,
+        input: tensor::Shape,
         channels: usize,
         activation: &activation::Activation,
         bias: bool,

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
+use crate::tensor;
 use crate::activation;
 use crate::optimizer;
 use crate::objective;
@@ -44,7 +45,8 @@ impl std::fmt::Display for Layer {
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
 pub struct Feedforward {
-    pub image: Option<convolution::Shape>,
+    pub input: tensor::Shape,
+
     pub(crate) layers: Vec<Layer>,
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,
@@ -78,17 +80,15 @@ impl Feedforward {
     ///
     /// # Arguments
     ///
-    /// * `image` - The input dimensions of the network, for image inputs.
+    /// * `input` - The input dimensions of the network.
+    ///     Either `tensor::Shape::Dense` or `tensor::Shape::Convolution`.
     ///
     /// # Returns
     ///
     /// An empty neural network, with no layers.
-    pub fn new(image: Option<(usize, usize, usize)>) -> Self {
+    pub fn new(input: tensor::Shape) -> Self {
         Feedforward {
-            image: match image {
-                Some((channels, rows, cols)) => Some(convolution::Shape::Convolution(channels, rows, cols)),
-                None => None,
-            },
+            input,
             layers: Vec::new(),
             optimizer: optimizer::Optimizer::SGD(
                 optimizer::SGD {
@@ -108,7 +108,6 @@ impl Feedforward {
     ///
     /// # Arguments
     ///
-    /// * `inputs` - The number of inputs to the layer.
     /// * `outputs` - The number of outputs from the layer.
     /// * `activation` - The activation function of the layer.
     /// * `bias` - Whether the layer should have a bias.
@@ -120,38 +119,33 @@ impl Feedforward {
     /// previous layer.
     pub fn add_dense(
         &mut self,
-        mut inputs: usize,
         outputs: usize,
         activation: activation::Activation,
         bias: bool,
         dropout: Option<f32>
     ) {
         if self.layers.is_empty() {
-            if let Some(_) = self.image {
-                println!("Network seems to be configured for image inputs. Overriding.");
-                self.image = None;
-            }
+            let inputs = match self.input {
+                tensor::Shape::Dense(inputs) => inputs,
+                _ => panic!("Network is configured for image inputs; the first layer must be Convolutional"),
+            };
             self.layers.push(
                 Layer::Dense(dense::Dense::create(inputs, outputs, &activation, bias, dropout))
             );
             return;
         }
-        let previous = match &mut self.layers.last_mut().unwrap() {
-            Layer::Dense(layer) => layer.inputs,
+        let inputs = match &mut self.layers.last_mut().unwrap() {
+            Layer::Dense(layer) => layer.outputs,
             Layer::Convolution(layer) => {
                 // Make sure the output of the convolutional layer is flattened.
                 layer.flatten_output = true;
                 match layer.outputs {
-                    convolution::Shape::Convolution(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Convolution(ch, he, wi) => ch * he * wi,
                     _ => panic!("Expected Convolution shape"),
                 }
             },
         };
-        if previous != inputs {
-            println!("Invalid number of inputs to the layer, using previous layer's output.\
-                      \nExpected: {}, got: {}", previous, inputs);
-            inputs = previous;
-        }
+
         self.layers.push(
             Layer::Dense(dense::Dense::create(inputs, outputs, &activation, bias, dropout))
         );
@@ -188,26 +182,19 @@ impl Feedforward {
         dropout: Option<f32>,
     ) {
         if self.layers.is_empty() {
-            if self.image.is_none() {
-                panic!("\
-                    Network needs to be configured for image inputs. \
-                    Provide image dimensions when creating the network (see `new`-function).\
-                ");
-            } else {
-                self.layers.push(
-                    Layer::Convolution(convolution::Convolution::create(
-                        self.image.clone().unwrap(),
-                        channels, &activation, bias,
-                        kernel, stride, padding, dropout
-                    ))
-                );
-                return;
-            }
+            self.layers.push(
+                Layer::Convolution(convolution::Convolution::create(
+                    self.input.clone(),
+                    channels, &activation, bias,
+                    kernel, stride, padding, dropout
+                ))
+            );
+            return;
         }
         self.layers.push(
             Layer::Convolution(convolution::Convolution::create(
                 match self.layers.last().unwrap() {
-                    Layer::Dense(layer) => convolution::Shape::Dense(layer.outputs),
+                    Layer::Dense(layer) => tensor::Shape::Dense(layer.outputs),
                     Layer::Convolution(layer) => layer.outputs.clone(),
                 },
                 channels, &activation, bias,
@@ -243,20 +230,25 @@ impl Feedforward {
     /// * `optimizer` - The new optimizer function to be used.
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
 
-        let (inputs, outputs, bias) = match self.layers.last().unwrap() {
-            Layer::Dense(layer) => (layer.inputs, layer.outputs, layer.bias.is_some()),
-            Layer::Convolution(layer) => {
-                let (chi, hei, wii) = match layer.inputs {
-                    convolution::Shape::Convolution(ch, he, wi) => (ch, he, wi),
-                    _ => panic!("Expected Convolution shape"),
-                };
-                let (cho, heo, wio) = match layer.outputs {
-                    convolution::Shape::Convolution(ch, he, wi) => (ch, he, wi),
-                    _ => panic!("Expected Convolution shape"),
-                };
-                (chi * hei * wii, cho * heo * wio, layer.bias.is_some())
-            },
-        };
+        // Create the placeholder vector used for various optimizer functions.
+        // See the `match optimizer` below.
+        let vector: Vec<Vec<Vec<f32>>> = self.layers.iter().rev().map(|layer| {
+            let (inputs, outputs, bias) = match layer {
+                Layer::Dense(layer) => (layer.inputs, layer.outputs, layer.bias.is_some()),
+                Layer::Convolution(layer) => {
+                    let (chi, hei, wii) = match layer.inputs {
+                        tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
+                        _ => panic!("Expected Convolution shape"),
+                    };
+                    let (cho, heo, wio) = match layer.outputs {
+                        tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
+                        _ => panic!("Expected Convolution shape"),
+                    };
+                    (chi * hei * wii, cho * heo * wio, layer.bias.is_some())
+                },
+            };
+            vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
+        }).collect();
 
         match optimizer {
             optimizer::Optimizer::SGD(ref mut params) => {
@@ -271,9 +263,7 @@ impl Feedforward {
                 if params.momentum == 0.0 {
                     params.momentum = 0.9;
                 }
-                params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
-                }).collect();
+                params.velocity = vector.clone();
             },
             optimizer::Optimizer::Adam(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -289,10 +279,8 @@ impl Feedforward {
                     params.epsilon = 1e-8;
                 }
 
-                params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
-                }).collect();
-                params.momentum = params.velocity.clone();
+                params.velocity = vector.clone();
+                params.momentum = vector.clone();
             },
             optimizer::Optimizer::AdamW(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -308,10 +296,8 @@ impl Feedforward {
                     params.epsilon = 1e-8;
                 }
 
-                params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
-                }).collect();
-                params.momentum = params.velocity.clone();
+                params.velocity = vector.clone();
+                params.momentum = vector.clone();
             },
             optimizer::Optimizer::RMSprop(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -324,11 +310,9 @@ impl Feedforward {
                     params.epsilon = 1e-8;
                 }
 
-                params.velocity = self.layers.iter().rev().map(|layer| {
-                    vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
-                }).collect();
-                params.gradient = params.velocity.clone();
-                params.buffer = params.velocity.clone();
+                params.velocity = vector.clone();
+                params.gradient = vector.clone();
+                params.buffer = vector.clone();
             },
         };
         self.optimizer = optimizer;

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use neurons::convolution;
+use neurons::{activation, feedforward, tensor};
 use neurons::plot;
 
 use std::fs::File;
@@ -69,17 +69,22 @@ fn main() {
     let x_test = load_images("./datasets/mnist/train-images.idx3-ubyte").unwrap();
     let y_test = load_labels("./datasets/mnist/train-labels.idx1-ubyte").unwrap();
 
-    let mut conv = convolution::Convolution::create(
-        convolution::Shape::Convolution(1, 28, 28),
-        5, &neurons::activation::Activation::ReLU, false,
-        (3, 3), (1, 1), (1, 1), None
-    );
-    println!("{}", conv);
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 28, 28));
+
+    network.add_convolution(5, (5, 5), (1, 1), (1, 1),
+                            activation::Activation::ReLU, false, Some(0.1));
+    network.add_convolution(1, (5, 5), (1, 1), (1, 1),
+                            activation::Activation::ReLU, false, Some(0.1));
+    network.add_dense(10, activation::Activation::Softmax, true, Some(0.1));
+
+    println!("{}", network);
 
     let _x = vec![x_train[5].clone()];
-    println!("{}x{}x{}", _x.len(), _x[0].len(), _x[0][0].len());
+    println!("x: {}x{}x{}", _x.len(), _x[0].len(), _x[0][0].len());
+
     let (pre, post) = conv.forward(&_x);
-    println!("{}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
+    println!("pre-activation: {}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
+    println!("post-activation: {}x{}x{}", post.len(), post[0].len(), post[0][0].len());
 
     plot::heatmap(&_x[0], &format!("Label: {}", y_train[5].to_string()),"input.png");
     plot::heatmap(&pre[0], &format!("Label: {} pre-activation", y_train[5].to_string()), "pre.png");
