@@ -21,21 +21,20 @@ use neurons::objective;
 use neurons::optimizer;
 
 fn main() {
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 5, 5));
 
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 28, 28));
-
-    network.add_convolution(5, (5, 5), (1, 1), (1, 1),
+    network.add_convolution(2, (1, 1), (1, 1), (1, 1),
                             activation::Activation::ReLU, false, Some(0.1));
-    network.add_convolution(1, (5, 5), (1, 1), (1, 1),
+    network.add_convolution(1, (2, 2), (1, 1), (1, 1),
                             activation::Activation::ReLU, false, Some(0.1));
-    network.add_dense(2, activation::Activation::Softmax, true, Some(0.1));
+    network.add_dense(2, activation::Activation::ReLU, false, Some(0.1));
 
     println!("{}", network);
 
-    let x: Vec<Vec<Vec<f32>>> = vec![vec![vec![1.0; 28]; 28]; 3];
-    println!("x: {}x{}x{}", x.len(), x[0].len(), x[0][0].len());
+    let x = tensor::Tensor::random(tensor::Shape::Convolution(1, 5, 5), 0.0, 1.0);
+    println!("x: {}", x);
 
     let (pre, post) = network.forward(&x);
-    println!("pre-activation: {}x{}x{}", pre.len(), pre[0].len(), pre[0][0].len());
-    println!("post-activation: {}x{}x{}", post.len(), post[0].len(), post[0][0].len());
+    println!("pre-activation: {}", pre[pre.len() - 1]);
+    println!("post-activation: {}", post[post.len() - 1]);
 }

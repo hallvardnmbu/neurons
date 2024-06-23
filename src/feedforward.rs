@@ -549,17 +549,17 @@ impl Feedforward {
     /// # Returns
     ///
     /// A tuple containing the pre-activation and post-activation values of each layer.
-    pub fn forward(&mut self, input: &Vec<f32>) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
-        let mut unactivated: Vec<Vec<f32>> = Vec::new();
-        let mut activated: Vec<Vec<f32>> = vec![input.clone()];
+    pub fn forward(&mut self, input: &tensor::Tensor) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+        let mut unactivated: Vec<tensor::Tensor> = Vec::new();
+        let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
 
         for layer in &self.layers {
-            let (pre, post): (Vec<f32>, Vec<f32>) = match layer {
+            let (pre, post): (tensor::Tensor, tensor::Tensor) = match layer {
                 Layer::Dense(layer) => {
-                    layer.forward(&activated.last().unwrap())
+                    layer.forward(activated.last().unwrap())
                 },
                 Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for forward pass");
+                    layer.forward(activated.last().unwrap())
                 },
             };
 

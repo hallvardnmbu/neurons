@@ -15,6 +15,7 @@ impl std::fmt::Display for Shape {
     }
 }
 
+#[derive(Clone)]
 pub enum Data {
     Vector(Vec<f32>),
     Tensor(Vec<Vec<Vec<f32>>>)
@@ -44,6 +45,7 @@ impl std::fmt::Display for Data {
     }
 }
 
+#[derive(Clone)]
 pub struct Tensor {
     pub shape: Shape,
     pub data: Data,
@@ -156,6 +158,14 @@ impl Tensor {
         }
     }
 
+    pub fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
+        let shape = Shape::Convolution(data.len(), data[0].len(), data[0][0].len());
+        Tensor {
+            shape,
+            data: Data::Tensor(data),
+        }
+    }
+
     /// Flatten the Tensor into a Tensor.
     ///
     /// # Returns
@@ -181,7 +191,7 @@ impl Tensor {
     /// # Returns
     ///
     /// A vector.
-    fn get_flat(&self) -> Vec<f32> {
+    pub fn get_flat(&self) -> Vec<f32> {
         match &self.data {
             Data::Tensor(data) => data.iter().flat_map(|channel| {
                 channel.iter().flat_map(|row| {
@@ -189,6 +199,18 @@ impl Tensor {
                 })
             }).collect(),
             Data::Vector(data) => data.clone(),
+        }
+    }
+
+    /// Get the data of the Tensor.
+    ///
+    /// # Returns
+    ///
+    /// The data of the Tensor.
+    pub fn get_data(&self) -> Vec<Vec<Vec<f32>>> {
+        match &self.data {
+            Data::Vector(data) => vec![vec![data.clone()]],
+            Data::Tensor(data) => data.clone(),
         }
     }
 
@@ -201,7 +223,7 @@ impl Tensor {
     /// # Returns
     ///
     /// A new tensor with the given shape.
-    pub fn reshape(self, shape: Shape) -> Self {
+    pub fn reshape(&self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
             (Shape::Dense(_), Shape::Dense(_)) => {
                 panic!("Cannot reshape a dense tensor into another dense tensor");

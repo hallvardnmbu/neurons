@@ -143,16 +143,26 @@ impl Convolution {
         }
     }
 
-    /// Applies the forward pass (convolution) to the input vector.
+    /// Applies the forward pass (convolution) to the input tensor.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input vector to the layer. (channels, height, width)
+    /// * `x` - The input tensor to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation vectors of the layer. (channels, height, width)
-    pub fn forward(&self, x: &Vec<Vec<Vec<f32>>>) -> (Vec<Vec<Vec<f32>>>, Vec<Vec<Vec<f32>>>) {
+    /// The pre-activation and post-activation tensors of the layer.
+    pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
+
+        let (x, (channels, rows, columns)) = match x.shape {
+            tensor::Shape::Dense(size) => {
+                let root = (size as f32).sqrt() as usize;
+                (x.reshape(tensor::Shape::Convolution(1, root, root)).get_data(),  (1, root, root))
+            },
+            tensor::Shape::Convolution(ch, he, wi) => {
+                (x.get_data(), (ch, he, wi))
+            },
+        };
 
         // TODO: Padding.
         // TODO: Stride.
@@ -164,17 +174,17 @@ impl Convolution {
             // Input height.
             let mut convolution_pre: Vec<Vec<f32>> = Vec::new();
             let mut convolution_post: Vec<Vec<f32>> = Vec::new();
-            for height in 0..x[0].len() - kernel.len() + 1 {
+            for height in 0..rows - kernel.len() + 1 {
 
                 // Input width.
                 let mut patches: Vec<f32> = Vec::new();
-                for width in 0..x[0][0].len() - kernel[0].len() + 1 {
+                for width in 0..columns - kernel[0].len() + 1 {
 
                     let mut patch = 0.0;
                     for i in 0..kernel.len() {
                         for j in 0..kernel[0].len() {
                             // Input channels.
-                            for channel in 0..x.len() {
+                            for channel in 0..channels {
                                 patch += x[channel][height + i][width + j] * kernel[i][j];
                             }
                         }
@@ -219,7 +229,8 @@ impl Convolution {
             }
             post = vec![flattened];
         }
-        (pre, post)
+
+        (tensor::Tensor::from(pre), tensor::Tensor::from(post))
     }
 
     // /// Applies the backward pass of the layer to the gradient vector.

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use crate::random;
+use crate::{random, tensor};
 use crate::activation;
 use crate::algebra::*;
 
@@ -85,17 +85,19 @@ impl Dense {
         }
     }
 
-    /// Applies the forward pass of the layer to the input vector.
+    /// Applies the forward pass of the layer to the input tensor.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input vector to the layer.
+    /// * `x` - The input tensor to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation vectors of the layer.
-    pub fn forward(&self, x: &Vec<f32>) -> (Vec<f32>, Vec<f32> ){
-        let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, x)).collect();
+    /// The pre-activation and post-activation tensors of the layer.
+    pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
+        let x = x.get_flat();
+
+        let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, &x)).collect();
         let mut post: Vec<f32> = match &self.bias {
             Some(bias) => add(&self.activation.forward(&pre), bias),
             None => self.activation.forward(&pre),
@@ -112,7 +114,7 @@ impl Dense {
             }
         }
 
-        (pre, post)
+        (tensor::Tensor::from(vec![vec![pre]]), tensor::Tensor::from(vec![vec![post]]))
     }
 
     /// Applies the backward pass of the layer to the gradient vector.
