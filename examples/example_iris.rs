@@ -23,7 +23,7 @@ use neurons::activation;
 use neurons::objective;
 use neurons::optimizer;
 
-fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>) {
+fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let mut reader = csv::Reader::from_path(path).unwrap();
 
     let mut x: Vec<Vec<f32>> = Vec::new();
@@ -54,8 +54,12 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
     let mut indices: Vec<usize> = (0..x.len()).collect();
     generator.shuffle(&mut indices);
 
-    let x: Vec<Vec<f32>> = indices.iter().map(|&i| x[i].clone()).collect();
-    let y: Vec<Vec<f32>> = indices.iter().map(|&i| y[i].clone()).collect();
+    let x: Vec<tensor::Tensor> = indices.iter().map(|&i|
+        tensor::Tensor::from_single(x[i].clone())
+    ).collect();
+    let y: Vec<tensor::Tensor> = indices.iter().map(|&i|
+        tensor::Tensor::from_single(y[i].clone())
+    ).collect();
 
     let split = (x.len() as f32 * 0.8) as usize;
     let x = x.split_at(split);
@@ -72,10 +76,10 @@ fn data(path: &str) -> (Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32>>, Vec<Vec<f32
 fn main() {
     // Load the iris dataset
     let (x_train, y_train, x_test, y_test) = data("./datasets/iris.csv");
-    println!("Train data {}x{}: {:?} => {:?}",
-             x_train[0].len(), x_train.len(), x_train[0], y_train[0]);
-    println!("Test data {}x{}: {:?} => {:?}",
-             x_test[0].len(), x_test.len(), x_test[0], y_test[0]);
+    println!("Train data {}x{}: {} => {}",
+             x_train.len(), x_train[0].shape, x_train[0].data, y_train[0].data);
+    println!("Test data {}x{}: {} => {}",
+             x_test.len(), x_test[0].shape, x_test[0].data, y_test[0].data);
 
     // Create the network
     let mut network = feedforward::Feedforward::new(tensor::Shape::Dense(4));
@@ -115,5 +119,5 @@ fn main() {
 
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
-    println!("2. Input: {:?}, Target: {:?}, Output: {:?}", x_test[0], y_test[0], prediction);
+    println!("2. Input: {}, Target: {}, Output: {}", x_test[0].data, y_test[0].data, prediction);
 }

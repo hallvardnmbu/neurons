@@ -15,6 +15,7 @@ limitations under the License.
  */
 
 use crate::algebra::dot;
+use crate::tensor;
 
 /// Activation functions for neural networks.
 pub enum Activation {
@@ -66,7 +67,7 @@ impl Function {
 
     /// Applies the activation function to the input vector in the forward direction using the
     /// respective formula.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         match self {
             Function::ReLU(act) => act.forward(input),
             Function::LeakyReLU(act) => act.forward(input),
@@ -79,7 +80,7 @@ impl Function {
 
     /// Applies the derivative of the activation function to the input vector in the backward
     /// direction using the derivative of the respective forward function.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         match self {
             Function::ReLU(act) => act.backward(input),
             Function::LeakyReLU(act) => act.backward(input),
@@ -109,8 +110,22 @@ impl ReLU {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| v.max(0.0)).collect()
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| v.max(0.0)).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| v.max(0.0))
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 
     /// Backward pass of the ReLU activation function.
@@ -126,8 +141,23 @@ impl ReLU {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect()
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| if v > 0.0 { 1.0 } else { 0.0 })
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 }
 
@@ -155,8 +185,22 @@ impl LeakyReLU {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect()
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| if v > 0.0 { v } else { self.alpha * v })
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 
     /// Backward pass of the LeakyReLU activation function.
@@ -172,8 +216,22 @@ impl LeakyReLU {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect()
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 }
 
@@ -195,8 +253,22 @@ impl Sigmoid {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect()
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| 1.0 / (1.0 + f32::exp(-v)))
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 
     /// Backward pass of the Sigmoid activation function.
@@ -212,11 +284,28 @@ impl Sigmoid {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| {
-            let y = self.forward(&vec![v])[0];
-            y * (1.0 - y)
-        }).collect()
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| {
+                    let y = 1.0 / (1.0 + f32::exp(-v));
+                    y * (1.0 - y)
+                }).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| {
+                                let y = 1.0 / (1.0 + f32::exp(-v));
+                                y * (1.0 - y)
+                            })
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 }
 
@@ -238,11 +327,16 @@ impl Softmax {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        let max = input.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-        let exps: Vec<f32> = input.iter().map(|v| (v - max).exp()).collect();
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let x = input.get_flat();
+
+        let max = x.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = x.iter().map(|v| (v - max).exp()).collect();
         let sum: f32 = exps.iter().sum();
-        exps.iter().map(|v| v / sum).collect()
+
+        let y = exps.iter().map(|v| v / sum).collect();
+
+        tensor::Tensor::from_single(y).reshape(input.shape.clone())
     }
 
     /// Backward pass of the Softmax activation function ([source](https://e2eml.school/softmax)).
@@ -258,8 +352,8 @@ impl Softmax {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, logits: &Vec<f32>) -> Vec<f32> {
-        let probability = self.forward(logits);
+    pub fn backward(&self, logits: &tensor::Tensor) -> tensor::Tensor {
+        let probability = self.forward(logits).get_flat();
         let scalar = dot(&probability, &probability);
 
         let mut derivative = vec![0.0f32; probability.len()];
@@ -274,7 +368,7 @@ impl Softmax {
             }
         }
 
-        derivative
+        tensor::Tensor::from_single(derivative).reshape(logits.shape.clone())
     }
 }
 
@@ -296,8 +390,22 @@ impl Tanh {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| v.tanh()).collect()
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| v.tanh()).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| v.tanh())
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 
     /// Backward pass of the Tanh activation function.
@@ -313,10 +421,22 @@ impl Tanh {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
-        input.iter().map(|&v| {
-            1.0 / (v.cosh().powi(2))
-        }).collect()
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        let data = match &input.data {
+            tensor::Data::Vector(vector) => {
+                tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
+            },
+            tensor::Data::Tensor(vector) => {
+                tensor::Data::Tensor(vector.iter()
+                    .map(|i| i.iter()
+                        .map(|j| j.iter()
+                            .map(|&v| 1.0 / (v.cosh().powi(2)))
+                            .collect())
+                        .collect())
+                    .collect())
+            },
+        };
+        tensor::Tensor { shape: input.shape.clone(), data }
     }
 }
 
@@ -338,7 +458,7 @@ impl Linear {
     /// # Returns
     ///
     /// * A vector of output values.
-    pub fn forward(&self, input: &Vec<f32>) -> Vec<f32> {
+    pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         input.clone()
     }
 
@@ -355,7 +475,7 @@ impl Linear {
     /// # Returns
     ///
     /// * A vector of the derivatives.
-    pub fn backward(&self, input: &Vec<f32>) -> Vec<f32> {
-        vec![1.0; input.len()]
+    pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
+        tensor::Tensor::ones(input.shape.clone())
     }
 }

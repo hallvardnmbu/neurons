@@ -345,7 +345,7 @@ impl Feedforward {
     ///
     /// A vector of the average loss of the network per epoch.
     pub fn learn(
-        &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, epochs: i32
+        &mut self, inputs: &Vec<tensor::Tensor>, targets: &Vec<tensor::Tensor>, epochs: i32
     ) -> Vec<f32> {
         for layer in &mut self.layers {
             match layer {
@@ -367,7 +367,7 @@ impl Feedforward {
                 _losses += loss;
 
                 // TODO: Backward pass on batch instead of single input.
-                self.backward(epoch, gradient, unactivated, activated);
+                self.backward(epoch, gradient, &unactivated, &activated);
             }
             losses.push(_losses / inputs.len() as f32);
 
@@ -403,7 +403,7 @@ impl Feedforward {
     ///
     /// A tuple containing the total accuracy and loss of the network.
     pub fn validate(
-        &mut self, inputs: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32
+        &mut self, inputs: &Vec<tensor::Tensor>, targets: &Vec<tensor::Tensor>, tol: f32
     ) -> (f32, f32) {
 
         let mut losses = Vec::new();
@@ -414,6 +414,9 @@ impl Feedforward {
             let (loss, _) = self.loss(&prediction, target);
 
             losses.push(loss);
+
+            let target = target.get_flat();
+            let prediction = prediction.get_flat();
 
             match self.layers.last().unwrap() {
                 Layer::Dense(layer) => {
@@ -462,8 +465,11 @@ impl Feedforward {
     /// # Returns
     ///
     /// The accuracy of the network on the given inputs and targets.
-    pub fn accuracy(&self, predictions: &Vec<Vec<f32>>, targets: &Vec<Vec<f32>>, tol: f32) -> f32 {
+    pub fn accuracy(&self, predictions: &Vec<tensor::Tensor>, targets: &Vec<tensor::Tensor>, tol: f32) -> f32 {
         let mut accuracy: Vec<f32> = Vec::new();
+
+        let predictions: Vec<Vec<f32>> = predictions.iter().map(|t| t.get_flat()).collect();
+        let targets: Vec<Vec<f32>> = targets.iter().map(|t| t.get_flat()).collect();
 
         for (prediction, target) in predictions.iter().zip(targets.iter()) {
 
@@ -510,7 +516,7 @@ impl Feedforward {
     /// # Returns
     ///
     /// The output of the network for the given input.
-    pub fn predict(&self, input: &Vec<f32>) -> Vec<f32> {
+    pub fn predict(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let mut output = input.clone();
         for layer in &self.layers {
             match layer {
@@ -535,7 +541,7 @@ impl Feedforward {
     /// # Returns
     ///
     /// The output of the network for each of the given inputs.
-    pub fn predict_batch(&self, inputs: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+    pub fn predict_batch(&self, inputs: &Vec<tensor::Tensor>) -> Vec<tensor::Tensor> {
         inputs.iter().map(|input| self.predict(input)).collect()
     }
 
@@ -580,7 +586,7 @@ impl Feedforward {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient of the network for the given prediction and target.
-    fn loss(&mut self, prediction: &Vec<f32>, target: &Vec<f32>) -> (f32, Vec<f32>) {
+    fn loss(&mut self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
         self.objective.loss(prediction, target)
     }
 
@@ -594,21 +600,24 @@ impl Feedforward {
     /// * `unactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
     fn backward(
-        &mut self, stepnr: i32,
-        mut gradient: Vec<f32>, unactivated: Vec<Vec<f32>>, activated: Vec<Vec<f32>>
+        &mut self,
+        stepnr: i32,
+        gradient: tensor::Tensor,
+        unactivated: &Vec<tensor::Tensor>,
+        activated: &Vec<tensor::Tensor>
     ) {
-
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
-            let input: &Vec<f32> = &activated[activated.len() - i - 2];
-            let output: &Vec<f32> = &unactivated[unactivated.len() - i - 1];
+            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
+            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
 
-            let (mut weight_gradient, bias_gradient, input_gradient) = match layer {
-                Layer::Dense(layer) => layer.backward(&gradient, input, output),
-                Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for backpropagation");
-                },
+            println!("Iteration {} {} -> {}", i, input.shape, output.shape);
+
+            println!("{}", layer);
+
+            let (mut weight_gradient, bias_gradient) = match layer {
+                Layer::Dense(layer) => layer.backward(gradient.clone(), input, output),
+                Layer::Convolution(layer) => layer.backward(gradient.clone(), input, output),
             };
-            gradient = input_gradient;
 
             match layer {
                 Layer::Dense(layer) => {
@@ -616,7 +625,7 @@ impl Feedforward {
                     // Weight update.
                     for (j, (weights, gradients)) in layer
                         .weights.iter_mut()
-                        .zip(weight_gradient.iter_mut())
+                        .zip(weight_gradient.get_data()[0].iter_mut())
                         .enumerate() {
                         self.optimizer.update(i, j, stepnr, weights, gradients);
                     }
@@ -625,7 +634,7 @@ impl Feedforward {
                     if let Some(ref mut bias) = layer.bias {
                         // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
                         self.optimizer.update(i, layer.weights.len(), stepnr,
-                                              bias, &mut bias_gradient.unwrap());
+                                              bias, &mut bias_gradient.unwrap().get_flat());
                     }
                 },
                 Layer::Convolution(layer) => {

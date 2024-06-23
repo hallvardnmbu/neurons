@@ -22,11 +22,17 @@ use neurons::optimizer;
 
 fn main() {
     // Create the training data for the binary AND operation
-    let inputs: Vec<Vec<f32>> = vec![
-        vec![0.0, 0.0], vec![0.0, 1.0], vec![1.0, 0.0], vec![1.0, 1.0]
+    let inputs: Vec<tensor::Tensor> = vec![
+        tensor::Tensor::from_single(vec![0.0, 0.0]),
+        tensor::Tensor::from_single(vec![0.0, 1.0]),
+        tensor::Tensor::from_single(vec![1.0, 0.0]),
+        tensor::Tensor::from_single(vec![1.0, 1.0])
     ];
-    let targets: Vec<Vec<f32>> = vec![
-        vec![0.0], vec![0.0], vec![0.0], vec![1.0]
+    let targets: Vec<tensor::Tensor> = vec![
+        tensor::Tensor::from_single(vec![0.0]),
+        tensor::Tensor::from_single(vec![0.0]),
+        tensor::Tensor::from_single(vec![0.0]),
+        tensor::Tensor::from_single(vec![1.0])
     ];
 
     // Create the network
@@ -54,9 +60,9 @@ fn main() {
 
     // Use the network
     let prediction = network.predict(inputs.get(0).unwrap());
-    println!("2. Input: {:?}, Target: {:?}, Output: {:?}", inputs[0], targets[0], prediction);
+    println!("2. Input: {}, Target: {}, Output: {}", inputs[0].data, targets[0].data, prediction.data);
 
     // Use the network on batch
     let predictions = network.predict_batch(&inputs);
-    println!("3. Input: {:?},\n   Target: {:?},\n   Output: {:?}", inputs, targets, predictions);
+    println!("3. Input: {},\n   Target: {},\n   Output: {}", inputs[0].data, targets[0].data, predictions[0].data);
 }

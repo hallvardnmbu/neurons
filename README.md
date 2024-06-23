@@ -16,12 +16,18 @@ use neurons::optimizer::Optimizer;
 use neurons::objective::Objective;
 
 fn main() {
+  
+    // New feedforward network with four inputs
     let mut network = Feedforward::new(Shape::Dense(4));
 
     // Dense(output, activation, bias, Some(dropout))
-    network.add_dense(50, activation::Activation::Linear, true, None);
-    network.add_dense(50, activation::Activation::Linear, true, None);
-    network.add_dense(1, activation::Activation::Linear, false, None);
+    network.add_dense(100, Activation::ReLU, false, None);
+  
+    // Convolution(output, kernel, stride, padding, activation, bias, Some(dropout))
+    network.add_convolution(5, (5, 5), (1, 1), (1, 1), Activation::ReLU, false, Some(0.1));
+  
+    // Dense(output, activation, bias, Some(dropout))
+    network.add_dense(1, Activation::Softmax, false, None);
     
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
@@ -106,13 +112,13 @@ Examples can be found in the `examples` directory.
 - Other
   - [x] Documentation
   - [x] Custom random weight initialization
+  - [x] Custom tensor/matrix types
   - [ ] Custom icon/image for documentation
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading
   - [ ] Logging
   - [ ] Data from file
-  - [ ] Custom tensor/matrix types
   - [ ] Plotting
 
 ---

@@ -97,24 +97,24 @@ impl Dense {
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
         let x = x.get_flat();
 
-        let pre: Vec<f32> = self.weights.iter().map(|w| dot(&w, &x)).collect();
-        let mut post: Vec<f32> = match &self.bias {
-            Some(bias) => add(&self.activation.forward(&pre), bias),
+        let pre = tensor::Tensor::from_single(
+            self.weights.iter().map(|w| dot(&w, &x)).collect()
+        );
+        let mut post = match &self.bias {
+            Some(bias) => self.activation.forward(&pre).add(
+                &tensor::Tensor::from_single(bias.clone())
+            ),
             None => self.activation.forward(&pre),
         };
 
         // Apply dropout if the network is training.
         if self.training {
-            if let Some(droput) = self.dropout {
-                let mut generator = random::Generator::create(12345);
-                let mask: Vec<f32> = (0..post.len())
-                    .map(|_| if generator.generate(0.0, 1.0) < droput { 0.0 } else { 1.0 })
-                    .collect();
-                mul_inplace(&mut post, &mask);
+            if let Some(dropout) = self.dropout {
+                post.dropout(dropout);
             }
         }
 
-        (tensor::Tensor::from(vec![vec![pre]]), tensor::Tensor::from(vec![vec![post]]))
+        (pre, post)
     }
 
     /// Applies the backward pass of the layer to the gradient vector.
@@ -129,27 +129,30 @@ impl Dense {
     ///
     /// The weight gradient, bias gradient, and input gradient vectors of the layer.
     pub fn backward(
-        &self, gradient: &Vec<f32>, input: &Vec<f32>, output: &Vec<f32>
-    ) -> (Vec<Vec<f32>>, Option<Vec<f32>>, Vec<f32>) {
-        let derivative: Vec<f32> = self.activation.backward(output);
-        let delta: Vec<f32> = mul(gradient, &derivative);
+        &self, mut gradient: tensor::Tensor, input: &tensor::Tensor, output: &tensor::Tensor
+    ) -> (tensor::Tensor, Option<tensor::Tensor>) {
+        let derivative: Vec<f32> = self.activation.backward(&output).get_flat();
+        let delta: Vec<f32> = mul(&gradient.get_flat(), &derivative);
 
         let weight_gradient: Vec<Vec<f32>> = delta
-            .iter().map(|d: &f32| input
+            .iter().map(|d: &f32| input.get_flat()
             .iter().map(|i: &f32| i * d)
             .collect())
             .collect();
-        let bias_gradient: Option<Vec<f32>> = match self.bias {
-            Some(_) => Some(delta.clone()),
+        let bias_gradient: Option<tensor::Tensor> = match self.bias {
+            Some(_) => Some(tensor::Tensor::from_single(delta.clone())),
             None => None,
         };
-        let input_gradient: Vec<f32> = (0..input.len())
+        let input_gradient: Vec<f32> = (0..input.get_flat().len())
             .map(|i: usize| delta
                 .iter().zip(self.weights.iter())
                 .map(|(d, w)| d * w[i])
                 .sum::<f32>())
             .collect();
 
-        (weight_gradient, bias_gradient, input_gradient)
+        gradient.data = tensor::Data::Tensor(vec![vec![input_gradient.clone()]]);
+
+        (tensor::Tensor::from(vec![weight_gradient]),
+         bias_gradient)
     }
 }

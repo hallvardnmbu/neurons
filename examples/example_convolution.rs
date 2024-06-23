@@ -17,8 +17,6 @@ limitations under the License.
 use neurons::tensor;
 use neurons::feedforward;
 use neurons::activation;
-use neurons::objective;
-use neurons::optimizer;
 
 fn main() {
     let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 5, 5));

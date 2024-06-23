@@ -166,6 +166,14 @@ impl Tensor {
         }
     }
 
+    pub fn from_single(data: Vec<f32>) -> Self {
+        let shape = Shape::Dense(data.len());
+        Tensor {
+            shape,
+            data: Data::Vector(data),
+        }
+    }
+
     /// Flatten the Tensor into a Tensor.
     ///
     /// # Returns
@@ -226,7 +234,7 @@ impl Tensor {
     pub fn reshape(&self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
             (Shape::Dense(_), Shape::Dense(_)) => {
-                panic!("Cannot reshape a dense tensor into another dense tensor");
+                self.clone()
             },
             (Shape::Convolution(channels, rows, columns),
                 Shape::Convolution(new_channels, new_rows, new_columns)) => {
@@ -277,7 +285,80 @@ impl Tensor {
 
                 self.flatten()
             },
-            _ => panic!("Invalid reshape"),
         }
+    }
+
+    pub fn add(&self, other: &Tensor) -> Self {
+        match (&self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                assert_eq!(data1.len(), data2.len(), "Add requires the same number of elements");
+
+                let data = data1.iter().zip(data2.iter()).map(|(a, b)| a + b).collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Vector(data),
+                }
+            },
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                assert_eq!(data1.len(), data2.len(), "Add requires the same number of channels");
+                assert_eq!(data1[0].len(), data2[0].len(), "Add requires the same number of rows");
+                assert_eq!(data1[0][0].len(), data2[0][0].len(), "Add requires the same number of columns");
+
+                let data = data1.iter().zip(data2.iter()).map(|(c1, c2)| {
+                    c1.iter().zip(c2.iter()).map(|(r1, r2)| {
+                        r1.iter().zip(r2.iter()).map(|(a, b)| a + b).collect()
+                    }).collect()
+                }).collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Tensor(data),
+                }
+            },
+            _ => panic!("Invalid add"),
+        }
+    }
+
+    pub fn dropout(&mut self, dropout: f32) {
+        let mut generator = random::Generator::create(12345);
+        match &mut self.data {
+            Data::Vector(data) => {
+                for x in data.iter_mut() {
+                    if generator.generate(0.0, 1.0) < dropout {
+                        *x = 0.0;
+                    }
+                }
+            },
+            Data::Tensor(data) => {
+                for c in data.iter_mut() {
+                    for r in c.iter_mut() {
+                        for x in r.iter_mut() {
+                            if generator.generate(0.0, 1.0) < dropout {
+                                *x = 0.0;
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn clamp(mut self, min: f32, max: f32) -> Self {
+        match self.data {
+            Data::Vector(ref mut data) => {
+                for x in data.iter_mut() {
+                    *x = x.clamp(min, max);
+                }
+            },
+            Data::Tensor(ref mut data) => {
+                for c in data.iter_mut() {
+                    for r in c.iter_mut() {
+                        for x in r.iter_mut() {
+                            *x = x.clamp(min, max);
+                        }
+                    }
+                }
+            },
+        }
+        self
     }
 }
