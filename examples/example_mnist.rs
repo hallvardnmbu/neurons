@@ -98,7 +98,7 @@ fn main() {
         )
     );
     network.set_objective(
-        objective::Objective::AE, // Objective function
+        objective::Objective::AE,           // Objective function
         Some((-1f32, 1f32))                 // Gradient clipping
     );
 

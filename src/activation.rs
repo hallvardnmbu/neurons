@@ -142,7 +142,6 @@ impl ReLU {
     ///
     /// * A vector of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-
         let data = match &input.data {
             tensor::Data::Vector(vector) => {
                 tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())

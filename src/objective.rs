@@ -228,23 +228,49 @@ impl MAE {
         let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).abs())
             .sum::<f32>() / target.get_flat().len() as f32;
-        let gradient: Vec<f32> = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)|
-                if actual == predicted {
-                    0.0
-                } else if actual > predicted {
-                    -1.0
-                } else {
-                    1.0
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            if actual == predicted {
+                                gradient.push(0.0);
+                            } else if actual > predicted {
+                                gradient.push(-1.0);
+                            } else {
+                                gradient.push(1.0);
+                            }
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
                 }
-            ).collect();
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    if actual == predicted {
+                        gradients.push(0.0);
+                    } else if actual > predicted {
+                        gradients.push(-1.0);
+                    } else {
+                        gradients.push(1.0);
+                    }
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }
@@ -277,19 +303,42 @@ impl MSE {
     ///
     /// A tuple containing the loss and gradient for the MSE objective function.
     pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+        let length: f32 = target.get_flat().len() as f32;
+
         let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)| (actual - predicted).powi(2) / target.get_flat().len() as f32)
+            .map(|(actual, predicted)| (actual - predicted).powi(2) / length)
             .sum::<f32>();
-        let gradient: Vec<f32> = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)| -2.0 * (actual - predicted) / target.get_flat().len() as f32)
-            .collect();
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            gradient.push(-2.0 * (actual - predicted) / length);
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
+                }
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    gradients.push(-2.0 * (actual - predicted) / length)
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }
@@ -322,25 +371,52 @@ impl RMSE {
     ///
     /// A tuple containing the loss and gradient for the RMSE objective function.
     pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+        let length: f32 = target.get_flat().len() as f32;
+
         let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).powi(2))
-            .sum::<f32>().sqrt() / target.get_flat().len() as f32;
-        let gradient: Vec<f32> = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)|
-                if actual == predicted {
-                    0.0
-                } else {
-                    -(actual - predicted) /
-                        ((actual - predicted).powi(2).sqrt() * target.get_flat().len() as f32)
+            .sum::<f32>().sqrt() / length;
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            if actual == predicted {
+                                gradient.push(0.0);
+                            } else {
+                                gradient.push(-(actual - predicted) /
+                                    ((actual - predicted).powi(2).sqrt() * length));
+                            }
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
                 }
-            ).collect();
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    if actual == predicted {
+                        gradients.push(0.0);
+                    } else {
+                        gradients.push(-(actual - predicted) /
+                            ((actual - predicted).powi(2).sqrt() * length));
+                    }
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }
@@ -379,17 +455,37 @@ impl CrossEntropy {
                 let predicted = predicted.clamp(eps, 1.0 - eps);
                 actual * predicted.ln()
             }).sum::<f32>();
-        let gradient: Vec<f32> = prediction.get_flat().iter().zip(target.get_flat().iter())
-            .map(|(predicted, actual)|
-                predicted - actual
-            ).collect();
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            gradient.push(predicted - actual);
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
+                }
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    gradients.push(predicted - actual)
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }
@@ -428,18 +524,39 @@ impl BinaryCrossEntropy {
                 let predicted = predicted.clamp(eps, 1.0 - eps);
                 actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
             }).sum::<f32>();
-        let gradient: Vec<f32> = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)| {
-                let predicted = predicted.clamp(eps, 1.0 - eps);
-                (predicted - actual) / (predicted * (1.0 - predicted))
-            }).collect();
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            let predicted = predicted.clamp(eps, 1.0 - eps);
+                            gradient.push((predicted - actual) / (predicted * (1.0 - predicted)));
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
+                }
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    let predicted = predicted.clamp(eps, 1.0 - eps);
+                    gradients.push((predicted - actual) / (predicted * (1.0 - predicted)));
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }
@@ -477,17 +594,37 @@ impl KLDivergence {
             .map(|(actual, predicted)| {
                 actual * (actual / predicted.clamp(eps, 1.0 - eps)).ln()
             }).sum::<f32>();
-        let gradient: Vec<f32> = prediction.get_flat().iter().zip(target.get_flat().iter())
-            .map(|(predicted, actual)|
-                -actual / predicted.clamp(eps, 1.0 - eps)
-            ).collect();
+        let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
+            (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
+                let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
+                for (_trg, _prd) in trg.iter().zip(prd.iter()) {
+                    let mut _gradients: Vec<Vec<f32>> = vec![];
+                    for (t, p) in _trg.iter().zip(_prd.iter()) {
+                        let mut gradient: Vec<f32> = vec![];
+                        for (actual, predicted) in t.iter().zip(p.iter()) {
+                            gradient.push(-actual / predicted.clamp(eps, 1.0 - eps));
+                        }
+                        _gradients.push(gradient);
+                    }
+                    gradients.push(_gradients);
+                }
+                tensor::Tensor::from(gradients)
+            },
+            (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
+                let mut gradients: Vec<f32> = vec![];
+                for (actual, predicted) in trg.iter().zip(prd.iter()) {
+                    gradients.push(-actual / predicted.clamp(eps, 1.0 - eps));
+                }
+                tensor::Tensor::from_single(gradients)
+            },
+            _ => panic!("Inconsistent data types"),
+        };
 
         match self.clamp {
             Some((min, max)) => {
-                (loss,
-                 tensor::Tensor::from_single(gradient.iter().map(|g| g.clamp(min, max)).collect()))
+                (loss, gradient.clamp(min, max))
             },
-            None => (loss, tensor::Tensor::from_single(gradient))
+            None => (loss, gradient)
         }
     }
 }

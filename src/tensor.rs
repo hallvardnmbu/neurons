@@ -215,10 +215,10 @@ impl Tensor {
     /// # Returns
     ///
     /// The data of the Tensor.
-    pub fn get_data(&self) -> Vec<Vec<Vec<f32>>> {
+    pub fn get_data(&self) -> &Vec<Vec<Vec<f32>>> {
         match &self.data {
-            Data::Vector(data) => vec![vec![data.clone()]],
-            Data::Tensor(data) => data.clone(),
+            Data::Vector(data) => unimplemented!("H"),//vec![vec![data]],
+            Data::Tensor(data) => data,
         }
     }
 
