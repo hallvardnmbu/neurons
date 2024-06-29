@@ -85,15 +85,15 @@ impl Dense {
         }
     }
 
-    /// Applies the forward pass of the layer to the input tensor.
+    /// Applies the forward pass of the layer to the input Tensor.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input tensor to the layer.
+    /// * `x` - The input Tensor to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation tensors of the layer.
+    /// The pre-activation and post-activation Tensors of the layer.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
         let x = x.get_flat();
 
@@ -127,10 +127,10 @@ impl Dense {
     ///
     /// # Returns
     ///
-    /// The weight gradient, bias gradient, and input gradient vectors of the layer.
+    /// The weight gradient and the bias gradient of the layer.
     pub fn backward(
         &self, mut gradient: tensor::Tensor, input: &tensor::Tensor, output: &tensor::Tensor
-    ) -> (tensor::Tensor, Option<tensor::Tensor>) {
+    ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         let derivative: Vec<f32> = self.activation.backward(&output).get_flat();
         let delta: Vec<f32> = mul(&gradient.get_flat(), &derivative);
 
@@ -150,9 +150,11 @@ impl Dense {
                 .sum::<f32>())
             .collect();
 
-        gradient.data = tensor::Data::Tensor(vec![vec![input_gradient.clone()]]);
+        // gradient.data = tensor::Data::Vector(input_gradient.clone());
+        gradient = tensor::Tensor::from_single(input_gradient);
 
-        (tensor::Tensor::from(vec![weight_gradient]),
+        (gradient,
+         tensor::Tensor::from(vec![weight_gradient]),
          bias_gradient)
     }
 }

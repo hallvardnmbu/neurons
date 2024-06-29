@@ -30,7 +30,7 @@ pub struct Convolution {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
 
-    pub(crate) kernels: Vec<Vec<Vec<f32>>>,
+    pub kernels: Vec<tensor::Tensor>,
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
 
@@ -44,9 +44,9 @@ pub struct Convolution {
 
 impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Convolution{}({} -> {}, kernel: {}x{}x{}, stride: {:?}, padding: {:?}, bias: {})",
+        write!(f, "Convolution{}({} -> {}, kernel: {}x({}), stride: {:?}, padding: {:?}, bias: {})",
                self.activation, self.inputs, self.outputs,
-               self.kernels.len(), self.kernels[0].len(), self.kernels[0][0].len(),
+               self.kernels.len(), self.kernels[0].shape,
                self.stride, self.padding, self.bias.is_some())
     }
 }
@@ -79,6 +79,7 @@ impl Convolution {
                 &(1, root, root)
             },
             tensor::Shape::Convolution(ch, he, wi) => &(*ch, *he, *wi),
+            _ => unimplemented!("Expected a dense or convolutional input shape.")
         };
 
         let height = (input.1 + 2 * padding.0 - kernel.0) / stride.0 + 1;
@@ -120,13 +121,23 @@ impl Convolution {
                 &input, &channels, &kernel, &stride, &padding
             ),
 
-            kernels: (0..channels)
-                .map(|_| (0..kernel.0)
-                    .map(|_| (0..kernel.1)
-                        .map(|_| generator.generate(-1.0, 1.0))
+            kernels: {
+                let in_channels = match input {
+                    tensor::Shape::Dense(size) => size,
+                    tensor::Shape::Convolution(ch, _, _) => ch,
+                    _ => unimplemented!("Expected a dense or convolutional input shape.")
+                };
+                (0..channels).map(|_|
+                tensor::Tensor::from(
+                    (0..in_channels)
+                        .map(|_| (0..kernel.0)
+                            .map(|_| (0..kernel.1)
+                                .map(|_| generator.generate(-1.0, 1.0))
+                                .collect())
+                            .collect())
                         .collect())
-                    .collect())
-                .collect(),
+                ).collect()
+            },
             bias: match bias {
                 true => Some(
                     (0..channels)
@@ -143,73 +154,85 @@ impl Convolution {
         }
     }
 
-    /// Applies the forward pass (convolution) to the input tensor.
+    /// Applies the forward pass (convolution) to the input Tensor.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input tensor to the layer.
+    /// * `x` - The input Tensor to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation tensors of the layer.
+    /// The pre-activation and post-activation Tensors of the layer.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
-        let (mut x, (mut channels, mut rows, mut columns)) = match x.shape {
-            tensor::Shape::Dense(size) => {
-                let root = (size as f32).sqrt() as usize;
-                (x.reshape(tensor::Shape::Convolution(1, root, root)).get_data(),  (1, root, root))
+
+        // Extracting the input data and dimensions.
+        let (mut x, ic, ih, iw) = match &x.data {
+            tensor::Data::Vector(vector) => {
+                let root = (vector.len() as f32).sqrt() as usize;
+                (vec![vector.chunks(root).map(|v| v.to_vec()).collect()], 1, root, root)
             },
-            tensor::Shape::Convolution(ch, he, wi) => {
-                (x.get_data(), (ch, he, wi))
+            tensor::Data::Tensor(tensor) => {
+                (tensor.clone(), tensor.len(), tensor[0].len(), tensor[0][0].len())
             },
+            _ => panic!("Expected `Vector` or `Tensor` input data.")
         };
 
-        // Padding.
-        if self.padding.0 > 0 || self.padding.1 > 0 {
-            let mut padded: Vec<Vec<Vec<f32>>> = vec![
-                vec![vec![0.0; columns + 2 * self.padding.1]; rows + 2 * self.padding.0]; channels
-            ];
-
-            for i in 0..channels {
-                for j in 0..rows {
-                    for k in 0..columns {
-                        padded[i][j + self.padding.0][k + self.padding.1] = x[i][j][k];
-                    }
+        // Padding the input wrt. `self.padding`.
+        let ph = ih + 2 * self.padding.0;
+        let pw = iw + 2 * self.padding.1;
+        let mut padded = vec![vec![vec![0.0; pw]; ph]; ic];
+        for c in 0..ic {
+            for h in 0..ih {
+                for w in 0..iw {
+                    padded[c][h + self.padding.0][w + self.padding.1] = x[c][h][w];
                 }
             }
-
-            rows += 2 * self.padding.0;
-            columns += 2 * self.padding.1;
-            x = padded;
         }
+        x = padded;
 
-        let height = (rows - self.kernels[0].len()) / self.stride.0 + 1;
-        let width = (columns - self.kernels[0][0].len()) / self.stride.1 + 1;
-        let mut output: Vec<Vec<Vec<f32>>> = vec![vec![vec![0.0; width]; height]; self.kernels.len()];
+        // Extracting the `self.kernels` dimensions.
+        let oc = self.kernels.len();
+        let (kc, kh, kw) = match self.kernels[0].shape {
+            tensor::Shape::Convolution(c, h, w) => (c, h, w),
+            _ => panic!("The kernel should be a `Convolution`-shaped Tensor."),
+        };
+        assert_eq!(ic, kc, "The number of input channels should match the kernel channels.");
 
-        for (filter, kernel) in self.kernels.iter().enumerate() {
-            for i in 0..height {
-                for j in 0..width {
+        // Defining the output dimensions and Tensor.
+        let oh = (ph - kh) / self.stride.0 + 1;
+        let ow = (pw - kw) / self.stride.1 + 1;
+        let mut y = vec![vec![vec![0.0; ow]; oh]; oc];
+
+        // Convolving the input with the kernels.
+        for filter in 0..oc {
+            let kernel = match &self.kernels[filter].data {
+                tensor::Data::Tensor(kernel) => kernel,
+                _ => panic!("The kernels should be `Tensor`s."),
+            };
+
+            for height in 0..oh {
+                for width in 0..ow {
 
                     let mut sum = 0.0;
-                    for c in 0..channels {
-                        for k in 0..kernel.len() {
-                            for l in 0..kernel[0].len() {
-                                sum += kernel[k][l]
-                                    * x[c][i * self.stride.0 + k][j * self.stride.1 + l];
+                    for c in 0..ic {
+                        for kernel_h in 0..kh {
+                            for kernel_w in 0..kw {
+                                let h = height * self.stride.0 + kernel_h;
+                                let w = width * self.stride.1 + kernel_w;
+                                sum += kernel[c][kernel_h][kernel_w] * x[c][h][w];
                             }
                         }
                     }
-                    output[filter][i][j] = sum;
+                    y[filter][height][width] = sum;
 
                     if let Some(bias) = &self.bias {
-                        output[filter][i][j] += bias[filter];
+                        y[filter][height][width] += bias[filter];
                     }
-
                 }
             }
         }
 
-        let pre = tensor::Tensor::from(output);
+        let pre = tensor::Tensor::from(y);
         let mut post = self.activation.forward(&pre);
 
         // Apply dropout if the network is training.
@@ -236,111 +259,113 @@ impl Convolution {
     ///
     /// # Returns
     ///
-    /// The weight gradient, bias gradient, and input gradient vectors of the layer.
-    // pub fn backward(
-    //     &self, gradient: &mut tensor::Tensor, input: &tensor::Tensor, output: &tensor::Tensor
-    // ) -> (tensor::Tensor, Option<tensor::Tensor>) {
-    //
-    //     // let gradient_data = gradient.get_data();
-    //     // let input_data = input.get_data();
-    //
-    //     let derivative: Vec<f32> = self.activation.backward(output);
-    //
-    //     let mut kernel_gradient: Vec<Vec<Vec<f32>>> = tensor::Tensor::zeros(tensor::Shape::Convolution(
-    //         self.kernels.len(), self.kernels[0].len(), self.kernels[0][0].len()
-    //     )).get_data();
-    //     let mut bias_gradient: Option<Vec<f32>> = match &self.bias {
-    //         Some(_) => Some(vec![0.0; self.kernels.len()]),
-    //         None => None,
-    //     };
-    //
-    //     let (chi, hei, wii) = match input.shape {
-    //         tensor::Shape::Dense(size) => {
-    //             let root = (size as f32).sqrt() as usize;
-    //             (1, root, root)
-    //         },
-    //         tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
-    //     };
-    //     let (cho, heo, wio) = match output.shape {
-    //         tensor::Shape::Dense(size) => {
-    //             let root = (size as f32).sqrt() as usize;
-    //             (1, root, root)
-    //         },
-    //         tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
-    //     };
-    //
-    //     // for l in 0..self.kernels.len() {
-    //     //     for i in 0..input_data.len() {
-    //     //         for j in 0..(input_data[0].len() - self.kernels[0].len() + 1) {
-    //     //             for k in 0..(input_data[0][0].len() - self.kernels[0][0].len() + 1) {
-    //     //                 for m in 0..self.kernels[0].len() {
-    //     //                     for n in 0..self.kernels[0][0].len() {
-    //     //                         kernel_gradient[l][m][n] += gradient_data[i][j][k] * input_data[i][j + m][k + n];
-    //     //                         input_gradient[i][j + m][k + n] += gradient_data[i][j][k] * self.kernels[l][m][n];
-    //     //                     }
-    //     //                 }
-    //     //             }
-    //     //         }
-    //     //     }
-    //     // }
-    //
-    //     let bias_gradient = if let Some(_) = &self.bias {
-    //         // Some(tensor::Tensor::from(gradient_data.iter().map(|plane| plane.iter().map(|row| row.iter().sum::<f32>()).sum::<f32>()).collect::<Vec<f32>>()))
-    //         unimplemented!("Bias gradient for convolutional layers.")
-    //     } else {
-    //         None
-    //     };
-    //
-    //     gradient.data = tensor::Data::Tensor(input_gradient);
-    //
-    //     (tensor::Tensor::from(kernel_gradient), bias_gradient)
-    // }
+    /// The weight gradient and the bias gradient of the layer.
     pub fn backward(
         &self, mut gradient: tensor::Tensor, input: &tensor::Tensor, output: &tensor::Tensor
-    ) -> (tensor::Tensor, Option<tensor::Tensor>) {
+    ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
 
         println!("G: {}", gradient.shape);
         println!("I: {}", input.shape);
 
-        let gradient_data = gradient.get_data();
-        let input = input.get_data();
+        let gradient_data = match &gradient.data {
+            tensor::Data::Vector(vector) => {
+                let (channels, rows, columns) = match &self.outputs {
+                    tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
+                    _ => panic!("Expected a convolutional output shape."),
+                };
+                let mut iter = vector.into_iter();
+                (0..*channels)
+                    .map(|_| (0..*rows)
+                        .map(|_| (0..*columns)
+                            .map(|_| *iter.next().unwrap())
+                            .collect())
+                        .collect())
+                    .collect()
+            },
+            tensor::Data::Tensor(data) => data.clone(),
+            _ => panic!("Invalid data type"),
+        };
+        let input_data = match &input.data {
+            tensor::Data::Tensor(data) => data,
+            _ => panic!("Gradient data is not a tensor."),
+        };
 
-        let mut kernel_gradient: Vec<Vec<Vec<f32>>> = vec![
-            vec![vec![0.0; self.kernels[0][0].len()]; self.kernels[0].len()]; self.kernels.len()
-        ];
-        let mut input_gradient: Vec<Vec<Vec<f32>>> = vec![
-            vec![vec![0.0; input[0][0].len()]; input[0].len()]; input.len()
-        ];
+        let (in_channels, in_height, in_width) = (input_data.len(), input_data[0].len(), input_data[0][0].len());
+        let (out_channels, out_height, out_width) = (gradient_data.len(), gradient_data[0].len(), gradient_data[0][0].len());
 
-        println!("{:?}", kernel_gradient);
-        // println!("{:?}", input_gradient);
-        println!("{:?}", self.kernels);
+        let (filters, height, width) = match self.kernels[0].shape {
+            tensor::Shape::Convolution(c, h, w) => (c, h, w),
+            _ => panic!("Expected a convolutional kernel shape."),
+        };
 
-        for i in 0..input.len() {
-            for j in 0..input[0].len() {
-                for k in 0..input[0][0].len() {
+        // Initialize gradients
+        let mut kernel_gradient = vec![vec![vec![vec![0.0; width]; height]; in_channels]; filters];
+        let mut input_gradient = vec![vec![vec![0.0; in_width]; in_height]; in_channels];
 
-                    for l in 0..self.kernels.len() {
-                        for m in 0..self.kernels[0].len() {
-                            for n in 0..self.kernels[0][0].len() {
-                                kernel_gradient[l][m][n] += gradient_data[l][j][k] * input[i][j + m][k + n];
-                                input_gradient[i][j + m][k + n] += gradient_data[l][j][k] * self.kernels[l][m][n];
-                            }
-                        }
-                    }
+        // Padding for full convolution
+        let pad_height = height - 1;
+        let pad_width = width - 1;
+        let mut padded_gradient = vec![vec![vec![0.0; out_width + 2 * pad_width]; out_height + 2 * pad_height]; out_channels];
 
+        // Fill padded gradient
+        for c in 0..out_channels {
+            for h in 0..out_height {
+                for w in 0..out_width {
+                    padded_gradient[c][h + pad_height][w + pad_width] = gradient_data[c][h][w];
                 }
             }
         }
 
-        let mut bias_gradient: Option<tensor::Tensor> = match &self.bias {
-            Some(_) => Some(tensor::Tensor::from(kernel_gradient.clone())),
-            None => None,
-        };
+        // Calculate kernel gradients and input gradients
+        for oc in 0..out_channels {
+            for ic in 0..in_channels {
+                for kh in 0..height {
+                    for kw in 0..width {
+                        for h in 0..out_height {
+                            for w in 0..out_width {
+                                kernel_gradient[oc][ic][kh][kw] += input_data[ic][h + kh][w + kw] * gradient_data[oc][h][w];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for ic in 0..in_channels {
+            for h in 0..in_height {
+                for w in 0..in_width {
+                    for kernel in self.kernels.iter() {
+                        let data = match &kernel.data {
+                            tensor::Data::Tensor(data) => data,
+                            _ => panic!("Expected a tensor data."),
+                        };
+                        for fi in 0..filters {
+                            for kh in 0..height {
+                                for kw in 0..width {
+                                    input_gradient[ic][h][w] += data[fi][kh][kw] * padded_gradient[ic][h + kh][w + kw];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Calculate bias gradient if bias exists
+        let bias_gradient = self.bias.as_ref().map(|_| {
+            let mut bias_grad = vec![0.0; out_channels];
+            for oc in 0..out_channels {
+                bias_grad[oc] = gradient_data[oc].iter().flatten().sum();
+            }
+            tensor::Tensor::from_single(bias_grad)
+        });
 
         gradient.data = tensor::Data::Tensor(input_gradient);
 
-        (tensor::Tensor::from(kernel_gradient),
-         bias_gradient)
+        (
+            gradient,
+            tensor::Tensor::gradient(kernel_gradient),
+            bias_gradient
+        )
     }
 }

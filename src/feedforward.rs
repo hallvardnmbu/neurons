@@ -363,7 +363,7 @@ impl Feedforward {
                 .zip(targets.iter()) {
 
                 let (unactivated, activated) = self.forward(input);
-                let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
+                let (loss, mut gradient) = self.loss(&activated.last().unwrap(), target);
                 _losses += loss;
 
                 // TODO: Backward pass on batch instead of single input.
@@ -602,7 +602,7 @@ impl Feedforward {
     fn backward(
         &mut self,
         stepnr: i32,
-        gradient: tensor::Tensor,
+        mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>
     ) {
@@ -610,14 +610,14 @@ impl Feedforward {
             let input: &tensor::Tensor = &activated[activated.len() - i - 2];
             let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
 
-            println!("Iteration {} {} -> {}", i, input.shape, output.shape);
+            // println!("Iteration {} {} -> {}", i, input.shape, output.shape);
+            // println!("{}", layer);
 
-            println!("{}", layer);
-
-            let (mut weight_gradient, bias_gradient) = match layer {
-                Layer::Dense(layer) => layer.backward(gradient.clone(), input, output),
-                Layer::Convolution(layer) => layer.backward(gradient.clone(), input, output),
+            let (_gradient, mut weight_gradient, bias_gradient) = match layer {
+                Layer::Dense(layer) => layer.backward(gradient, input, output),
+                Layer::Convolution(layer) => layer.backward(gradient, input, output),
             };
+            gradient = _gradient;
 
             match layer {
                 Layer::Dense(layer) => {
@@ -625,7 +625,10 @@ impl Feedforward {
                     // Weight update.
                     for (j, (weights, gradients)) in layer
                         .weights.iter_mut()
-                        .zip(weight_gradient.get_data()[0].iter_mut())
+                        .zip(match weight_gradient.data {
+                            tensor::Data::Tensor(data) => { data },
+                            _ => panic!("Expected a tensor, but got one-dimensional data."),
+                        }[0].iter_mut())
                         .enumerate() {
                         self.optimizer.update(i, j, stepnr, weights, gradients);
                     }

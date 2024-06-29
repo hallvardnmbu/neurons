@@ -63,8 +63,8 @@ fn load_labels(file_path: &str) -> Result<Vec<tensor::Tensor>> {
 }
 
 fn main() {
-    let x_train = load_images("./datasets/mnist/t10k-images.idx3-ubyte").unwrap();
-    let y_train = load_labels("./datasets/mnist/t10k-labels.idx1-ubyte").unwrap();
+    // let x_train = load_images("./datasets/mnist/t10k-images.idx3-ubyte").unwrap();
+    // let y_train = load_labels("./datasets/mnist/t10k-labels.idx1-ubyte").unwrap();
     let x_test = load_images("./datasets/mnist/train-images.idx3-ubyte").unwrap();
     let y_test = load_labels("./datasets/mnist/train-labels.idx1-ubyte").unwrap();
 
@@ -78,7 +78,7 @@ fn main() {
 
     println!("{}", network);
 
-    plot::heatmap(&x_train[5], &y_train[5].data.to_string(), "input.png");
+    // plot::heatmap(&x_train[5], &y_train[5].data.to_string(), "input.png");
 
     network.set_optimizer(
         optimizer::Optimizer::RMSprop(
@@ -98,18 +98,18 @@ fn main() {
         )
     );
     network.set_objective(
-        objective::Objective::AE,           // Objective function
+        objective::Objective::CrossEntropy, // Objective function
         Some((-1f32, 1f32))                 // Gradient clipping
     );
 
     // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, 3);
+    let _epoch_loss = network.learn(&x_test, &y_test, 3);
 
-    // Validate the network
-    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
-    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
-
-    // Use the network
-    let prediction = network.predict(x_test.get(0).unwrap());
-    println!("2. Input: {}, Target: {}, Output: {}", x_test[0].data, y_test[0].data, prediction);
+    // // Validate the network
+    // let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
+    // println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
+    //
+    // // Use the network
+    // let prediction = network.predict(x_test.get(0).unwrap());
+    // println!("2. Input: {}, Target: {}, Output: {}", x_test[0].data, y_test[0].data, prediction);
 }

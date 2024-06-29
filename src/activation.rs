@@ -124,6 +124,7 @@ impl ReLU {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -155,6 +156,7 @@ impl ReLU {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -198,6 +200,7 @@ impl LeakyReLU {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -229,6 +232,7 @@ impl LeakyReLU {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -266,6 +270,7 @@ impl Sigmoid {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -303,6 +308,7 @@ impl Sigmoid {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -403,6 +409,7 @@ impl Tanh {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }
@@ -434,6 +441,7 @@ impl Tanh {
                         .collect())
                     .collect())
             },
+            _ => panic!("Invalid data type"),
         };
         tensor::Tensor { shape: input.shape.clone(), data }
     }

@@ -4,6 +4,7 @@ use crate::random;
 pub enum Shape {
     Dense(usize),
     Convolution(usize, usize, usize),
+    Gradient(usize, usize, usize, usize),
 }
 
 impl std::fmt::Display for Shape {
@@ -11,14 +12,39 @@ impl std::fmt::Display for Shape {
         match self {
             Shape::Dense(size) => write!(f, "{}", size),
             Shape::Convolution(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
+            Shape::Gradient(ch, fi, he, wi) => write!(f, "{}x{}x{}x{}", ch, fi, he, wi),
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Data {
     Vector(Vec<f32>),
-    Tensor(Vec<Vec<Vec<f32>>>)
+    Tensor(Vec<Vec<Vec<f32>>>),
+    Gradient(Vec<Vec<Vec<Vec<f32>>>>),
+}
+
+impl PartialEq for Data {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Data::Vector(a), Data::Vector(b)) => a == b,
+            (Data::Tensor(a), Data::Tensor(b)) => a == b,
+            (Data::Gradient(a), Data::Gradient(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Data {}
+
+#[macro_export]
+macro_rules! assert_eq_data {
+    ($left:expr, $right:expr) => ({
+        if $left != $right {
+            panic!("assertion failed: `left == right` \
+                    (left: `{:?}`, right: `{:?}`)", $left, $right);
+        }
+    });
 }
 
 impl std::fmt::Display for Data {
@@ -34,6 +60,20 @@ impl std::fmt::Display for Data {
                     for (j, r) in c.iter().enumerate() {
                         for x in r.iter() {
                             write!(f, "{:>8.4} ", x)?;
+                        }
+                        if j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                    }
+                    if i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                }
+            },
+            Data::Gradient(data) => {
+                for (i, c) in data.iter().enumerate() {
+                    for (j, h) in c.iter().enumerate() {
+                        for (k, w) in h.iter().enumerate() {
+                            for x in w.iter() {
+                                write!(f, "{:>8.4} ", x)?;
+                            }
+                            if k == h.len() - 1 && j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
                         }
                         if j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
                     }
@@ -61,15 +101,15 @@ impl std::fmt::Display for Tensor {
 
 impl Tensor {
 
-    /// Creates a new tensor with the given shape filled with zeros.
+    /// Creates a new Tensor with the given shape, filled with zeros.
     ///
     /// # Arguments
     ///
-    /// * `shape` - The shape of the tensor.
+    /// * `shape` - The shape of the Tensor.
     ///
     /// # Returns
     ///
-    /// A new tensor with the given shape filled with zeros.
+    /// A new Tensor with the given shape filled with zeros.
     pub fn zeros(shape: Shape) -> Self {
         match shape {
             Shape::Dense(size) => {
@@ -88,18 +128,30 @@ impl Tensor {
                         .collect()),
                 }
             },
+            Shape::Gradient(channels, filters, rows, columns) => {
+                Tensor {
+                    shape,
+                    data: Data::Gradient((0..channels)
+                        .map(|_| (0..filters)
+                            .map(|_| (0..rows)
+                                .map(|_| vec![0.0; columns])
+                                .collect())
+                            .collect())
+                        .collect()),
+                }
+            },
         }
     }
 
-    /// Creates a new tensor with the given shape filled with ones.
+    /// Creates a new Tensor with the given shape, filled with ones.
     ///
     /// # Arguments
     ///
-    /// * `shape` - The shape of the tensor.
+    /// * `shape` - The shape of the Tensor.
     ///
     /// # Returns
     ///
-    /// A new tensor with the given shape filled with ones.
+    /// A new Tensor with the given shape filled with ones.
     pub fn ones(shape: Shape) -> Self {
         match shape {
             Shape::Dense(size) => {
@@ -118,20 +170,32 @@ impl Tensor {
                         .collect()),
                 }
             },
+            Shape::Gradient(channels, filters, rows, columns) => {
+                Tensor {
+                    shape,
+                    data: Data::Gradient((0..channels)
+                        .map(|_| (0..filters)
+                            .map(|_| (0..rows)
+                                .map(|_| vec![1.0; columns])
+                                .collect())
+                            .collect())
+                        .collect()),
+                }
+            },
         }
     }
 
-    /// Creates a new tensor with the given shape filled with random values.
+    /// Creates a new Tensor with the given shape, filled with random values.
     ///
     /// # Arguments
     ///
-    /// * `shape` - The shape of the tensor.
+    /// * `shape` - The shape of the Tensor.
     /// * `min` - The minimum value of the random values.
     /// * `max` - The maximum value of the random values.
     ///
     /// # Returns
     ///
-    /// A new tensor with the given shape filled with random values.
+    /// A new Tensor with the given shape filled with random values.
     pub fn random(shape: Shape, min: f32, max: f32) -> Self {
         let mut generator = random::Generator::create(12345);
         match shape {
@@ -150,6 +214,20 @@ impl Tensor {
                         .map(|_| (0..rows)
                             .map(|_| (0..columns)
                                 .map(|_| generator.generate(min, max))
+                                .collect())
+                            .collect())
+                        .collect()),
+                }
+            },
+            Shape::Gradient(channels, filters, rows, columns) => {
+                Tensor {
+                    shape,
+                    data: Data::Gradient((0..channels)
+                        .map(|_| (0..filters)
+                            .map(|_| (0..rows)
+                                .map(|_| (0..columns)
+                                    .map(|_| generator.generate(min, max))
+                                    .collect())
                                 .collect())
                             .collect())
                         .collect()),
@@ -174,11 +252,19 @@ impl Tensor {
         }
     }
 
-    /// Flatten the Tensor into a Tensor.
+    pub fn gradient(data: Vec<Vec<Vec<Vec<f32>>>>) -> Self {
+        let shape = Shape::Gradient(data.len(), data[0].len(), data[0][0].len(), data[0][0][0].len());
+        Tensor {
+            shape,
+            data: Data::Gradient(data),
+        }
+    }
+
+    /// Flatten the Tensor's data. Returns a new Tensor with the updated shape and data.
     ///
     /// # Returns
     ///
-    /// A new tensor with the same data but in a vector format.
+    /// A new Tensor with the same data but in a vector format.
     pub fn flatten(&self) -> Self {
         let data: Vec<f32> = match &self.data {
             Data::Tensor(data) => data.iter().flat_map(|channel| {
@@ -187,6 +273,7 @@ impl Tensor {
                 })
             }).collect(),
             Data::Vector(data) => data.clone(),
+            _ => unimplemented!("Flatten not implemented for gradients"),
         };
         Tensor {
             shape: Shape::Dense(data.len()),
@@ -194,7 +281,7 @@ impl Tensor {
         }
     }
 
-    /// Flatten the Tensor into a vector.
+    /// Flatten the Tensor's data into a vector.
     ///
     /// # Returns
     ///
@@ -207,30 +294,26 @@ impl Tensor {
                 })
             }).collect(),
             Data::Vector(data) => data.clone(),
+            _ => unimplemented!("Flatten not implemented for gradients"),
         }
     }
 
-    /// Get the data of the Tensor.
-    ///
-    /// # Returns
-    ///
-    /// The data of the Tensor.
-    pub fn get_data(&self) -> &Vec<Vec<Vec<f32>>> {
+    pub fn as_tensor(&self) -> &Vec<Vec<Vec<f32>>> {
         match &self.data {
-            Data::Vector(data) => unimplemented!("H"),//vec![vec![data]],
-            Data::Tensor(data) => data,
+            Data::Tensor(tensor) => tensor,
+            _ => panic!("Expected Tensor data!")
         }
     }
 
-    /// Reshape the Tensor into a new shape.
+    /// Reshape a Tensor into the given shape.
     ///
     /// # Arguments
     ///
-    /// * `shape` - The new shape of the tensor.
+    /// * `shape` - The new shape of the Tensor.
     ///
     /// # Returns
     ///
-    /// A new tensor with the given shape.
+    /// A new Tensor with the given shape.
     pub fn reshape(&self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
             (Shape::Dense(_), Shape::Dense(_)) => {
@@ -285,6 +368,7 @@ impl Tensor {
 
                 self.flatten()
             },
+            _ => panic!("Invalid reshape"),
         }
     }
 
@@ -339,6 +423,7 @@ impl Tensor {
                     }
                 }
             },
+            _ => unimplemented!("Dropout not implemented for gradients")
         }
     }
 
@@ -354,6 +439,17 @@ impl Tensor {
                     for r in c.iter_mut() {
                         for x in r.iter_mut() {
                             *x = x.clamp(min, max);
+                        }
+                    }
+                }
+            },
+            Data::Gradient(ref mut data) => {
+                for c in data.iter_mut() {
+                    for f in c.iter_mut() {
+                        for r in f.iter_mut() {
+                            for x in r.iter_mut() {
+                                *x = x.clamp(min, max);
+                            }
                         }
                     }
                 }

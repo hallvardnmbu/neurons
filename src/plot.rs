@@ -29,7 +29,10 @@ pub fn heatmap(
     title: &str,
     path: &str
 ) {
-    let x = data.get_data();
+    let x = match data.data {
+        tensor::Data::Tensor(ref x) => x,
+        _ => panic!("Expected a tensor, but got one-dimensional data.")
+    };
     let data = x.get(0).unwrap();
 
     let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
@@ -46,7 +49,17 @@ pub fn heatmap(
 
     for (y, row) in data.iter().enumerate() {
         for (x, &value) in row.iter().enumerate() {
-            let color = RGBColor(value as u8, value as u8, value as u8);
+
+            let val: u8;
+            if value < 0.0 {
+                val = 0;
+            } else if value < 1.0 {
+                val = (value * 255.0) as u8;
+            } else {
+                val = value.clamp(0.0, 255.0) as u8;
+            }
+
+            let color = RGBColor(val, val, val);
             chart.draw_series(std::iter::once(Rectangle::new(
                 [(x, y), (x + 1, y + 1)],
                 color.filled(),

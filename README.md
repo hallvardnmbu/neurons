@@ -58,6 +58,8 @@ fn main() {
 
 Examples can be found in the `examples` directory.
 
+Tests can be found in the `tests` directory.
+
 ---
 
 ## Progress
