@@ -486,3 +486,120 @@ impl Linear {
         tensor::Tensor::ones(input.shape.clone())
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tensor::Tensor;
+    use approx::assert_relative_eq;
+
+    fn create_test_tensor() -> Tensor {
+        Tensor::from_single(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
+    }
+
+    #[test]
+    fn test_relu() {
+        let relu = Function::create(&Activation::ReLU);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = relu.forward(&input);
+        let expected = vec![0.0, 0.0, 0.0, 1.0, 2.0];
+        assert_eq!(output.get_flat(), expected);
+
+        // Test backward
+        let grad_output = relu.backward(&input);
+        let expected = vec![0.0, 0.0, 0.0, 1.0, 1.0];
+        assert_eq!(grad_output.get_flat(), expected);
+    }
+
+    #[test]
+    fn test_leaky_relu() {
+        let leaky_relu = Function::create(&Activation::LeakyReLU);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = leaky_relu.forward(&input);
+        let expected = vec![-0.02, -0.01, 0.0, 1.0, 2.0];
+        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+
+        // Test backward
+        let grad_output = leaky_relu.backward(&input);
+        let expected = vec![0.01, 0.01, 0.01, 1.0, 1.0];
+        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_sigmoid() {
+        let sigmoid = Function::create(&Activation::Sigmoid);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = sigmoid.forward(&input);
+        let expected = vec![0.11920292, 0.26894142, 0.5, 0.73105858, 0.88079708];
+        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+
+        // Test backward
+        let grad_output = sigmoid.backward(&input);
+        let expected = vec![0.10499359, 0.19661193, 0.25, 0.19661193, 0.10499359];
+        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_softmax() {
+        let softmax = Function::create(&Activation::Softmax);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = softmax.forward(&input);
+        let expected = vec![0.01165623, 0.03168492, 0.08612854, 0.23412166, 0.63640865];
+        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+
+        // Test backward
+        let grad_output = softmax.backward(&input);
+        let expected = vec![1.4051605, 1.4051604, 1.4051604, 1.4051604, 1.4051605];
+        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_tanh() {
+        let tanh = Function::create(&Activation::Tanh);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = tanh.forward(&input);
+        let expected = vec![-0.96402758, -0.76159416, 0.0, 0.76159416, 0.96402758];
+        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+
+        // Test backward
+        let grad_output = tanh.backward(&input);
+        let expected = vec![0.07065082, 0.41997434, 1.0, 0.41997434, 0.07065082];
+        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_linear() {
+        let linear = Function::create(&Activation::Linear);
+        let input = create_test_tensor();
+
+        // Test forward
+        let output = linear.forward(&input);
+        assert_eq!(output.get_flat(), input.get_flat());
+
+        // Test backward
+        let grad_output = linear.backward(&input);
+        let expected = vec![1.0, 1.0, 1.0, 1.0, 1.0];
+        assert_eq!(grad_output.get_flat(), expected);
+    }
+
+    #[test]
+    fn test_function_display() {
+        assert_eq!(format!("{}", Function::create(&Activation::ReLU)), "ReLU");
+        assert_eq!(format!("{}", Function::create(&Activation::LeakyReLU)), "LeakyReLU");
+        assert_eq!(format!("{}", Function::create(&Activation::Sigmoid)), "Sigmoid");
+        assert_eq!(format!("{}", Function::create(&Activation::Softmax)), "Softmax");
+        assert_eq!(format!("{}", Function::create(&Activation::Tanh)), "Tanh");
+        assert_eq!(format!("{}", Function::create(&Activation::Linear)), "Linear");
+    }
+}

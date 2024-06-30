@@ -628,3 +628,121 @@ impl KLDivergence {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tensor::Tensor;
+    use approx::assert_relative_eq;
+
+    fn create_test_tensors() -> (Tensor, Tensor) {
+        let prediction = Tensor::from_single(vec![0.1, 0.2, 0.3, 0.4]);
+        let target = Tensor::from_single(vec![0.0, 0.0, 1.0, 1.0]);
+        (prediction, target)
+    }
+
+    #[test]
+    fn test_ae() {
+        let ae = Function::create(Objective::AE, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = ae.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 1.6, epsilon = 1e-6);
+        assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
+    }
+
+    #[test]
+    fn test_mae() {
+        let mae = Function::create(Objective::MAE, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = mae.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 0.4, epsilon = 1e-6);
+        assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
+    }
+
+    #[test]
+    fn test_mse() {
+        let mse = Function::create(Objective::MSE, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = mse.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 0.225, epsilon = 1e-6);
+        let expected_gradient = vec![0.05, 0.1, -0.35, -0.3];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_rmse() {
+        let rmse = Function::create(Objective::RMSE, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = rmse.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 0.23717082, epsilon = 1e-6);
+        let expected_gradient = vec![0.25, 0.25, -0.25, -0.25];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_cross_entropy() {
+        let ce = Function::create(Objective::CrossEntropy, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = ce.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 2.1202636, epsilon = 1e-6);
+        let expected_gradient = vec![0.1, 0.2, -0.7, -0.6];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_binary_cross_entropy() {
+        let bce = Function::create(Objective::BinaryCrossEntropy, None);
+        let (prediction, target) = create_test_tensors();
+
+        let (loss, gradient) = bce.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 2.4487677, epsilon = 1e-6);
+        let expected_gradient = vec![1.1111111111, 1.25, -3.3333333333, -2.5];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_kl_divergence() {
+        let kld = Function::create(Objective::KLDivergence, None);
+        let prediction = Tensor::from_single(vec![1.0, 1.0, 1.0, 1.0]);
+        let target = Tensor::from_single(vec![1.0, 1.0, 1.1, 1.0]);
+
+        let (loss, gradient) = kld.loss(&prediction, &target);
+
+        assert_relative_eq!(loss, 0.10484119778, epsilon = 1e-6);
+        let expected_gradient = vec![-1.0, -1.0, -1.1, -1.0];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_gradient_clamping() {
+        let mse_clamped = Function::create(Objective::MSE, Some((-0.2, 0.2)));
+        let (prediction, target) = create_test_tensors();
+
+        let (_, gradient) = mse_clamped.loss(&prediction, &target);
+
+        let expected_gradient = vec![0.05, 0.1, -0.2, -0.2];
+        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_function_display() {
+        assert_eq!(format!("{}", Function::create(Objective::AE, None)), "AE(gradient_clamp=(-inf, inf))");
+        assert_eq!(format!("{}", Function::create(Objective::MAE, Some((-1.0, 1.0)))), "MAE(gradient_clamp=(-1.0, 1.0))");
+        assert_eq!(format!("{}", Function::create(Objective::MSE, None)), "MSE(gradient_clamp=(-inf, inf))");
+        assert_eq!(format!("{}", Function::create(Objective::RMSE, Some((-0.5, 0.5)))), "RMSE(gradient_clamp=(-0.5, 0.5))");
+        assert_eq!(format!("{}", Function::create(Objective::CrossEntropy, None)), "CrossEntropy(gradient_clamp=(-inf, inf))");
+        assert_eq!(format!("{}", Function::create(Objective::BinaryCrossEntropy, Some((-2.0, 2.0)))), "BinaryCrossEntropy(gradient_clamp=(-2.0, 2.0))");
+        assert_eq!(format!("{}", Function::create(Objective::KLDivergence, None)), "KLDivergence(gradient_clamp=(-inf, inf))");
+    }
+}

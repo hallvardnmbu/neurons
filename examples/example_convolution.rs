@@ -20,21 +20,21 @@ use neurons::activation;
 use neurons::plot;
 
 fn main() {
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 25, 25));
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 24, 24));
 
-    network.add_convolution(1, (1, 1), (1, 1), (1, 1),
+    network.add_convolution(1, (3, 3), (1, 1), (0, 0),
                             activation::Activation::ReLU, false, Some(0.1));
-    network.add_convolution(1, (2, 2), (1, 1), (1, 1),
+    network.add_convolution(1, (3, 3), (1, 1), (0, 0),
                             activation::Activation::ReLU, false, Some(0.1));
 
     println!("{}", network);
 
-    let x = tensor::Tensor::random(tensor::Shape::Convolution(1, 25, 25), 0.0, 1.0);
-    println!("x: {}", &x);
+    let x = tensor::Tensor::random(tensor::Shape::Tensor(1, 24, 24), 0.0, 1.0);
+    println!("x: {}", &x.shape);
 
     let (pre, post) = network.forward(&x);
-    println!("pre-activation: {}", &pre[pre.len() - 1]);
-    println!("post-activation: {}", &post[post.len() - 1]);
+    println!("pre-activation: {}", &pre[pre.len() - 1].shape);
+    println!("post-activation: {}", &post[post.len() - 1].shape);
 
     plot::heatmap(&x, "Input", "input.png");
     plot::heatmap(&pre[pre.len() - 1], "Pre-activation", "pre.png");

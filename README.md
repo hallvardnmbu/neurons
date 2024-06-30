@@ -58,8 +58,6 @@ fn main() {
 
 Examples can be found in the `examples` directory.
 
-Tests can be found in the `tests` directory.
-
 ---
 
 ## Progress
@@ -67,6 +65,14 @@ Tests can be found in the `tests` directory.
 - Layer types
   - [x] Dense
   - [ ] Convolutional
+    - [x] Forward pass
+      - [x] Padding
+      - [x] Stride
+      - [ ] Dilation
+    - [ ] Backward pass
+      - [ ] Padding
+      - [ ] Stride
+      - [ ] Dilation
   - [ ] Feedback
 
 - Activation functions
@@ -96,8 +102,9 @@ Tests can be found in the `tests` directory.
 
 - Architecture
   - [x] Feedforward
-  - [ ] Recurrent
   - [ ] Convolutional
+  - [ ] Recurrent
+  - [ ] Feedback
 
 - Regularization
   - [x] Dropout
@@ -108,20 +115,24 @@ Tests can be found in the `tests` directory.
   - [ ] Multi-threading
 
 - Testing
-  - [ ] Unit tests
+  - [x] Unit tests
+    - [ ] Thorough testing of activation functions
+    - [ ] Thorough testing of objective functions
+    - [ ] Thorough testing of optimization techniques
   - [ ] Integration tests
 
 - Other
   - [x] Documentation
   - [x] Custom random weight initialization
-  - [x] Custom tensor/matrix types
+  - [x] Custom tensor type
+  - [x] Plotting
+  - [x] Data from file
+    - [ ] General data loading functionality
   - [ ] Custom icon/image for documentation
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading
   - [ ] Logging
-  - [ ] Data from file
-  - [ ] Plotting
 
 ---
 

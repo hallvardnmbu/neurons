@@ -82,7 +82,7 @@ fn main() {
              x_test.len(), x_test[0].shape, x_test[0].data, y_test[0].data);
 
     // Create the network
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Dense(4));
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(4));
 
     network.add_dense(50, activation::Activation::ReLU, false, Some(0.1));
     network.add_dense(50, activation::Activation::ReLU, false, Some(0.1));

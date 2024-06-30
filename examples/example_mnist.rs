@@ -51,7 +51,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
     Ok(images)
 }
 
-fn load_labels(file_path: &str) -> Result<Vec<tensor::Tensor>> {
+fn load_labels(file_path: &str, numbers: f32) -> Result<Vec<tensor::Tensor>> {
     let mut reader = BufReader::new(File::open(file_path)?);
     let _magic_number = read(&mut reader)?;
     let num_labels = read(&mut reader)?;
@@ -59,26 +59,25 @@ fn load_labels(file_path: &str) -> Result<Vec<tensor::Tensor>> {
     let mut _labels = vec![0; num_labels as usize];
     reader.read_exact(&mut _labels)?;
 
-    Ok(_labels.iter().map(|&x| tensor::Tensor::from_single(vec![x as f32])).collect())
+    Ok(_labels.iter().map(|&x| tensor::Tensor::one_hot(x as f32, numbers)).collect())
 }
 
 fn main() {
-    // let x_train = load_images("./datasets/mnist/t10k-images.idx3-ubyte").unwrap();
-    // let y_train = load_labels("./datasets/mnist/t10k-labels.idx1-ubyte").unwrap();
-    let x_test = load_images("./datasets/mnist/train-images.idx3-ubyte").unwrap();
-    let y_test = load_labels("./datasets/mnist/train-labels.idx1-ubyte").unwrap();
+    let x_train = load_images("./datasets/mnist/train-images-idx3-ubyte").unwrap();
+    let y_train = load_labels("./datasets/mnist/train-labels-idx1-ubyte", 10f32).unwrap();
+    let x_test = load_images("./datasets/mnist/t10k-images-idx3-ubyte").unwrap();
+    let y_test = load_labels("./datasets/mnist/t10k-labels-idx1-ubyte", 10f32).unwrap();
+    println!("Train: {} images, Test: {} images", x_train.len(), x_test.len());
 
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Convolution(1, 28, 28));
+    let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
 
-    network.add_convolution(5, (5, 5), (1, 1), (1, 1),
+    network.add_convolution(12, (3, 3), (1, 1), (1, 1),
                             activation::Activation::ReLU, false, Some(0.1));
-    network.add_convolution(1, (5, 5), (1, 1), (1, 1),
+    network.add_convolution(8, (3, 3), (1, 1), (0, 0),
                             activation::Activation::ReLU, false, Some(0.1));
-    network.add_dense(1, activation::Activation::Linear, true, Some(0.1));
+    network.add_dense(10, activation::Activation::Softmax, true, Some(0.1));
 
     println!("{}", network);
-
-    // plot::heatmap(&x_train[5], &y_train[5].data.to_string(), "input.png");
 
     network.set_optimizer(
         optimizer::Optimizer::RMSprop(
@@ -103,13 +102,27 @@ fn main() {
     );
 
     // Train the network
-    let _epoch_loss = network.learn(&x_test, &y_test, 3);
+    let _epoch_loss = network.learn(&x_train, &y_train, 1);
 
-    // // Validate the network
-    // let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
-    // println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
-    //
-    // // Use the network
-    // let prediction = network.predict(x_test.get(0).unwrap());
-    // println!("2. Input: {}, Target: {}, Output: {}", x_test[0].data, y_test[0].data, prediction);
+    // Validate the network
+    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
+    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
+
+    // Use the network
+    let prediction = network.predict(x_test.get(0).unwrap());
+    println!("2. Target: {}, Output: {}", y_test[0].data, prediction);
+
+    let x = x_test.get(5).unwrap();
+    let y = y_test.get(5).unwrap();
+    plot::heatmap(&x, &y.data.to_string(), "input.png");
+    let (pre, post) = network.forward(x);
+
+    for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {
+        let pre_title = format!("pre_layer_{}", i);
+        let post_title = format!("post_layer_{}", i);
+        let pre_file = format!("pre_layer_{}.png", i);
+        let post_file = format!("post_layer_{}.png", i);
+        plot::heatmap(&i_pre, &pre_title, &pre_file);
+        plot::heatmap(&i_post, &post_title, &post_file);
+    }
 }

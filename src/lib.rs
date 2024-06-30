@@ -17,6 +17,7 @@ limitations under the License.
 pub mod random;
 
 pub mod algebra;
+pub mod tensor;
 
 pub mod optimizer;
 pub mod objective;
@@ -25,6 +26,4 @@ pub mod activation;
 pub mod dense;
 pub mod convolution;
 pub mod feedforward;
-pub mod recurrent;
 pub mod plot;
-pub mod tensor;

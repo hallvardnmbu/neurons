@@ -1,20 +1,43 @@
 use crate::random;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Shape {
-    Dense(usize),
-    Convolution(usize, usize, usize),
+    Vector(usize),
+    Tensor(usize, usize, usize),
     Gradient(usize, usize, usize, usize),
 }
 
 impl std::fmt::Display for Shape {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Shape::Dense(size) => write!(f, "{}", size),
-            Shape::Convolution(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
+            Shape::Vector(size) => write!(f, "{}", size),
+            Shape::Tensor(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
             Shape::Gradient(ch, fi, he, wi) => write!(f, "{}x{}x{}x{}", ch, fi, he, wi),
         }
     }
+}
+
+impl PartialEq for Shape {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Shape::Vector(a), Shape::Vector(b)) => a == b,
+            (Shape::Tensor(ac, ah, aw), Shape::Tensor(bc, bh, bw)) => ac == bc && ah == bh && aw == bw,
+            (Shape::Gradient(ac, af, ah, aw), Shape::Gradient(bc, bf, bh, bw)) => ac == bc && af == bf && ah == bh && aw == bw,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Shape {}
+
+#[macro_export]
+macro_rules! assert_eq_shape {
+    ($left:expr, $right:expr) => ({
+        if $left != $right {
+            panic!("assertion failed: `left == right` \
+                    (left: `{:?}`, right: `{:?}`)", $left, $right);
+        }
+    });
 }
 
 #[derive(Clone, Debug)]
@@ -112,13 +135,13 @@ impl Tensor {
     /// A new Tensor with the given shape filled with zeros.
     pub fn zeros(shape: Shape) -> Self {
         match shape {
-            Shape::Dense(size) => {
+            Shape::Vector(size) => {
                 Tensor {
                     shape,
                     data: Data::Vector(vec![0.0; size]),
                 }
             },
-            Shape::Convolution(channels, rows, columns) => {
+            Shape::Tensor(channels, rows, columns) => {
                 Tensor {
                     shape,
                     data: Data::Tensor((0..channels)
@@ -154,13 +177,13 @@ impl Tensor {
     /// A new Tensor with the given shape filled with ones.
     pub fn ones(shape: Shape) -> Self {
         match shape {
-            Shape::Dense(size) => {
+            Shape::Vector(size) => {
                 Tensor {
                     shape,
                     data: Data::Vector(vec![1.0; size]),
                 }
             },
-            Shape::Convolution(channels, rows, columns) => {
+            Shape::Tensor(channels, rows, columns) => {
                 Tensor {
                     shape,
                     data: Data::Tensor((0..channels)
@@ -199,7 +222,7 @@ impl Tensor {
     pub fn random(shape: Shape, min: f32, max: f32) -> Self {
         let mut generator = random::Generator::create(12345);
         match shape {
-            Shape::Dense(size) => {
+            Shape::Vector(size) => {
                 Tensor {
                     shape,
                     data: Data::Vector((0..size)
@@ -207,7 +230,7 @@ impl Tensor {
                         .collect()),
                 }
             },
-            Shape::Convolution(channels, rows, columns) => {
+            Shape::Tensor(channels, rows, columns) => {
                 Tensor {
                     shape,
                     data: Data::Tensor((0..channels)
@@ -236,8 +259,17 @@ impl Tensor {
         }
     }
 
+    pub fn one_hot(value: f32, max: f32) -> Self {
+        let mut data = vec![0.0; max as usize];
+        data[value as usize] = 1.0;
+        Tensor {
+            shape: Shape::Vector(max as usize),
+            data: Data::Vector(data),
+        }
+    }
+
     pub fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
-        let shape = Shape::Convolution(data.len(), data[0].len(), data[0][0].len());
+        let shape = Shape::Tensor(data.len(), data[0].len(), data[0][0].len());
         Tensor {
             shape,
             data: Data::Tensor(data),
@@ -245,7 +277,7 @@ impl Tensor {
     }
 
     pub fn from_single(data: Vec<f32>) -> Self {
-        let shape = Shape::Dense(data.len());
+        let shape = Shape::Vector(data.len());
         Tensor {
             shape,
             data: Data::Vector(data),
@@ -276,7 +308,7 @@ impl Tensor {
             _ => unimplemented!("Flatten not implemented for gradients"),
         };
         Tensor {
-            shape: Shape::Dense(data.len()),
+            shape: Shape::Vector(data.len()),
             data: Data::Vector(data),
         }
     }
@@ -316,11 +348,11 @@ impl Tensor {
     /// A new Tensor with the given shape.
     pub fn reshape(&self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
-            (Shape::Dense(_), Shape::Dense(_)) => {
+            (Shape::Vector(_), Shape::Vector(_)) => {
                 self.clone()
             },
-            (Shape::Convolution(channels, rows, columns),
-                Shape::Convolution(new_channels, new_rows, new_columns)) => {
+            (Shape::Tensor(channels, rows, columns),
+                Shape::Tensor(new_channels, new_rows, new_columns)) => {
                 assert_eq!(channels * rows * columns, new_channels * new_rows * new_columns,
                            "Reshape requires the same number of elements");
 
@@ -340,8 +372,8 @@ impl Tensor {
                     data,
                 }
             },
-            (Shape::Dense(length),
-                Shape::Convolution(new_channels, new_rows, new_columns)) => {
+            (Shape::Vector(length),
+                Shape::Tensor(new_channels, new_rows, new_columns)) => {
                 assert_eq!(*length, new_channels * new_rows * new_columns,
                            "Reshape requires the same number of elements");
 
@@ -361,8 +393,8 @@ impl Tensor {
                     data,
                 }
             },
-            (Shape::Convolution(channels, rows, columns),
-                Shape::Dense(length)) => {
+            (Shape::Tensor(channels, rows, columns),
+                Shape::Vector(length)) => {
                 assert_eq!(channels * rows * columns, *length,
                            "Reshape requires the same number of elements");
 
@@ -456,5 +488,259 @@ impl Tensor {
             },
         }
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tensor_random() {
+        let tensor = Tensor::random(Shape::Vector(3), 0.0, 1.0);
+        assert_eq!(tensor.shape, Shape::Vector(3));
+        if let Data::Vector(data) = tensor.data {
+            assert!(data.iter().all(|&x| x >= 0.0 && x <= 1.0));
+        } else {
+            panic!("Expected Vector data!");
+        }
+
+        let tensor = Tensor::random(Shape::Tensor(2, 2, 2), -1.0, 1.0);
+        assert_eq!(tensor.shape, Shape::Tensor(2, 2, 2));
+        if let Data::Tensor(data) = tensor.data {
+            assert!(data.iter().all(|c| c.iter().all(|r| r.iter().all(|&x| x >= -1.0 && x <= 1.0))));
+        } else {
+            panic!("Expected Tensor data!");
+        }
+
+        let tensor = Tensor::random(Shape::Gradient(2, 2, 2, 2), 0.0, 2.0);
+        assert_eq!(tensor.shape, Shape::Gradient(2, 2, 2, 2));
+        if let Data::Gradient(data) = tensor.data {
+            assert!(data.iter().all(|c| c.iter().all(|f| f.iter().all(|r| r.iter().all(|&x| x >= 0.0 && x <= 2.0)))));
+        } else {
+            panic!("Expected Gradient data!");
+        }
+    }
+
+    #[test]
+    fn test_tensor_one_hot() {
+        let tensor = Tensor::one_hot(2.0, 5.0);
+        assert_eq!(tensor.shape, Shape::Vector(5));
+        assert_eq!(tensor.data, Data::Vector(vec![0.0, 0.0, 1.0, 0.0, 0.0]));
+
+        let tensor = Tensor::one_hot(0.0, 3.0);
+        assert_eq!(tensor.shape, Shape::Vector(3));
+        assert_eq!(tensor.data, Data::Vector(vec![1.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn test_tensor_from() {
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        assert_eq!(tensor.shape, Shape::Tensor(1, 1, 3));
+        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0, 3.0]]]));
+
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        assert_eq!(tensor.shape, Shape::Tensor(1, 2, 2));
+        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]));
+    }
+
+    #[test]
+    fn test_tensor_from_single() {
+        let tensor = Tensor::from_single(vec![1.0, 2.0, 3.0]);
+        assert_eq!(tensor.shape, Shape::Vector(3));
+        assert_eq!(tensor.data, Data::Vector(vec![1.0, 2.0, 3.0]));
+
+        let tensor = Tensor::from_single(vec![]);
+        assert_eq!(tensor.shape, Shape::Vector(0));
+        assert_eq!(tensor.data, Data::Vector(vec![]));
+    }
+
+    #[test]
+    fn test_tensor_gradient() {
+        let tensor = Tensor::gradient(vec![vec![vec![vec![1.0, 2.0, 3.0]]]]);
+        assert_eq!(tensor.shape, Shape::Gradient(1, 1, 1, 3));
+        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 2.0, 3.0]]]]));
+
+        let tensor = Tensor::gradient(vec![vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]]);
+        assert_eq!(tensor.shape, Shape::Gradient(1, 1, 2, 2));
+        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]]));
+    }
+
+    #[test]
+    fn test_tensor_as_tensor() {
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        assert_eq!(tensor.as_tensor(), &vec![vec![vec![1.0, 2.0, 3.0]]]);
+
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        assert_eq!(tensor.as_tensor(), &vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+    }
+
+    #[test]
+    fn test_tensor_get_flat() {
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        assert_eq!(tensor.get_flat(), vec![1.0, 2.0, 3.0]);
+
+        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        assert_eq!(tensor.get_flat(), vec![1.0, 2.0, 3.0, 4.0]);
+    }
+
+    #[test]
+    fn test_tensor_dropout() {
+        let mut tensor = Tensor::from_single(vec![1.0, 2.0, 3.0]);
+        tensor.dropout(1.0);
+        assert_eq!(tensor.data, Data::Vector(vec![0.0, 0.0, 0.0]));
+
+        let mut tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        tensor.dropout(0.0);
+        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]));
+    }
+
+    #[test]
+    fn test_tensor_zeros() {
+        let tensor = Tensor::zeros(Shape::Vector(3));
+        assert_eq!(tensor.data, Data::Vector(vec![0.0, 0.0, 0.0]));
+
+        let tensor = Tensor::zeros(Shape::Tensor(2, 2, 2));
+        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![0.0, 0.0], vec![0.0, 0.0]], vec![vec![0.0, 0.0], vec![0.0, 0.0]]]));
+
+        let tensor = Tensor::zeros(Shape::Gradient(1, 2, 2, 2));
+        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![0.0, 0.0], vec![0.0, 0.0]], vec![vec![0.0, 0.0], vec![0.0, 0.0]]]]));
+    }
+
+    #[test]
+    fn test_tensor_ones() {
+        let tensor = Tensor::ones(Shape::Vector(3));
+        assert_eq!(tensor.data, Data::Vector(vec![1.0, 1.0, 1.0]));
+
+        let tensor = Tensor::ones(Shape::Tensor(2, 2, 2));
+        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 1.0], vec![1.0, 1.0]], vec![vec![1.0, 1.0], vec![1.0, 1.0]]]));
+
+        let tensor = Tensor::ones(Shape::Gradient(1, 2, 2, 2));
+        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 1.0], vec![1.0, 1.0]], vec![vec![1.0, 1.0], vec![1.0, 1.0]]]]));
+    }
+
+    #[test]
+    fn test_tensor_flatten() {
+        let tensor = Tensor {
+            shape: Shape::Tensor(1, 1, 3),
+            data: Data::Tensor(vec![vec![vec![1.0, 2.0, 3.0]]]),
+        };
+        let flattened = tensor.flatten();
+        assert_eq!(flattened.data, Data::Vector(vec![1.0, 2.0, 3.0]));
+
+        let tensor = Tensor {
+            shape: Shape::Tensor(2, 2, 2),
+            data: Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]]),
+        };
+        let flattened = tensor.flatten();
+        assert_eq!(flattened.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]));
+    }
+
+    #[test]
+    fn test_tensor_reshape() {
+        // Test reshaping from vector to vector
+        let tensor = Tensor {
+            shape: Shape::Vector(6),
+            data: Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+        };
+        let reshaped = tensor.reshape(Shape::Vector(6));
+        assert_eq!(reshaped.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]));
+
+        // Test reshaping from tensor to tensor
+        let tensor = Tensor {
+            shape: Shape::Tensor(2, 3, 1),
+            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]),
+        };
+        let reshaped = tensor.reshape(Shape::Tensor(3, 2, 1));
+        assert_eq!(reshaped.data, Data::Tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]], vec![vec![5.0], vec![6.0]]]));
+
+        // Test reshaping from vector to tensor
+        let tensor = Tensor {
+            shape: Shape::Vector(6),
+            data: Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
+        };
+        let reshaped = tensor.reshape(Shape::Tensor(2, 3, 1));
+        assert_eq!(reshaped.data, Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]));
+
+        // Test reshaping from tensor to vector
+        let tensor = Tensor {
+            shape: Shape::Tensor(2, 3, 1),
+            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]),
+        };
+        let reshaped = tensor.reshape(Shape::Vector(6));
+        assert_eq!(reshaped.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]));
+    }
+
+    #[test]
+    fn test_tensor_add() {
+        let tensor1 = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![1.0, 2.0, 3.0]),
+        };
+        let tensor2 = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![4.0, 5.0, 6.0]),
+        };
+        let result = tensor1.add(&tensor2);
+        assert_eq!(result.data, Data::Vector(vec![5.0, 7.0, 9.0]));
+
+        let tensor1 = Tensor {
+            shape: Shape::Tensor(2, 2, 1),
+            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]]]),
+        };
+        let tensor2 = Tensor {
+            shape: Shape::Tensor(2, 2, 1),
+            data: Data::Tensor(vec![vec![vec![5.0], vec![6.0]], vec![vec![7.0], vec![8.0]]]),
+        };
+        let result = tensor1.add(&tensor2);
+        assert_eq!(result.data, Data::Tensor(vec![vec![vec![6.0], vec![8.0]], vec![vec![10.0], vec![12.0]]]));
+    }
+
+    #[test]
+    fn test_tensor_clamp() {
+        let tensor = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![1.0, 2.0, 3.0]),
+        };
+        let result = tensor.clamp(1.5, 2.5);
+        assert_eq!(result.data, Data::Vector(vec![1.5, 2.0, 2.5]));
+
+        let tensor = Tensor {
+            shape: Shape::Tensor(2, 2, 1),
+            data: Data::Tensor(vec![vec![vec![0.5], vec![1.5]], vec![vec![2.5], vec![3.5]]]),
+        };
+        let result = tensor.clamp(1.0, 3.0);
+        assert_eq!(result.data, Data::Tensor(vec![vec![vec![1.0], vec![1.5]], vec![vec![2.5], vec![3.0]]]));
+
+        let tensor = Tensor {
+            shape: Shape::Gradient(1, 1, 2, 2),
+            data: Data::Gradient(vec![vec![vec![vec![0.0, 1.0], vec![2.0, 3.0]]]]),
+        };
+        let result = tensor.clamp(0.5, 2.5);
+        assert_eq!(result.data, Data::Gradient(vec![vec![vec![vec![0.5, 1.0], vec![2.0, 2.5]]]]));
+    }
+
+    #[test]
+    #[should_panic(expected = "Add requires the same number of elements")]
+    fn test_tensor_add_mismatched_shapes() {
+        let tensor1 = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![1.0, 2.0, 3.0]),
+        };
+        let tensor2 = Tensor {
+            shape: Shape::Vector(2),
+            data: Data::Vector(vec![4.0, 5.0]),
+        };
+        tensor1.add(&tensor2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Reshape requires the same number of elements")]
+    fn test_tensor_reshape_invalid() {
+        let tensor = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![1.0, 2.0, 3.0]),
+        };
+        tensor.reshape(Shape::Tensor(2, 2, 1));
     }
 }

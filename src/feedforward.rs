@@ -47,7 +47,7 @@ impl std::fmt::Display for Layer {
 pub struct Feedforward {
     pub input: tensor::Shape,
 
-    pub(crate) layers: Vec<Layer>,
+    layers: Vec<Layer>,
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,
 }
@@ -126,7 +126,7 @@ impl Feedforward {
     ) {
         if self.layers.is_empty() {
             let inputs = match self.input {
-                tensor::Shape::Dense(inputs) => inputs,
+                tensor::Shape::Vector(inputs) => inputs,
                 _ => panic!("Network is configured for image inputs; the first layer must be Convolutional"),
             };
             self.layers.push(
@@ -140,7 +140,7 @@ impl Feedforward {
                 // Make sure the output of the convolutional layer is flattened.
                 layer.flatten_output = true;
                 match layer.outputs {
-                    tensor::Shape::Convolution(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
                     _ => panic!("Expected Convolution shape"),
                 }
             },
@@ -194,7 +194,7 @@ impl Feedforward {
         self.layers.push(
             Layer::Convolution(convolution::Convolution::create(
                 match self.layers.last().unwrap() {
-                    Layer::Dense(layer) => tensor::Shape::Dense(layer.outputs),
+                    Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
                     Layer::Convolution(layer) => layer.outputs.clone(),
                 },
                 channels, &activation, bias,
@@ -237,11 +237,11 @@ impl Feedforward {
                 Layer::Dense(layer) => (layer.inputs, layer.outputs, layer.bias.is_some()),
                 Layer::Convolution(layer) => {
                     let (chi, hei, wii) = match layer.inputs {
-                        tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
+                        tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
                         _ => panic!("Expected Convolution shape"),
                     };
                     let (cho, heo, wio) = match layer.outputs {
-                        tensor::Shape::Convolution(ch, he, wi) => (ch, he, wi),
+                        tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
                         _ => panic!("Expected Convolution shape"),
                     };
                     (chi * hei * wii, cho * heo * wio, layer.bias.is_some())
@@ -360,10 +360,10 @@ impl Feedforward {
             let mut _losses = 0.0f32;
             for (input, target) in inputs
                 .iter()
-                .zip(targets.iter()) {
+                .zip(targets.iter()){
 
                 let (unactivated, activated) = self.forward(input);
-                let (loss, mut gradient) = self.loss(&activated.last().unwrap(), target);
+                let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
                 _losses += loss;
 
                 // TODO: Backward pass on batch instead of single input.
@@ -606,16 +606,14 @@ impl Feedforward {
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>
     ) {
+        // let mut gradient = gradient.clone();
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
             let input: &tensor::Tensor = &activated[activated.len() - i - 2];
             let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
 
-            // println!("Iteration {} {} -> {}", i, input.shape, output.shape);
-            // println!("{}", layer);
-
-            let (_gradient, mut weight_gradient, bias_gradient) = match layer {
-                Layer::Dense(layer) => layer.backward(gradient, input, output),
-                Layer::Convolution(layer) => layer.backward(gradient, input, output),
+            let (_gradient, weight_gradient, bias_gradient) = match layer {
+                Layer::Dense(layer) => layer.backward(&gradient, input, output),
+                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
             };
             gradient = _gradient;
 
@@ -641,7 +639,8 @@ impl Feedforward {
                     }
                 },
                 Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for backpropagation");
+                    // TODO: How to handle optimizer with momentum etc. for convolutional layers?
+                    layer.update(stepnr, &weight_gradient, &bias_gradient, 0.001);
                 },
             }
         }

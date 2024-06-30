@@ -47,21 +47,24 @@ pub fn heatmap(
 
     chart.configure_mesh().disable_mesh().draw().unwrap();
 
+    let min_value = data.iter().flatten().copied().fold(f32::INFINITY, f32::min);
+    let max_value = data.iter().flatten().copied().fold(f32::NEG_INFINITY, f32::max);
+    let rows = data.len();
     for (y, row) in data.iter().enumerate() {
         for (x, &value) in row.iter().enumerate() {
 
-            let val: u8;
-            if value < 0.0 {
-                val = 0;
-            } else if value < 1.0 {
-                val = (value * 255.0) as u8;
-            } else {
-                val = value.clamp(0.0, 255.0) as u8;
-            }
+            // Normalize the value to a range between 0 and 1
+            let normalized_value = (value - min_value) / (max_value - min_value);
 
-            let color = RGBColor(val, val, val);
+            // Map the normalized value to a color
+            let r = (normalized_value * 255.0) as u8;
+            let g = ((1.0 - normalized_value) * 255.0) as u8;
+            let b = ((0.5 - (normalized_value - 0.5).abs()) * 255.0) as u8;
+
+            let color = RGBColor(r, g, b);
+
             chart.draw_series(std::iter::once(Rectangle::new(
-                [(x, y), (x + 1, y + 1)],
+                [(x, rows - y), (x + 1, rows - y + 1)],
                 color.filled(),
             ))).unwrap();
         }

@@ -357,3 +357,181 @@ impl RMSprop {
             });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    // Helper function to create a simple test case
+    fn create_test_case() -> (Vec<f32>, Vec<f32>) {
+        (vec![1.0, 2.0, 3.0], vec![0.1, 0.2, 0.3])
+    }
+
+    #[test]
+    fn test_sgd_update() {
+        let mut sgd = SGD {
+            learning_rate: 0.1,
+            decay: Some(0.01),
+        };
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.989, 1.978, 2.967];
+
+        sgd.update(&mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 1e-6);
+        }
+    }
+
+    #[test]
+    fn test_sgdm_update() {
+        let mut sgdm = SGDM {
+            learning_rate: 0.1,
+            momentum: 0.9,
+            decay: Some(0.01),
+            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
+        };
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.99, 1.98, 2.97];
+
+        sgdm.update(0, 0, &mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 0.01);
+        }
+    }
+
+    #[test]
+    fn test_adam_update() {
+        let mut adam = Adam {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            decay: Some(0.01),
+            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
+            momentum: vec![vec![vec![0.0, 0.0, 0.0]]],
+        };
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.999, 1.998, 2.997];
+
+        adam.update(0, 0, 1, &mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 0.005);
+        }
+    }
+
+    #[test]
+    fn test_adamw_update() {
+        let mut adamw = AdamW {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            decay: 0.01,
+            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
+            momentum: vec![vec![vec![0.0, 0.0, 0.0]]],
+        };
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.98901, 1.97801, 2.96701];
+
+        adamw.update(0, 0, 1, &mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 0.05);
+        }
+    }
+
+    #[test]
+    fn test_rmsprop_update() {
+        let mut rmsprop = RMSprop {
+            learning_rate: 0.01,
+            alpha: 0.99,
+            epsilon: 1e-8,
+            decay: Some(0.01),
+            momentum: Some(0.9),
+            centered: Some(true),
+            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
+            gradient: vec![vec![vec![0.0, 0.0, 0.0]]],
+            buffer: vec![vec![vec![0.0, 0.0, 0.0]]],
+        };
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.99, 1.98, 2.97];
+
+        rmsprop.update(0, 0, &mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 0.1);
+        }
+    }
+
+    #[test]
+    fn test_optimizer_enum_update() {
+        let mut optimizer = Optimizer::SGD(SGD {
+            learning_rate: 0.1,
+            decay: Some(0.01),
+        });
+        let (mut values, mut gradients) = create_test_case();
+        let expected = vec![0.989, 1.978, 2.967];
+
+        optimizer.update(0, 0, 1, &mut values, &mut gradients);
+
+        for (v, e) in values.iter().zip(expected.iter()) {
+            assert_relative_eq!(v, e, epsilon = 1e-6);
+        }
+    }
+
+    #[test]
+    fn test_optimizer_display() {
+        let sgd = Optimizer::SGD(SGD {
+            learning_rate: 0.1,
+            decay: Some(0.01),
+        });
+        assert!(format!("{}", sgd).contains("SGD"));
+
+        let sgdm = Optimizer::SGDM(SGDM {
+            learning_rate: 0.1,
+            momentum: 0.9,
+            decay: Some(0.01),
+            velocity: vec![vec![vec![0.0]]],
+        });
+        assert!(format!("{}", sgdm).contains("SGDM"));
+
+        let adam = Optimizer::Adam(Adam {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            decay: Some(0.01),
+            velocity: vec![vec![vec![0.0]]],
+            momentum: vec![vec![vec![0.0]]],
+        });
+        assert!(format!("{}", adam).contains("Adam"));
+
+        let adamw = Optimizer::AdamW(AdamW {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            decay: 0.01,
+            velocity: vec![vec![vec![0.0]]],
+            momentum: vec![vec![vec![0.0]]],
+        });
+        assert!(format!("{}", adamw).contains("AdamW"));
+
+        let rmsprop = Optimizer::RMSprop(RMSprop {
+            learning_rate: 0.01,
+            alpha: 0.99,
+            epsilon: 1e-8,
+            decay: Some(0.01),
+            momentum: Some(0.9),
+            centered: Some(true),
+            velocity: vec![vec![vec![0.0]]],
+            gradient: vec![vec![vec![0.0]]],
+            buffer: vec![vec![vec![0.0]]],
+        });
+        assert!(format!("{}", rmsprop).contains("RMSprop"));
+    }
+}
