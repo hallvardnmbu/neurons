@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Modular neural network in Rust."
 authors = ["Hallvard Høyland Lavik"]
