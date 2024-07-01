@@ -21,13 +21,13 @@ fn main() {
     let mut network = Feedforward::new(Shape::Dense(4));
 
     // Dense(output, activation, bias, Some(dropout))
-    network.add_dense(100, Activation::ReLU, false, None);
+    network.dense(100, Activation::ReLU, false, None);
   
-    // Convolution(output, kernel, stride, padding, activation, bias, Some(dropout))
-    network.add_convolution(5, (5, 5), (1, 1), (1, 1), Activation::ReLU, false, Some(0.1));
+    // Convolution(filters, kernel, stride, padding, activation, bias, Some(dropout))
+    network.convolution(5, (5, 5), (1, 1), (1, 1), Activation::ReLU, false, Some(0.1));
   
     // Dense(output, activation, bias, Some(dropout))
-    network.add_dense(1, Activation::Softmax, false, None);
+    network.dense(10, Activation::Softmax, false, None);
     
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
@@ -152,7 +152,8 @@ Examples can be found in the `examples` directory.
 
 
 * [GitHub Copilot](https://github.com/features/copilot)
-* [ChatGPT](https://chatgpt.com/?oai-dm=1)
+* [ChatGPT](https://chatgpt.com)
 * [Mistral](https://chat.mistral.ai/chat)
+* [Claude](https://claude.ai)
 
 </body>

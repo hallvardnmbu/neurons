@@ -71,11 +71,11 @@ fn main() {
 
     let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
 
-    network.add_convolution(12, (3, 3), (1, 1), (1, 1),
-                            activation::Activation::ReLU, false, Some(0.1));
-    network.add_convolution(8, (3, 3), (1, 1), (0, 0),
-                            activation::Activation::ReLU, false, Some(0.1));
-    network.add_dense(10, activation::Activation::Softmax, true, Some(0.1));
+    network.convolution(12, (3, 3), (1, 1), (1, 1),
+                        activation::Activation::ReLU, false, Some(0.1));
+    network.convolution(8, (3, 3), (1, 1), (0, 0),
+                        activation::Activation::ReLU, false, Some(0.1));
+    network.dense(10, activation::Activation::Softmax, true, Some(0.1));
 
     println!("{}", network);
 

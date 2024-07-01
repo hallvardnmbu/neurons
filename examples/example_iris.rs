@@ -84,9 +84,9 @@ fn main() {
     // Create the network
     let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(4));
 
-    network.add_dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.add_dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.add_dense(3, activation::Activation::Softmax, false, Some(0.1));
+    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
+    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
+    network.dense(3, activation::Activation::Softmax, false, Some(0.1));
 
     network.set_optimizer(
         optimizer::Optimizer::RMSprop(

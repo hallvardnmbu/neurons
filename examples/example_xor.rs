@@ -38,8 +38,8 @@ fn main() {
     // Create the network
     let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(2));
 
-    network.add_dense(10, activation::Activation::Linear, true, None);
-    network.add_dense(1, activation::Activation::Sigmoid, false, None);
+    network.dense(10, activation::Activation::Linear, true, None);
+    network.dense(1, activation::Activation::Sigmoid, false, None);
 
     network.set_optimizer(
         optimizer::Optimizer::SGD(

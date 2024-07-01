@@ -22,10 +22,10 @@ use neurons::plot;
 fn main() {
     let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 24, 24));
 
-    network.add_convolution(1, (3, 3), (1, 1), (0, 0),
-                            activation::Activation::ReLU, false, Some(0.1));
-    network.add_convolution(1, (3, 3), (1, 1), (0, 0),
-                            activation::Activation::ReLU, false, Some(0.1));
+    network.convolution(1, (3, 3), (1, 1), (0, 0),
+                        activation::Activation::ReLU, false, Some(0.1));
+    network.convolution(1, (3, 3), (1, 1), (0, 0),
+                        activation::Activation::ReLU, false, Some(0.1));
 
     println!("{}", network);
 

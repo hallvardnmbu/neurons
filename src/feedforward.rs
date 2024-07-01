@@ -117,7 +117,7 @@ impl Feedforward {
     ///
     /// * If the number of inputs to the layer is not equal to the number of outputs from the
     /// previous layer.
-    pub fn add_dense(
+    pub fn dense(
         &mut self,
         outputs: usize,
         activation: activation::Activation,
@@ -171,7 +171,7 @@ impl Feedforward {
     ///
     /// * If the number of inputs to the layer is not equal to the number of outputs from the
     /// previous layer.
-    pub fn add_convolution(
+    pub fn convolution(
         &mut self,
         channels: usize,
         kernel: (usize, usize),

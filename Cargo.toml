@@ -2,16 +2,13 @@
 name = "neurons"
 version = "0.1.1"
 edition = "2021"
-description = "Modular neural network in Rust."
+description = "Modular neural networks in Rust."
 authors = ["Hallvard Høyland Lavik"]
 homepage = "https://github.com/hallvardnmbu/neurons"
 readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/hallvardnmbu/neurons"
-include = ["**/*.rs", "Cargo.toml", "neurons.css"]
-
-[package.metadata.docs.rs]
-rustdoc-args = ["--theme", "neurons.css"]
+include = ["**/*.rs", "Cargo.toml"]
 
 [dependencies]
 csv = "1.3.0"
