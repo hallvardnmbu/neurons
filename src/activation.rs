@@ -537,12 +537,12 @@ mod tests {
 
         // Test forward
         let output = sigmoid.forward(&input);
-        let expected = vec![0.11920292, 0.26894142, 0.5, 0.73105858, 0.88079708];
+        let expected = vec![0.11920292202211755, 0.2689414213699951, 0.5, 0.7310585786300049, 0.8807970779778823];
         assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
 
         // Test backward
         let grad_output = sigmoid.backward(&input);
-        let expected = vec![0.10499359, 0.19661193, 0.25, 0.19661193, 0.10499359];
+        let expected = vec![0.1049935854035065, 0.19661193324148185, 0.25, 0.19661193324148185, 0.10499358540350662];
         assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
     }
 
@@ -553,7 +553,7 @@ mod tests {
 
         // Test forward
         let output = softmax.forward(&input);
-        let expected = vec![0.01165623, 0.03168492, 0.08612854, 0.23412166, 0.63640865];
+        let expected = vec![0.011656230956039605, 0.03168492079612427, 0.0861285444362687, 0.23412165725273662, 0.6364086465588308];
         assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
 
         // Test backward
@@ -569,12 +569,12 @@ mod tests {
 
         // Test forward
         let output = tanh.forward(&input);
-        let expected = vec![-0.96402758, -0.76159416, 0.0, 0.76159416, 0.96402758];
+        let expected = vec![-0.9640275800758169, -0.7615941559557649, 0.0, 0.7615941559557649, 0.9640275800758169];
         assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
 
         // Test backward
         let grad_output = tanh.backward(&input);
-        let expected = vec![0.07065082, 0.41997434, 1.0, 0.41997434, 0.07065082];
+        let expected = vec![0.07065082485316447, 0.4199743416140261, 1.0, 0.4199743416140261, 0.07065082485316447];
         assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
     }
 

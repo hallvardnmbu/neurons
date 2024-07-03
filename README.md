@@ -116,8 +116,8 @@ Examples can be found in the `examples` directory.
 
 - Testing
   - [x] Unit tests
-    - [ ] Thorough testing of activation functions
-    - [ ] Thorough testing of objective functions
+    - [x] Thorough testing of activation functions
+    - [x] Thorough testing of objective functions
     - [ ] Thorough testing of optimization techniques
   - [ ] Integration tests
 
@@ -128,7 +128,8 @@ Examples can be found in the `examples` directory.
   - [x] Plotting
   - [x] Data from file
     - [ ] General data loading functionality
-  - [ ] Custom icon/image for documentation
+  - [x] Custom icon/image for documentation
+  - [x] Custom stylesheet for documentation
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading

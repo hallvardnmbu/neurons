@@ -8,7 +8,7 @@ homepage = "https://github.com/hallvardnmbu/neurons"
 readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/hallvardnmbu/neurons"
-include = ["**/*.rs", "Cargo.toml", "documentation/neurons.html", "documentation/neurons.css"]
+include = ["**/*.rs", "Cargo.toml", "documentation/neurons.html"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "documentation/neurons.html"]

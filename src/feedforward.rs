@@ -387,6 +387,107 @@ impl Feedforward {
         losses
     }
 
+    /// Compute the forward pass of the network for the given input, including all intermediate
+    /// pre- and post-activation values.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input data (x).
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the pre-activation and post-activation values of each layer.
+    pub fn forward(&mut self, input: &tensor::Tensor) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+        let mut unactivated: Vec<tensor::Tensor> = Vec::new();
+        let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
+
+        for layer in &self.layers {
+            let (pre, post): (tensor::Tensor, tensor::Tensor) = match layer {
+                Layer::Dense(layer) => {
+                    layer.forward(activated.last().unwrap())
+                },
+                Layer::Convolution(layer) => {
+                    layer.forward(activated.last().unwrap())
+                },
+            };
+
+            unactivated.push(pre);
+            activated.push(post);
+        }
+
+        (unactivated, activated)
+    }
+
+    /// Compute the loss and gradient of the network for the given prediction and target.
+    ///
+    /// # Arguments
+    ///
+    /// * `prediction` - The prediction of the network.
+    /// * `target` - The target of the given input.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the loss and gradient of the network for the given prediction and target.
+    fn loss(&mut self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+        self.objective.loss(prediction, target)
+    }
+
+    /// Compute the backward pass of the network for the given gradient, and update the weights
+    /// and biases of the network accordingly.
+    ///
+    /// # Arguments
+    ///
+    /// * `stepnr` - The current step number (i.e., epoch number).
+    /// * `gradient` - The gradient of the output.
+    /// * `unactivated` - The pre-activation values of each layer.
+    /// * `activated` - The post-activation values of each layer.
+    fn backward(
+        &mut self,
+        stepnr: i32,
+        mut gradient: tensor::Tensor,
+        unactivated: &Vec<tensor::Tensor>,
+        activated: &Vec<tensor::Tensor>
+    ) {
+        // let mut gradient = gradient.clone();
+        for (i, layer) in self.layers.iter_mut().rev().enumerate() {
+            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
+            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
+
+            let (_gradient, weight_gradient, bias_gradient) = match layer {
+                Layer::Dense(layer) => layer.backward(&gradient, input, output),
+                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
+            };
+            gradient = _gradient;
+
+            match layer {
+                Layer::Dense(layer) => {
+
+                    // Weight update.
+                    for (j, (weights, gradients)) in layer
+                        .weights.iter_mut()
+                        .zip(match weight_gradient.data {
+                            tensor::Data::Tensor(data) => { data },
+                            _ => panic!("Expected a tensor, but got one-dimensional data."),
+                        }[0].iter_mut())
+                        .enumerate() {
+                        self.optimizer.update(i, j, stepnr, weights, gradients);
+                    }
+
+                    // Bias update.
+                    if let Some(ref mut bias) = layer.bias {
+                        // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
+                        self.optimizer.update(i, layer.weights.len(), stepnr,
+                                              bias, &mut bias_gradient.unwrap().get_flat());
+                    }
+                },
+                Layer::Convolution(layer) => {
+                    // TODO: How to handle optimizer with momentum etc. for convolutional layers?
+                    layer.update(stepnr, &weight_gradient, &bias_gradient, 0.001);
+                },
+            }
+        }
+    }
+
     /// Validate the network on the given inputs and targets.
     ///
     /// Computes the forward pass of the network for the given inputs, and compares the output to
@@ -543,106 +644,5 @@ impl Feedforward {
     /// The output of the network for each of the given inputs.
     pub fn predict_batch(&self, inputs: &Vec<tensor::Tensor>) -> Vec<tensor::Tensor> {
         inputs.iter().map(|input| self.predict(input)).collect()
-    }
-
-    /// Compute the forward pass of the network for the given input, including all intermediate
-    /// pre- and post-activation values.
-    ///
-    /// # Arguments
-    ///
-    /// * `input` - The input data (x).
-    ///
-    /// # Returns
-    ///
-    /// A tuple containing the pre-activation and post-activation values of each layer.
-    pub fn forward(&mut self, input: &tensor::Tensor) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
-        let mut unactivated: Vec<tensor::Tensor> = Vec::new();
-        let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-
-        for layer in &self.layers {
-            let (pre, post): (tensor::Tensor, tensor::Tensor) = match layer {
-                Layer::Dense(layer) => {
-                    layer.forward(activated.last().unwrap())
-                },
-                Layer::Convolution(layer) => {
-                    layer.forward(activated.last().unwrap())
-                },
-            };
-
-            unactivated.push(pre);
-            activated.push(post);
-        }
-
-        (unactivated, activated)
-    }
-
-    /// Compute the loss and gradient of the network for the given prediction and target.
-    ///
-    /// # Arguments
-    ///
-    /// * `prediction` - The prediction of the network.
-    /// * `target` - The target of the given input.
-    ///
-    /// # Returns
-    ///
-    /// A tuple containing the loss and gradient of the network for the given prediction and target.
-    fn loss(&mut self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
-        self.objective.loss(prediction, target)
-    }
-
-    /// Compute the backward pass of the network for the given gradient, and update the weights
-    /// and biases of the network accordingly.
-    ///
-    /// # Arguments
-    ///
-    /// * `stepnr` - The current step number (i.e., epoch number).
-    /// * `gradient` - The gradient of the output.
-    /// * `unactivated` - The pre-activation values of each layer.
-    /// * `activated` - The post-activation values of each layer.
-    fn backward(
-        &mut self,
-        stepnr: i32,
-        mut gradient: tensor::Tensor,
-        unactivated: &Vec<tensor::Tensor>,
-        activated: &Vec<tensor::Tensor>
-    ) {
-        // let mut gradient = gradient.clone();
-        for (i, layer) in self.layers.iter_mut().rev().enumerate() {
-            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
-            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
-
-            let (_gradient, weight_gradient, bias_gradient) = match layer {
-                Layer::Dense(layer) => layer.backward(&gradient, input, output),
-                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
-            };
-            gradient = _gradient;
-
-            match layer {
-                Layer::Dense(layer) => {
-
-                    // Weight update.
-                    for (j, (weights, gradients)) in layer
-                        .weights.iter_mut()
-                        .zip(match weight_gradient.data {
-                            tensor::Data::Tensor(data) => { data },
-                            _ => panic!("Expected a tensor, but got one-dimensional data."),
-                        }[0].iter_mut())
-                        .enumerate() {
-                        self.optimizer.update(i, j, stepnr, weights, gradients);
-                    }
-
-                    // Bias update.
-                    if let Some(ref mut bias) = layer.bias {
-                        // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
-                        self.optimizer.update(i, layer.weights.len(), stepnr,
-                                              bias, &mut bias_gradient.unwrap().get_flat());
-                    }
-                },
-                Layer::Convolution(layer) => {
-                    // TODO: How to handle optimizer with momentum etc. for convolutional layers?
-                    layer.update(stepnr, &weight_gradient, &bias_gradient, 0.001);
-                },
-            }
-        }
     }
 }

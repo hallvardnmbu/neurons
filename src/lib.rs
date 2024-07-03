@@ -18,12 +18,6 @@ limitations under the License.
     html_logo_url = "https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons.svg",
     html_favicon_url = "https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons.svg",
 )]
-
-// TODO: Add the custom to the documentation.
-// #![doc = r#"<style>"#]
-// #![doc = include_str!("../documentation/neurons.css")]
-// #![doc = r#"</style>"#]
-
 //! ![Neurons](https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg)
 
 pub mod random;

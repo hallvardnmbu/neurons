@@ -359,7 +359,7 @@ impl RMSE {
     ///
     /// # Function
     ///
-    /// * `loss = sqrt(sum((actual - predicted)^2)) / n`
+    /// * `loss = sqrt(sum((actual - predicted)^2) / n)`
     /// * `gradient = -(actual - predicted) / sqrt((actual - predicted)^2) * n`
     ///
     /// # Arguments
@@ -373,9 +373,9 @@ impl RMSE {
     pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
         let length: f32 = target.get_flat().len() as f32;
 
-        let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
+        let loss: f32 = (target.get_flat().iter().zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).powi(2))
-            .sum::<f32>().sqrt() / length;
+            .sum::<f32>() / length).sqrt();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -648,7 +648,7 @@ mod tests {
 
         let (loss, gradient) = ae.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 1.6, epsilon = 1e-6);
+        assert_eq!(loss, 1.6);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
@@ -659,7 +659,7 @@ mod tests {
 
         let (loss, gradient) = mae.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.4, epsilon = 1e-6);
+        assert_eq!(loss, 0.4);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
@@ -671,8 +671,7 @@ mod tests {
         let (loss, gradient) = mse.loss(&prediction, &target);
 
         assert_relative_eq!(loss, 0.225, epsilon = 1e-6);
-        let expected_gradient = vec![0.05, 0.1, -0.35, -0.3];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_eq!(gradient.get_flat().as_slice(), vec![0.05, 0.1, -0.35, -0.3].as_slice());
     }
 
     #[test]
@@ -682,9 +681,8 @@ mod tests {
 
         let (loss, gradient) = rmse.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.23717082, epsilon = 1e-6);
-        let expected_gradient = vec![0.25, 0.25, -0.25, -0.25];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(loss, 0.4743416490252569, epsilon = 1e-6);
+        assert_eq!(gradient.get_flat().as_slice(), vec![0.25, 0.25, -0.25, -0.25].as_slice());
     }
 
     #[test]
@@ -694,9 +692,8 @@ mod tests {
 
         let (loss, gradient) = ce.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 2.1202636, epsilon = 1e-6);
-        let expected_gradient = vec![0.1, 0.2, -0.7, -0.6];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(loss, 2.120263536200091, epsilon = 1e-6);
+        assert_eq!(gradient.get_flat().as_slice(), vec![0.1, 0.2, -0.7, -0.6].as_slice());
     }
 
     #[test]
@@ -706,8 +703,8 @@ mod tests {
 
         let (loss, gradient) = bce.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 2.4487677, epsilon = 1e-6);
-        let expected_gradient = vec![1.1111111111, 1.25, -3.3333333333, -2.5];
+        assert_relative_eq!(loss, 2.448767603172127, epsilon = 1e-6);
+        let expected_gradient = vec![1.111111111111111, 1.25, -3.333333333333333, -2.5];
         assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
     }
 
@@ -719,9 +716,8 @@ mod tests {
 
         let (loss, gradient) = kld.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.10484119778, epsilon = 1e-6);
-        let expected_gradient = vec![-1.0, -1.0, -1.1, -1.0];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(loss, 0.10484119778475744, epsilon = 1e-6);
+        assert_relative_eq!(gradient.get_flat().as_slice(), vec![-1.0, -1.0, -1.1, -1.0].as_slice(), epsilon = 1e-6);
     }
 
     #[test]
