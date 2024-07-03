@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "Modular neural networks in Rust."
 authors = ["Hallvard Høyland Lavik"]
@@ -11,7 +11,7 @@ repository = "https://github.com/hallvardnmbu/neurons"
 include = ["**/*.rs", "Cargo.toml", "documentation/neurons.html", "documentation/neurons.css"]
 
 [package.metadata.docs.rs]
-rustdoc-args = ["--html-in-header", "neurons.html"]
+rustdoc-args = ["--html-in-header", "documentation/neurons.html"]
 
 [dependencies]
 csv = "1.3.0"
