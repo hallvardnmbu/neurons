@@ -118,7 +118,7 @@ Examples can be found in the `examples` directory.
   - [x] Unit tests
     - [x] Thorough testing of activation functions
     - [x] Thorough testing of objective functions
-    - [ ] Thorough testing of optimization techniques
+    - [x] Thorough testing of optimization techniques
   - [ ] Integration tests
 
 - Other

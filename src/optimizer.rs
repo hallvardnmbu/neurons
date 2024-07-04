@@ -79,10 +79,22 @@ impl std::fmt::Display for Optimizer {
 
 impl Optimizer {
 
+    /// Updates the weights of the layer.
+    ///
+    /// # Arguments
+    ///
+    /// * `layer` - The layer of the network.
+    /// * `column` - The column of the layer.
+    /// * `stepnr` - The step number of the training process (epoch).
+    /// * `values` - The weights of the layer.
+    /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
-        layer: usize, column: usize, stepnr: i32,
-        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+        layer: usize,
+        column: usize,
+        stepnr: i32,
+        values: &mut Vec<f32>,
+        gradients: &mut Vec<f32>
     ) {
         match self {
             Optimizer::SGD(sgd) => sgd.update(values, gradients),
@@ -146,6 +158,12 @@ impl SGDM {
 
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
     ///
+    /// # Function
+    ///
+    /// * If `decay` is `Some`, then `gradients += decay * weights (values)`
+    /// * `velocity = momentum * velocity + learning_rate * gradients`
+    /// * `weights (values) -= velocity`
+    ///
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
@@ -153,8 +171,11 @@ impl SGDM {
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
-        &mut self, layer: usize, column: usize,
-        values: &mut Vec<f32>, gradients: &mut Vec<f32>
+        &mut self,
+        layer: usize,
+        column: usize,
+        values: &mut Vec<f32>,
+        gradients: &mut Vec<f32>
     ) {
         values.iter_mut().zip(gradients.iter_mut()).enumerate()
             .for_each(|(i, (value, gradient))| {
@@ -194,6 +215,15 @@ pub struct Adam {
 impl Adam {
 
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
+    ///
+    /// # Function
+    ///
+    /// * If `decay` is `Some`, then `gradients += decay * weights (values)`
+    /// * `momentum = beta1 * momentum + (1 - beta1) * gradients`
+    /// * `velocity = beta2 * velocity + (1 - beta2) * gradients^2`
+    /// * `m = momentum / (1 - beta1^stepnr)`
+    /// * `v = velocity / (1 - beta2^stepnr)`
+    /// * `weights (values) -= learning_rate * m / (v.sqrt() + epsilon)`
     ///
     /// # Arguments
     ///
@@ -254,6 +284,15 @@ pub struct AdamW {
 impl AdamW {
 
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
+    ///
+    /// # Function
+    ///
+    /// * `weights (values) -= learning_rate * decay * values`
+    /// * `momentum = beta1 * momentum + (1 - beta1) * gradients`
+    /// * `velocity = beta2 * velocity + (1 - beta2) * gradients^2`
+    /// * `m = momentum / (1 - beta1^stepnr)`
+    /// * `v = velocity / (1 - beta2^stepnr)`
+    /// * `weights (values) -= learning_rate * m / (v.sqrt() + epsilon)`
     ///
     /// # Arguments
     ///
@@ -318,6 +357,16 @@ impl RMSprop {
 
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
     ///
+    /// # Function
+    ///
+    /// * If `decay` is `Some`, then `gradients += decay * weights (values)`
+    /// * `velocity = alpha * velocity + (1 - alpha) * gradients^2`
+    /// * If `centered` is `Some`, then `gradient = alpha * gradient + (1 - alpha) * gradients`
+    /// * If `centered` is `Some`, then `velocity -= gradient^2`
+    /// * If `momentum > 0.0`, then `buffer = momentum * buffer + gradients / (velocity.sqrt() + epsilon)`
+    /// * If `momentum > 0.0`, then `weights (values) -= learning_rate * buffer`
+    /// * If `momentum <= 0.0`, then `weights (values) -= learning_rate * gradients / (velocity.sqrt() + epsilon)`
+    ///
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
@@ -365,7 +414,7 @@ mod tests {
 
     // Helper function to create a simple test case
     fn create_test_case() -> (Vec<f32>, Vec<f32>) {
-        (vec![1.0, 2.0, 3.0], vec![0.1, 0.2, 0.3])
+        (vec![1.0, 2.0], vec![0.1, 0.5])
     }
 
     #[test]
@@ -375,13 +424,11 @@ mod tests {
             decay: Some(0.01),
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.989, 1.978, 2.967];
+        let expected = vec![0.989, 1.948];
 
         sgd.update(&mut values, &mut gradients);
 
-        for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 1e-6);
-        }
+        assert_eq!(values, expected);
     }
 
     #[test]
@@ -390,15 +437,15 @@ mod tests {
             learning_rate: 0.1,
             momentum: 0.9,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
+            velocity: vec![vec![vec![0.5, 0.0]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.99, 1.98, 2.97];
+        let expected = vec![0.539, 1.948];
 
         sgdm.update(0, 0, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 0.01);
+            assert_relative_eq!(v, e, epsilon = 1e-6);
         }
     }
 
@@ -410,16 +457,16 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
-            momentum: vec![vec![vec![0.0, 0.0, 0.0]]],
+            velocity: vec![vec![vec![0.5, 0.0]]],
+            momentum: vec![vec![vec![0.2, 0.1]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.999, 1.998, 2.997];
+        let expected = vec![0.999915, 1.997269];
 
         adam.update(0, 0, 1, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 0.005);
+            assert_relative_eq!(v, e, epsilon = 1e-6);
         }
     }
 
@@ -431,16 +478,16 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
-            momentum: vec![vec![vec![0.0, 0.0, 0.0]]],
+            velocity: vec![vec![vec![0.5, 0.0]]],
+            momentum: vec![vec![vec![0.2, 0.1]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.98901, 1.97801, 2.96701];
+        let expected = vec![0.999905, 1.99718];
 
         adamw.update(0, 0, 1, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 0.05);
+            assert_relative_eq!(v, e, epsilon = 1e-6);
         }
     }
 
@@ -453,17 +500,17 @@ mod tests {
             decay: Some(0.01),
             momentum: Some(0.9),
             centered: Some(true),
-            velocity: vec![vec![vec![0.0, 0.0, 0.0]]],
-            gradient: vec![vec![vec![0.0, 0.0, 0.0]]],
-            buffer: vec![vec![vec![0.0, 0.0, 0.0]]],
+            velocity: vec![vec![vec![0.5, 0.01]]],
+            gradient: vec![vec![vec![0.2, 0.1]]],
+            buffer: vec![vec![vec![0.9, 0.01]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.99, 1.98, 2.97];
+        let expected = vec![0.9902701, 1.875477];
 
         rmsprop.update(0, 0, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 0.1);
+            assert_relative_eq!(v, e, epsilon = 1e-6);
         }
     }
 
@@ -474,13 +521,11 @@ mod tests {
             decay: Some(0.01),
         });
         let (mut values, mut gradients) = create_test_case();
-        let expected = vec![0.989, 1.978, 2.967];
+        let expected = vec![0.989, 1.948];
 
         optimizer.update(0, 0, 1, &mut values, &mut gradients);
 
-        for (v, e) in values.iter().zip(expected.iter()) {
-            assert_relative_eq!(v, e, epsilon = 1e-6);
-        }
+        assert_eq!(values, expected);
     }
 
     #[test]
