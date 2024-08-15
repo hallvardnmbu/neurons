@@ -37,8 +37,12 @@ impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Shape::Vector(a), Shape::Vector(b)) => a == b,
-            (Shape::Tensor(ac, ah, aw), Shape::Tensor(bc, bh, bw)) => ac == bc && ah == bh && aw == bw,
-            (Shape::Gradient(ac, af, ah, aw), Shape::Gradient(bc, bf, bh, bw)) => ac == bc && af == bf && ah == bh && aw == bw,
+            (Shape::Tensor(ac, ah, aw), Shape::Tensor(bc, bh, bw)) => {
+                ac == bc && ah == bh && aw == bw
+            }
+            (Shape::Gradient(ac, af, ah, aw), Shape::Gradient(bc, bf, bh, bw)) => {
+                ac == bc && af == bf && ah == bh && aw == bw
+            }
             _ => false,
         }
     }
@@ -48,12 +52,15 @@ impl Eq for Shape {}
 
 #[macro_export]
 macro_rules! assert_eq_shape {
-    ($left:expr, $right:expr) => ({
+    ($left:expr, $right:expr) => {{
         if $left != $right {
-            panic!("assertion failed: `left == right` \
-                    (left: `{:?}`, right: `{:?}`)", $left, $right);
+            panic!(
+                "assertion failed: `left == right` \
+                    (left: `{:?}`, right: `{:?}`)",
+                $left, $right
+            );
         }
-    });
+    }};
 }
 
 #[derive(Clone, Debug)]
@@ -78,12 +85,15 @@ impl Eq for Data {}
 
 #[macro_export]
 macro_rules! assert_eq_data {
-    ($left:expr, $right:expr) => ({
+    ($left:expr, $right:expr) => {{
         if $left != $right {
-            panic!("assertion failed: `left == right` \
-                    (left: `{:?}`, right: `{:?}`)", $left, $right);
+            panic!(
+                "assertion failed: `left == right` \
+                    (left: `{:?}`, right: `{:?}`)",
+                $left, $right
+            );
         }
-    });
+    }};
 }
 
 impl std::fmt::Display for Data {
@@ -93,18 +103,26 @@ impl std::fmt::Display for Data {
                 for x in data.iter() {
                     write!(f, "{:>8.4} ", x)?;
                 }
-            },
+            }
             Data::Tensor(data) => {
                 for (i, c) in data.iter().enumerate() {
                     for (j, r) in c.iter().enumerate() {
                         for x in r.iter() {
                             write!(f, "{:>8.4} ", x)?;
                         }
-                        if j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                        if j == c.len() - 1 && i == data.len() - 1 {
+                            write!(f, "")?;
+                        } else {
+                            write!(f, "\n")?;
+                        }
                     }
-                    if i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                    if i == data.len() - 1 {
+                        write!(f, "")?;
+                    } else {
+                        write!(f, "\n")?;
+                    }
                 }
-            },
+            }
             Data::Gradient(data) => {
                 for (i, c) in data.iter().enumerate() {
                     for (j, h) in c.iter().enumerate() {
@@ -112,13 +130,25 @@ impl std::fmt::Display for Data {
                             for x in w.iter() {
                                 write!(f, "{:>8.4} ", x)?;
                             }
-                            if k == h.len() - 1 && j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                            if k == h.len() - 1 && j == c.len() - 1 && i == data.len() - 1 {
+                                write!(f, "")?;
+                            } else {
+                                write!(f, "\n")?;
+                            }
                         }
-                        if j == c.len() - 1 && i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                        if j == c.len() - 1 && i == data.len() - 1 {
+                            write!(f, "")?;
+                        } else {
+                            write!(f, "\n")?;
+                        }
                     }
-                    if i == data.len() - 1 { write!(f, "")?; } else { write!(f, "\n")?; }
+                    if i == data.len() - 1 {
+                        write!(f, "")?;
+                    } else {
+                        write!(f, "\n")?;
+                    }
                 }
-            },
+            }
         }
         Ok(())
     }
@@ -139,7 +169,6 @@ impl std::fmt::Display for Tensor {
 }
 
 impl Tensor {
-
     /// Creates a new Tensor with the given shape, filled with zeros.
     ///
     /// # Arguments
@@ -151,33 +180,29 @@ impl Tensor {
     /// A new Tensor with the given shape filled with zeros.
     pub fn zeros(shape: Shape) -> Self {
         match shape {
-            Shape::Vector(size) => {
-                Tensor {
-                    shape,
-                    data: Data::Vector(vec![0.0; size]),
-                }
+            Shape::Vector(size) => Tensor {
+                shape,
+                data: Data::Vector(vec![0.0; size]),
             },
-            Shape::Tensor(channels, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Tensor((0..channels)
-                        .map(|_| (0..rows)
-                            .map(|_| vec![0.0; columns])
-                            .collect())
-                        .collect()),
-                }
+            Shape::Tensor(channels, rows, columns) => Tensor {
+                shape,
+                data: Data::Tensor(
+                    (0..channels)
+                        .map(|_| (0..rows).map(|_| vec![0.0; columns]).collect())
+                        .collect(),
+                ),
             },
-            Shape::Gradient(channels, filters, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Gradient((0..channels)
-                        .map(|_| (0..filters)
-                            .map(|_| (0..rows)
-                                .map(|_| vec![0.0; columns])
-                                .collect())
-                            .collect())
-                        .collect()),
-                }
+            Shape::Gradient(channels, filters, rows, columns) => Tensor {
+                shape,
+                data: Data::Gradient(
+                    (0..channels)
+                        .map(|_| {
+                            (0..filters)
+                                .map(|_| (0..rows).map(|_| vec![0.0; columns]).collect())
+                                .collect()
+                        })
+                        .collect(),
+                ),
             },
         }
     }
@@ -193,33 +218,29 @@ impl Tensor {
     /// A new Tensor with the given shape filled with ones.
     pub fn ones(shape: Shape) -> Self {
         match shape {
-            Shape::Vector(size) => {
-                Tensor {
-                    shape,
-                    data: Data::Vector(vec![1.0; size]),
-                }
+            Shape::Vector(size) => Tensor {
+                shape,
+                data: Data::Vector(vec![1.0; size]),
             },
-            Shape::Tensor(channels, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Tensor((0..channels)
-                        .map(|_| (0..rows)
-                            .map(|_| vec![1.0; columns])
-                            .collect())
-                        .collect()),
-                }
+            Shape::Tensor(channels, rows, columns) => Tensor {
+                shape,
+                data: Data::Tensor(
+                    (0..channels)
+                        .map(|_| (0..rows).map(|_| vec![1.0; columns]).collect())
+                        .collect(),
+                ),
             },
-            Shape::Gradient(channels, filters, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Gradient((0..channels)
-                        .map(|_| (0..filters)
-                            .map(|_| (0..rows)
-                                .map(|_| vec![1.0; columns])
-                                .collect())
-                            .collect())
-                        .collect()),
-                }
+            Shape::Gradient(channels, filters, rows, columns) => Tensor {
+                shape,
+                data: Data::Gradient(
+                    (0..channels)
+                        .map(|_| {
+                            (0..filters)
+                                .map(|_| (0..rows).map(|_| vec![1.0; columns]).collect())
+                                .collect()
+                        })
+                        .collect(),
+                ),
             },
         }
     }
@@ -238,39 +259,43 @@ impl Tensor {
     pub fn random(shape: Shape, min: f32, max: f32) -> Self {
         let mut generator = random::Generator::create(12345);
         match shape {
-            Shape::Vector(size) => {
-                Tensor {
-                    shape,
-                    data: Data::Vector((0..size)
-                        .map(|_| generator.generate(min, max))
-                        .collect()),
-                }
+            Shape::Vector(size) => Tensor {
+                shape,
+                data: Data::Vector((0..size).map(|_| generator.generate(min, max)).collect()),
             },
-            Shape::Tensor(channels, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Tensor((0..channels)
-                        .map(|_| (0..rows)
-                            .map(|_| (0..columns)
-                                .map(|_| generator.generate(min, max))
-                                .collect())
-                            .collect())
-                        .collect()),
-                }
+            Shape::Tensor(channels, rows, columns) => Tensor {
+                shape,
+                data: Data::Tensor(
+                    (0..channels)
+                        .map(|_| {
+                            (0..rows)
+                                .map(|_| {
+                                    (0..columns).map(|_| generator.generate(min, max)).collect()
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                ),
             },
-            Shape::Gradient(channels, filters, rows, columns) => {
-                Tensor {
-                    shape,
-                    data: Data::Gradient((0..channels)
-                        .map(|_| (0..filters)
-                            .map(|_| (0..rows)
-                                .map(|_| (0..columns)
-                                    .map(|_| generator.generate(min, max))
-                                    .collect())
-                                .collect())
-                            .collect())
-                        .collect()),
-                }
+            Shape::Gradient(channels, filters, rows, columns) => Tensor {
+                shape,
+                data: Data::Gradient(
+                    (0..channels)
+                        .map(|_| {
+                            (0..filters)
+                                .map(|_| {
+                                    (0..rows)
+                                        .map(|_| {
+                                            (0..columns)
+                                                .map(|_| generator.generate(min, max))
+                                                .collect()
+                                        })
+                                        .collect()
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                ),
             },
         }
     }
@@ -301,7 +326,12 @@ impl Tensor {
     }
 
     pub fn gradient(data: Vec<Vec<Vec<Vec<f32>>>>) -> Self {
-        let shape = Shape::Gradient(data.len(), data[0].len(), data[0][0].len(), data[0][0][0].len());
+        let shape = Shape::Gradient(
+            data.len(),
+            data[0].len(),
+            data[0][0].len(),
+            data[0][0][0].len(),
+        );
         Tensor {
             shape,
             data: Data::Gradient(data),
@@ -315,11 +345,10 @@ impl Tensor {
     /// A new Tensor with the same data but in a vector format.
     pub fn flatten(&self) -> Self {
         let data: Vec<f32> = match &self.data {
-            Data::Tensor(data) => data.iter().flat_map(|channel| {
-                channel.iter().flat_map(|row| {
-                    row.iter().cloned()
-                })
-            }).collect(),
+            Data::Tensor(data) => data
+                .iter()
+                .flat_map(|channel| channel.iter().flat_map(|row| row.iter().cloned()))
+                .collect(),
             Data::Vector(data) => data.clone(),
             _ => unimplemented!("Flatten not implemented for gradients"),
         };
@@ -336,20 +365,62 @@ impl Tensor {
     /// A vector.
     pub fn get_flat(&self) -> Vec<f32> {
         match &self.data {
-            Data::Tensor(data) => data.iter().flat_map(|channel| {
-                channel.iter().flat_map(|row| {
-                    row.iter().cloned()
-                })
-            }).collect(),
+            Data::Tensor(data) => data
+                .iter()
+                .flat_map(|channel| channel.iter().flat_map(|row| row.iter().cloned()))
+                .collect(),
             Data::Vector(data) => data.clone(),
             _ => unimplemented!("Flatten not implemented for gradients"),
         }
     }
 
+    /// Get the data of the Tensor as a vector.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the data of the Tensor as a vector.
     pub fn as_tensor(&self) -> &Vec<Vec<Vec<f32>>> {
         match &self.data {
             Data::Tensor(tensor) => tensor,
-            _ => panic!("Expected Tensor data!")
+            _ => panic!("Expected Tensor data!"),
+        }
+    }
+
+    /// Get the data of the Tensor as a vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `outputs` - The shape of the output tensor (used if `self.data` is `Data::Vector`).
+    ///
+    /// # Returns
+    ///
+    /// The data of the Tensor as a four-dimensional vector.
+    ///
+    /// # Notes
+    ///
+    /// If the data is a vector, the output shape must be provided.
+    /// The reason for this is to reshape the vector into the correct shape.
+    pub fn get_data(&self, outputs: &Shape) -> Vec<Vec<Vec<f32>>> {
+        match &self.data {
+            Data::Vector(vector) => {
+                let (oc, oh, ow) = match outputs {
+                    Shape::Tensor(ch, he, wi) => (*ch, *he, *wi),
+                    _ => panic!("Expected a Tensor output shape."),
+                };
+
+                assert_eq!(vector.len(), oc * oh * ow, "Invalid gradient vector size.");
+
+                let mut iter = vector.into_iter();
+                (0..oc)
+                    .map(|_| {
+                        (0..oh)
+                            .map(|_| (0..ow).map(|_| *iter.next().unwrap()).collect())
+                            .collect()
+                    })
+                    .collect()
+            }
+            Data::Tensor(tensor) => tensor.clone(),
+            _ => panic!("4D not yet implemented!"),
         }
     }
 
@@ -364,58 +435,67 @@ impl Tensor {
     /// A new Tensor with the given shape.
     pub fn reshape(&self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
-            (Shape::Vector(_), Shape::Vector(_)) => {
-                self.clone()
-            },
-            (Shape::Tensor(channels, rows, columns),
-                Shape::Tensor(new_channels, new_rows, new_columns)) => {
-                assert_eq!(channels * rows * columns, new_channels * new_rows * new_columns,
-                           "Reshape requires the same number of elements");
+            (Shape::Vector(_), Shape::Vector(_)) => self.clone(),
+            (
+                Shape::Tensor(channels, rows, columns),
+                Shape::Tensor(new_channels, new_rows, new_columns),
+            ) => {
+                assert_eq!(
+                    channels * rows * columns,
+                    new_channels * new_rows * new_columns,
+                    "Reshape requires the same number of elements"
+                );
 
                 let data = {
                     let mut iter = self.get_flat().into_iter();
-                    Data::Tensor((0..*new_channels)
-                        .map(|_| (0..*new_rows)
-                            .map(|_| (0..*new_columns)
-                                .map(|_| iter.next().unwrap())
-                                .collect())
-                            .collect())
-                        .collect())
+                    Data::Tensor(
+                        (0..*new_channels)
+                            .map(|_| {
+                                (0..*new_rows)
+                                    .map(|_| {
+                                        (0..*new_columns).map(|_| iter.next().unwrap()).collect()
+                                    })
+                                    .collect()
+                            })
+                            .collect(),
+                    )
                 };
 
-                Tensor {
-                    shape,
-                    data,
-                }
-            },
-            (Shape::Vector(length),
-                Shape::Tensor(new_channels, new_rows, new_columns)) => {
-                assert_eq!(*length, new_channels * new_rows * new_columns,
-                           "Reshape requires the same number of elements");
+                Tensor { shape, data }
+            }
+            (Shape::Vector(length), Shape::Tensor(new_channels, new_rows, new_columns)) => {
+                assert_eq!(
+                    *length,
+                    new_channels * new_rows * new_columns,
+                    "Reshape requires the same number of elements"
+                );
 
                 let data = {
                     let mut iter = self.get_flat().into_iter();
-                    Data::Tensor((0..*new_channels)
-                        .map(|_| (0..*new_rows)
-                            .map(|_| (0..*new_columns)
-                                .map(|_| iter.next().unwrap())
-                                .collect())
-                            .collect())
-                        .collect())
+                    Data::Tensor(
+                        (0..*new_channels)
+                            .map(|_| {
+                                (0..*new_rows)
+                                    .map(|_| {
+                                        (0..*new_columns).map(|_| iter.next().unwrap()).collect()
+                                    })
+                                    .collect()
+                            })
+                            .collect(),
+                    )
                 };
 
-                Tensor {
-                    shape,
-                    data,
-                }
-            },
-            (Shape::Tensor(channels, rows, columns),
-                Shape::Vector(length)) => {
-                assert_eq!(channels * rows * columns, *length,
-                           "Reshape requires the same number of elements");
+                Tensor { shape, data }
+            }
+            (Shape::Tensor(channels, rows, columns), Shape::Vector(length)) => {
+                assert_eq!(
+                    channels * rows * columns,
+                    *length,
+                    "Reshape requires the same number of elements"
+                );
 
                 self.flatten()
-            },
+            }
             _ => panic!("Invalid reshape"),
         }
     }
@@ -423,30 +503,135 @@ impl Tensor {
     pub fn add(&self, other: &Tensor) -> Self {
         match (&self.data, &other.data) {
             (Data::Vector(data1), Data::Vector(data2)) => {
-                assert_eq!(data1.len(), data2.len(), "Add requires the same number of elements");
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of elements"
+                );
 
                 let data = data1.iter().zip(data2.iter()).map(|(a, b)| a + b).collect();
                 Tensor {
                     shape: self.shape.clone(),
                     data: Data::Vector(data),
                 }
-            },
+            }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
-                assert_eq!(data1.len(), data2.len(), "Add requires the same number of channels");
-                assert_eq!(data1[0].len(), data2[0].len(), "Add requires the same number of rows");
-                assert_eq!(data1[0][0].len(), data2[0][0].len(), "Add requires the same number of columns");
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Add requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Add requires the same number of columns"
+                );
 
-                let data = data1.iter().zip(data2.iter()).map(|(c1, c2)| {
-                    c1.iter().zip(c2.iter()).map(|(r1, r2)| {
-                        r1.iter().zip(r2.iter()).map(|(a, b)| a + b).collect()
-                    }).collect()
-                }).collect();
+                let data = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(c1, c2)| {
+                        c1.iter()
+                            .zip(c2.iter())
+                            .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a + b).collect())
+                            .collect()
+                    })
+                    .collect();
                 Tensor {
                     shape: self.shape.clone(),
                     data: Data::Tensor(data),
                 }
-            },
+            }
             _ => panic!("Invalid add"),
+        }
+    }
+
+    pub fn add_inplace(&mut self, other: &Tensor) {
+        match (&mut self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of elements"
+                );
+
+                for (a, b) in data1.iter_mut().zip(data2.iter()) {
+                    *a += b;
+                }
+            }
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Add requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Add requires the same number of columns"
+                );
+
+                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
+                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
+                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
+                            *a += b;
+                        }
+                    }
+                }
+            }
+            _ => panic!("Invalid add"),
+        }
+    }
+
+    pub fn mul_inplace(&mut self, other: &Tensor) {
+        match (&mut self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Multiply requires the same number of elements"
+                );
+
+                for (a, b) in data1.iter_mut().zip(data2.iter()) {
+                    *a *= b;
+                }
+            }
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Multiply requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Multiply requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Multiply requires the same number of columns"
+                );
+
+                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
+                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
+                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
+                            *a *= b;
+                        }
+                    }
+                }
+            }
+            _ => panic!("Invalid multiply"),
         }
     }
 
@@ -459,7 +644,7 @@ impl Tensor {
                         *x = 0.0;
                     }
                 }
-            },
+            }
             Data::Tensor(data) => {
                 for c in data.iter_mut() {
                     for r in c.iter_mut() {
@@ -470,8 +655,8 @@ impl Tensor {
                         }
                     }
                 }
-            },
-            _ => unimplemented!("Dropout not implemented for gradients")
+            }
+            _ => unimplemented!("Dropout not implemented for gradients"),
         }
     }
 
@@ -481,7 +666,7 @@ impl Tensor {
                 for x in data.iter_mut() {
                     *x = x.clamp(min, max);
                 }
-            },
+            }
             Data::Tensor(ref mut data) => {
                 for c in data.iter_mut() {
                     for r in c.iter_mut() {
@@ -490,7 +675,7 @@ impl Tensor {
                         }
                     }
                 }
-            },
+            }
             Data::Gradient(ref mut data) => {
                 for c in data.iter_mut() {
                     for f in c.iter_mut() {
@@ -501,7 +686,7 @@ impl Tensor {
                         }
                     }
                 }
-            },
+            }
         }
         self
     }
@@ -524,7 +709,9 @@ mod tests {
         let tensor = Tensor::random(Shape::Tensor(2, 2, 2), -1.0, 1.0);
         assert_eq!(tensor.shape, Shape::Tensor(2, 2, 2));
         if let Data::Tensor(data) = tensor.data {
-            assert!(data.iter().all(|c| c.iter().all(|r| r.iter().all(|&x| x >= -1.0 && x <= 1.0))));
+            assert!(data
+                .iter()
+                .all(|c| c.iter().all(|r| r.iter().all(|&x| x >= -1.0 && x <= 1.0))));
         } else {
             panic!("Expected Tensor data!");
         }
@@ -532,7 +719,9 @@ mod tests {
         let tensor = Tensor::random(Shape::Gradient(2, 2, 2, 2), 0.0, 2.0);
         assert_eq!(tensor.shape, Shape::Gradient(2, 2, 2, 2));
         if let Data::Gradient(data) = tensor.data {
-            assert!(data.iter().all(|c| c.iter().all(|f| f.iter().all(|r| r.iter().all(|&x| x >= 0.0 && x <= 2.0)))));
+            assert!(data.iter().all(|c| c
+                .iter()
+                .all(|f| f.iter().all(|r| r.iter().all(|&x| x >= 0.0 && x <= 2.0)))));
         } else {
             panic!("Expected Gradient data!");
         }
@@ -557,7 +746,10 @@ mod tests {
 
         let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         assert_eq!(tensor.shape, Shape::Tensor(1, 2, 2));
-        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]])
+        );
     }
 
     #[test]
@@ -575,11 +767,17 @@ mod tests {
     fn test_tensor_gradient() {
         let tensor = Tensor::gradient(vec![vec![vec![vec![1.0, 2.0, 3.0]]]]);
         assert_eq!(tensor.shape, Shape::Gradient(1, 1, 1, 3));
-        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 2.0, 3.0]]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Gradient(vec![vec![vec![vec![1.0, 2.0, 3.0]]]])
+        );
 
         let tensor = Tensor::gradient(vec![vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]]);
         assert_eq!(tensor.shape, Shape::Gradient(1, 1, 2, 2));
-        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Gradient(vec![vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]])
+        );
     }
 
     #[test]
@@ -588,7 +786,10 @@ mod tests {
         assert_eq!(tensor.as_tensor(), &vec![vec![vec![1.0, 2.0, 3.0]]]);
 
         let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
-        assert_eq!(tensor.as_tensor(), &vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        assert_eq!(
+            tensor.as_tensor(),
+            &vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]
+        );
     }
 
     #[test]
@@ -608,7 +809,10 @@ mod tests {
 
         let mut tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         tensor.dropout(0.0);
-        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]])
+        );
     }
 
     #[test]
@@ -617,10 +821,22 @@ mod tests {
         assert_eq!(tensor.data, Data::Vector(vec![0.0, 0.0, 0.0]));
 
         let tensor = Tensor::zeros(Shape::Tensor(2, 2, 2));
-        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![0.0, 0.0], vec![0.0, 0.0]], vec![vec![0.0, 0.0], vec![0.0, 0.0]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Tensor(vec![
+                vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                vec![vec![0.0, 0.0], vec![0.0, 0.0]]
+            ])
+        );
 
         let tensor = Tensor::zeros(Shape::Gradient(1, 2, 2, 2));
-        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![0.0, 0.0], vec![0.0, 0.0]], vec![vec![0.0, 0.0], vec![0.0, 0.0]]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Gradient(vec![vec![
+                vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                vec![vec![0.0, 0.0], vec![0.0, 0.0]]
+            ]])
+        );
     }
 
     #[test]
@@ -629,10 +845,22 @@ mod tests {
         assert_eq!(tensor.data, Data::Vector(vec![1.0, 1.0, 1.0]));
 
         let tensor = Tensor::ones(Shape::Tensor(2, 2, 2));
-        assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 1.0], vec![1.0, 1.0]], vec![vec![1.0, 1.0], vec![1.0, 1.0]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Tensor(vec![
+                vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+                vec![vec![1.0, 1.0], vec![1.0, 1.0]]
+            ])
+        );
 
         let tensor = Tensor::ones(Shape::Gradient(1, 2, 2, 2));
-        assert_eq!(tensor.data, Data::Gradient(vec![vec![vec![vec![1.0, 1.0], vec![1.0, 1.0]], vec![vec![1.0, 1.0], vec![1.0, 1.0]]]]));
+        assert_eq!(
+            tensor.data,
+            Data::Gradient(vec![vec![
+                vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+                vec![vec![1.0, 1.0], vec![1.0, 1.0]]
+            ]])
+        );
     }
 
     #[test]
@@ -646,10 +874,16 @@ mod tests {
 
         let tensor = Tensor {
             shape: Shape::Tensor(2, 2, 2),
-            data: Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]]),
+            data: Data::Tensor(vec![
+                vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+                vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+            ]),
         };
         let flattened = tensor.flatten();
-        assert_eq!(flattened.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]));
+        assert_eq!(
+            flattened.data,
+            Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+        );
     }
 
     #[test]
@@ -660,15 +894,28 @@ mod tests {
             data: Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
         };
         let reshaped = tensor.reshape(Shape::Vector(6));
-        assert_eq!(reshaped.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]));
+        assert_eq!(
+            reshaped.data,
+            Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        );
 
         // Test reshaping from tensor to tensor
         let tensor = Tensor {
             shape: Shape::Tensor(2, 3, 1),
-            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]),
+            data: Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0], vec![3.0]],
+                vec![vec![4.0], vec![5.0], vec![6.0]],
+            ]),
         };
         let reshaped = tensor.reshape(Shape::Tensor(3, 2, 1));
-        assert_eq!(reshaped.data, Data::Tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]], vec![vec![5.0], vec![6.0]]]));
+        assert_eq!(
+            reshaped.data,
+            Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0]],
+                vec![vec![3.0], vec![4.0]],
+                vec![vec![5.0], vec![6.0]]
+            ])
+        );
 
         // Test reshaping from vector to tensor
         let tensor = Tensor {
@@ -676,15 +923,27 @@ mod tests {
             data: Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
         };
         let reshaped = tensor.reshape(Shape::Tensor(2, 3, 1));
-        assert_eq!(reshaped.data, Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]));
+        assert_eq!(
+            reshaped.data,
+            Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0], vec![3.0]],
+                vec![vec![4.0], vec![5.0], vec![6.0]]
+            ])
+        );
 
         // Test reshaping from tensor to vector
         let tensor = Tensor {
             shape: Shape::Tensor(2, 3, 1),
-            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0], vec![3.0]], vec![vec![4.0], vec![5.0], vec![6.0]]]),
+            data: Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0], vec![3.0]],
+                vec![vec![4.0], vec![5.0], vec![6.0]],
+            ]),
         };
         let reshaped = tensor.reshape(Shape::Vector(6));
-        assert_eq!(reshaped.data, Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]));
+        assert_eq!(
+            reshaped.data,
+            Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        );
     }
 
     #[test]
@@ -709,7 +968,13 @@ mod tests {
             data: Data::Tensor(vec![vec![vec![5.0], vec![6.0]], vec![vec![7.0], vec![8.0]]]),
         };
         let result = tensor1.add(&tensor2);
-        assert_eq!(result.data, Data::Tensor(vec![vec![vec![6.0], vec![8.0]], vec![vec![10.0], vec![12.0]]]));
+        assert_eq!(
+            result.data,
+            Data::Tensor(vec![
+                vec![vec![6.0], vec![8.0]],
+                vec![vec![10.0], vec![12.0]]
+            ])
+        );
     }
 
     #[test]
@@ -726,14 +991,20 @@ mod tests {
             data: Data::Tensor(vec![vec![vec![0.5], vec![1.5]], vec![vec![2.5], vec![3.5]]]),
         };
         let result = tensor.clamp(1.0, 3.0);
-        assert_eq!(result.data, Data::Tensor(vec![vec![vec![1.0], vec![1.5]], vec![vec![2.5], vec![3.0]]]));
+        assert_eq!(
+            result.data,
+            Data::Tensor(vec![vec![vec![1.0], vec![1.5]], vec![vec![2.5], vec![3.0]]])
+        );
 
         let tensor = Tensor {
             shape: Shape::Gradient(1, 1, 2, 2),
             data: Data::Gradient(vec![vec![vec![vec![0.0, 1.0], vec![2.0, 3.0]]]]),
         };
         let result = tensor.clamp(0.5, 2.5);
-        assert_eq!(result.data, Data::Gradient(vec![vec![vec![vec![0.5, 1.0], vec![2.0, 2.5]]]]));
+        assert_eq!(
+            result.data,
+            Data::Gradient(vec![vec![vec![vec![0.5, 1.0], vec![2.0, 2.5]]]])
+        );
     }
 
     #[test]
