@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-use neurons::{activation, feedforward, objective, optimizer, tensor, plot};
+use neurons::{activation, feedforward, objective, optimizer, plot, tensor};
 
 use std::fs::File;
-use std::io::{Read, BufReader, Result};
+use std::io::{BufReader, Read, Result};
 
 fn read(reader: &mut dyn Read) -> Result<u32> {
     let mut buffer = [0; 4];
@@ -59,7 +59,10 @@ fn load_labels(file_path: &str, numbers: f32) -> Result<Vec<tensor::Tensor>> {
     let mut _labels = vec![0; num_labels as usize];
     reader.read_exact(&mut _labels)?;
 
-    Ok(_labels.iter().map(|&x| tensor::Tensor::one_hot(x as f32, numbers)).collect())
+    Ok(_labels
+        .iter()
+        .map(|&x| tensor::Tensor::one_hot(x as f32, numbers))
+        .collect())
 }
 
 fn main() {
@@ -67,38 +70,52 @@ fn main() {
     let y_train = load_labels("./datasets/mnist/train-labels-idx1-ubyte", 10f32).unwrap();
     let x_test = load_images("./datasets/mnist/t10k-images-idx3-ubyte").unwrap();
     let y_test = load_labels("./datasets/mnist/t10k-labels-idx1-ubyte", 10f32).unwrap();
-    println!("Train: {} images, Test: {} images", x_train.len(), x_test.len());
+    println!(
+        "Train: {} images, Test: {} images",
+        x_train.len(),
+        x_test.len()
+    );
 
     let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
 
-    network.convolution(12, (3, 3), (1, 1), (1, 1),
-                        activation::Activation::ReLU, false, Some(0.1));
-    network.convolution(8, (3, 3), (1, 1), (0, 0),
-                        activation::Activation::ReLU, false, Some(0.1));
+    network.convolution(
+        12,
+        (3, 3),
+        (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        false,
+        Some(0.1),
+    );
+    network.convolution(
+        8,
+        (3, 3),
+        (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        false,
+        Some(0.1),
+    );
     network.dense(10, activation::Activation::Softmax, true, Some(0.1));
 
     println!("{}", network);
 
-    network.set_optimizer(
-        optimizer::Optimizer::RMSprop(
-            optimizer::RMSprop {
-                learning_rate: 0.001,
-                alpha: 0.0,
-                epsilon: 1e-8,
+    network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
+        learning_rate: 0.001,
+        alpha: 0.0,
+        epsilon: 1e-8,
 
-                decay: Some(0.01),
-                momentum: Some(0.01),
-                centered: Some(true),
+        decay: Some(0.01),
+        momentum: Some(0.01),
+        centered: Some(true),
 
-                velocity: vec![],           // To be filled by the network
-                gradient: vec![],           // To be filled by the network
-                buffer: vec![],             // To be filled by the network
-            }
-        )
-    );
+        velocity: vec![], // To be filled by the network
+        gradient: vec![], // To be filled by the network
+        buffer: vec![],   // To be filled by the network
+    }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
-        Some((-1f32, 1f32))                 // Gradient clipping
+        Some((-1f32, 1f32)),                // Gradient clipping
     );
 
     // Train the network
