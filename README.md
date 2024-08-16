@@ -2,7 +2,7 @@
 
 # Modular neural networks in Rust.
 
-Create modular neural networks in Rust with ease! For educational purposes; vector operations are not throughly optimized.
+Create modular neural networks in Rust with ease! For educational purposes; operations are not throughly optimized.
 
 ---
 
@@ -16,19 +16,19 @@ use neurons::optimizer::Optimizer;
 use neurons::objective::Objective;
 
 fn main() {
-  
+
     // New feedforward network with four inputs
     let mut network = Feedforward::new(Shape::Dense(4));
 
     // Dense(output, activation, bias, Some(dropout))
     network.dense(100, Activation::ReLU, false, None);
-  
+
     // Convolution(filters, kernel, stride, padding, activation, bias, Some(dropout))
     network.convolution(5, (5, 5), (1, 1), (1, 1), Activation::ReLU, false, Some(0.1));
-  
+
     // Dense(output, activation, bias, Some(dropout))
     network.dense(10, Activation::Softmax, false, None);
-    
+
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
             optimizer::AdamW {
@@ -47,9 +47,9 @@ fn main() {
         objective::Objective::MSE,          // Objective function
         Some((-1f32, 1f32))                 // Gradient clipping
     );
-  
+
     println!("{}", network);
-  
+
     let (x, y) = {  };                      // Load data
     let epochs = 1000;
     let loss = network.learn(x, y, epochs); // Train the network
@@ -73,7 +73,6 @@ Examples can be found in the `examples` directory.
       - [ ] Padding
       - [ ] Stride
       - [ ] Dilation
-  - [ ] Feedback
 
 - Activation functions
   - [x] Linear
@@ -104,7 +103,11 @@ Examples can be found in the `examples` directory.
   - [x] Feedforward
   - [ ] Convolutional
   - [ ] Recurrent
-  - [ ] Feedback
+  - [ ] Feedback connections
+    - [x] Dense to Dense
+    - [ ] Dense to Convolutional
+    - [ ] Convolutional to Dense
+    - [ ] Convolutional to Convolutional
 
 - Regularization
   - [x] Dropout
@@ -116,10 +119,32 @@ Examples can be found in the `examples` directory.
 
 - Testing
   - [x] Unit tests
+    - [x] Thorough testing of algebraic operations
     - [x] Thorough testing of activation functions
     - [x] Thorough testing of objective functions
     - [x] Thorough testing of optimization techniques
+    - [ ] Thorough testing of feedback scaling (wrt. gradients)
   - [ ] Integration tests
+
+- Examples
+  - [x] XOR
+  - [x] Iris
+    - [x] MLP
+    - [ ] MLP + Feedback
+  - [ ] Linear regression
+    - [ ] MLP
+    - [ ] MLP + Feedback
+  - [ ] Classification TBA.
+    - [ ] MLP
+    - [ ] MLP + Feedback
+  - [ ] MNIST
+    - [ ] MLP
+    - [ ] MLP + Feedback
+    - [ ] CNN
+    - [ ] CNN + Feedback
+  - [ ] CIFAR-10
+    - [ ] CNN
+    - [ ] CNN + Feedback
 
 - Other
   - [x] Documentation
@@ -133,6 +158,9 @@ Examples can be found in the `examples` directory.
   - [ ] Type conversion (e.g. f32, f64)
   - [ ] Network type specification (e.g. f32, f64)
   - [ ] Saving and loading
+    - [ ] Single layer weights
+    - [ ] Entire network weights
+    - [ ] Custom (binary) file format, with header explaining contents
   - [ ] Logging
 
 ---
