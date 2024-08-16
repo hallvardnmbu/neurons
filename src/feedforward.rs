@@ -223,18 +223,18 @@ impl Feedforward {
             )));
     }
 
-    pub fn feedback(&mut self, i: usize, j: usize) {
-        if i > self.layers.len() || j >= self.layers.len() || i <= j {
+    pub fn feedback(&mut self, from: usize, to: usize) {
+        if from > self.layers.len() || to >= self.layers.len() || from <= to {
             panic!("Invalid layer indices for feedback connection.");
         }
 
         // TODO: Add support for convolutional layers.
         // TODO: Add support for mismatched input/output sizes.
-        let inputs = match &self.layers[i] {
+        let inputs = match &self.layers[from] {
             Layer::Dense(layer) => &layer.inputs,
             _ => unimplemented!("Feedback connections for convolutional layers."),
         };
-        let outputs = match &self.layers[j] {
+        let outputs = match &self.layers[to] {
             Layer::Dense(layer) => &layer.outputs,
             _ => unimplemented!("Feedback connections for convolutional layers."),
         };
@@ -242,8 +242,8 @@ impl Feedforward {
             panic!("Incompatible number of values for feedback connection.");
         }
 
-        // Loop through layers i -> j and add +1 to its loopback count.
-        for k in i..j {
+        // Loop through layers to -> from and add +1 to its loopback count.
+        for k in to..from {
             match &mut self.layers[k] {
                 Layer::Dense(layer) => layer.loops += 1.0,
                 _ => unimplemented!("Feedback connections for convolutional layers."),
@@ -251,10 +251,10 @@ impl Feedforward {
         }
 
         // Store the feedback connection for use in the forward pass.
-        if self.feedbacks.contains_key(&i) {
-            panic!("Feedback connection already exists for layer {}", i);
+        if self.feedbacks.contains_key(&from) {
+            panic!("Feedback connection already exists for layer {}", from);
         }
-        self.feedbacks.insert(i, j);
+        self.feedbacks.insert(from, to);
     }
 
     /// Set the activation function of a layer.
@@ -475,7 +475,7 @@ impl Feedforward {
             let (mut pre, mut post) = self._forward(activated.last().unwrap(), i - 1, i);
 
             if self.feedbacks.contains_key(&i) {
-                println!("Feedback {} -> {}", i, self.feedbacks[&i]);
+                // println!("Feedback {} -> {}", i, self.feedbacks[&i]);
 
                 let (fpre, fpost) = self._forward(post.last().unwrap(), self.feedbacks[&i], i);
 
@@ -489,30 +489,23 @@ impl Feedforward {
                     // TODO: Handle the case with feedbacks.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 
-                    // Overwriting.
-                    unactivated[j] = fpre[idx].to_owned();
-                    activated[j + 1] = fpost[idx].to_owned();
+                    // // Overwriting.
+                    // unactivated[j] = fpre[idx].to_owned();
+                    // activated[j + 1] = fpost[idx].to_owned();
 
                     // Summing.
                     unactivated[j].add_inplace(&fpre[idx]);
                     activated[j + 1].add_inplace(&fpost[idx]);
 
-                    // Multiplying.
-                    unactivated[j].mul_inplace(&fpre[idx]);
-                    activated[j + 1].mul_inplace(&fpost[idx]);
+                    // // Multiplying.
+                    // unactivated[j].mul_inplace(&fpre[idx]);
+                    // activated[j + 1].mul_inplace(&fpost[idx]);
                 }
             } else {
                 unactivated.append(&mut pre);
                 activated.append(&mut post);
             }
         }
-
-        println!(
-            "{} {} {}",
-            self.layers.len(),
-            unactivated.len(),
-            activated.len()
-        );
 
         (unactivated, activated)
     }

@@ -151,7 +151,10 @@ impl Dense {
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         let derivative: Vec<f32> = self.activation.backward(&output).get_flat();
-        let delta: Vec<f32> = mul_scalar(&mul(&gradient.get_flat(), &derivative), 1.0 / self.loops);
+
+        // TODO: Should the loops be multiplied as-is? 1/loops? sqrt(loops)? etc.
+        // Iris; better with *loops than /loops => Converges faster.
+        let delta: Vec<f32> = mul_scalar(&mul(&gradient.get_flat(), &derivative), self.loops);
 
         let weight_gradient: Vec<Vec<f32>> = delta
             .iter()

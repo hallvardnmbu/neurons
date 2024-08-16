@@ -33,5 +33,13 @@ name = "example_iris"
 path = "examples/example_iris.rs"
 
 [[example]]
+name = "example_iris_feedback"
+path = "examples/example_iris_feedback.rs"
+
+[[example]]
 name = "example_convolution"
 path = "examples/example_convolution.rs"
+
+[[example]]
+name = "example_mnist"
+path = "examples/example_mnist.rs"
