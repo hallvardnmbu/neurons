@@ -38,6 +38,18 @@ pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
     }
 }
 
+pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    ten1.iter()
+        .zip(ten2.iter())
+        .map(|(a, b)| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e + f).collect())
+                .collect()
+        })
+        .collect()
+}
+
 /// Element-wise multiplication of two vectors.
 ///
 /// # Arguments
@@ -62,6 +74,18 @@ pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 /// ```
 pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
     vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).collect()
+}
+
+pub fn mul3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    ten1.iter()
+        .zip(ten2.iter())
+        .map(|(a, b)| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e * f).collect())
+                .collect()
+        })
+        .collect()
 }
 
 /// Element-wise multiplication of a vector and scalar.
@@ -104,16 +128,23 @@ pub fn mul_scalar(vec: &Vec<f32>, scalar: f32) -> Vec<f32> {
 /// # Examples
 ///
 /// ```
-/// use neurons::algebra::mul_scalar_tensor;
+/// use neurons::algebra::mul3d_scalar;
 ///
 /// let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
 /// let scalar = 2.0;
-/// let result = mul_scalar_tensor(&tensor, scalar);
+/// let result = mul3d_scalar(&tensor, scalar);
 ///
 /// assert_eq!(result, vec![vec![vec![2.0, 4.0], vec![6.0, 8.0]], vec![vec![10.0, 12.0], vec![14.0, 16.0]]]);
 /// ```
-pub fn mul_scalar_tensor(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
-    tensor.iter().map(|row| row.iter().map(|col| col.iter().map(|a| a * scalar).collect()).collect()).collect()
+pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
+    tensor
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|col| col.iter().map(|a| a * scalar).collect())
+                .collect()
+        })
+        .collect()
 }
 
 /// Dot product of two vectors.
@@ -194,6 +225,176 @@ pub fn sub_inplace_tensor(main: &mut Vec<Vec<Vec<f32>>>, other: &Vec<Vec<Vec<f32
     }
 }
 
+/// Cross-correlation of an image and a kernel.
+///
+/// # Arguments
+///
+/// * `image` - A reference to a 2D vector of `f32`.
+/// * `kernel` - A reference to a 2D vector of `f32`.
+///
+/// # Returns
+///
+/// A 2D vector of `f32` containing the cross-correlation of `image` and `kernel`.
+///
+/// # Formula
+///
+/// The cross-correlation of an image `I` and a kernel `K` is given by:
+///
+/// ```latex
+/// (I \otimes K)_{i,j} = \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(i+m, j+n) K(m, n)
+/// ```
+///
+/// where `k1` and `k2` are the dimensions of the kernel.
+///
+/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
+pub fn cross_correlate_2d(image: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+    let (rows, columns) = (image.len(), image[0].len());
+    let (k1, k2) = (kernel.len(), kernel[0].len());
+
+    (0..rows - k1 + 1)
+        .map(|i| {
+            (0..columns - k2 + 1)
+                .map(|j| {
+                    let mut sum = 0.0;
+                    for m in 0..k1 {
+                        for n in 0..k2 {
+                            sum += image[i + m][j + n] * kernel[m][n];
+                        }
+                    }
+                    sum
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Convolution of an image and a kernel.
+///
+/// # Arguments
+///
+/// * `image` - A reference to a 2D vector of `f32`.
+/// * `kernel` - A reference to a 2D vector of `f32`.
+///
+/// # Returns
+///
+/// A 2D vector of `f32` containing the cross-correlation of `image` and `kernel`.
+///
+/// # Formula
+///
+/// The cross-correlation of an image `I` and a kernel `K` is given by:
+///
+/// ```latex
+/// (I \star K)_{i,j} = \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(i+m, j+n) K(-m, -n)
+/// ```
+///
+/// where `k1` and `k2` are the dimensions of the kernel.
+///
+/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
+pub fn convolve_2d(image: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+    let (rows, columns) = (image.len(), image[0].len());
+    let (k1, k2) = (kernel.len(), kernel[0].len());
+
+    // Flipping the kernel.
+    // As kernel[-m][-n] == flip(kernel)[m][n]
+    let _kernel: Vec<Vec<f32>> = kernel
+        .iter()
+        .rev()
+        .map(|row| row.iter().rev().copied().collect())
+        .collect();
+
+    (0..rows - k1 + 1)
+        .map(|i| {
+            (0..columns - k2 + 1)
+                .map(|j| {
+                    let mut sum = 0.0;
+                    for m in 0..k1 {
+                        for n in 0..k2 {
+                            sum += image[i + m][j + n] * _kernel[m][n];
+                        }
+                    }
+                    sum
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Convolution of an image and a kernel.
+///
+/// # Arguments
+///
+/// * `image` - A reference to a 3D vector of `f32`.
+/// * `kernel` - A reference to a 3D vector of `f32`.
+/// * `stride` - A tuple of two `usize` values representing the stride of the convolution.
+/// * `padding` - A tuple of two `usize` values representing the padding of the convolution.
+///
+/// # Returns
+///
+/// A 3D vector of `f32` containing the cross-correlation of `image` and `kernel`.
+///
+/// # Formula
+///
+/// The cross-correlation of an image `I` and a kernel `K` is given by:
+///
+/// ```latex
+/// (I \star K)_{f,i,j} = \sum_{c=0}^{C-1} \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(c, i+m, j+n) K(f, -m, -n)
+/// ```
+///
+/// where `k1` and `k2` are the dimensions of the kernel, and `c` the channel.
+///
+/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
+pub fn convolve_3d(
+    image: &Vec<Vec<Vec<f32>>>,
+    kernel: &Vec<Vec<Vec<f32>>>,
+    stride: &(usize, usize),
+    padding: &(usize, usize),
+) -> Vec<Vec<Vec<f32>>> {
+    let (channels, rows, columns) = (image.len(), image[0].len(), image[0][0].len());
+    let (k_channels, k1, k2) = (kernel.len(), kernel[0].len(), kernel[0][0].len());
+
+    assert_eq!(
+        channels, k_channels,
+        "The number of channels must be equal in both the image and the kernel."
+    );
+
+    // Flipping the kernel.
+    // As kernel[-c][-m][-n] == flip(kernel)[c][m][n]
+    let _kernel: Vec<Vec<Vec<f32>>> = kernel
+        .iter()
+        .rev()
+        .map(|row| {
+            row.iter()
+                .rev()
+                .map(|col| col.iter().rev().copied().collect())
+                .collect()
+        })
+        .collect();
+
+    let (stride_x, stride_y) = stride;
+    let (padding_x, padding_y) = padding;
+
+    let output_rows = (rows + 2 * padding_x - k1) / stride_x + 1;
+    let output_cols = (columns + 2 * padding_y - k2) / stride_y + 1;
+
+    let mut output = vec![vec![vec![0.0; output_cols]; output_rows]; channels];
+
+    for c in 0..channels {
+        for i in (0..rows - k1 + 1).step_by(*stride_x) {
+            for j in (0..columns - k2 + 1).step_by(*stride_y) {
+                let mut sum = 0.0;
+                for m in 0..k1 {
+                    for n in 0..k2 {
+                        sum += image[c][i + m][j + n] * _kernel[c][m][n];
+                    }
+                }
+                output[c][i / stride_x][j / stride_y] = sum;
+            }
+        }
+    }
+
+    output
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -241,17 +442,35 @@ mod tests {
     }
 
     #[test]
-    fn test_mul_scalar_tensor() {
-        let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
+    fn test_mul3d_scalar() {
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
         let scalar = 2.0;
-        let result = mul_scalar_tensor(&tensor, scalar);
-        assert_eq!(result, vec![vec![vec![2.0, 4.0], vec![6.0, 8.0]], vec![vec![10.0, 12.0], vec![14.0, 16.0]]]);
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![2.0, 4.0], vec![6.0, 8.0]],
+                vec![vec![10.0, 12.0], vec![14.0, 16.0]]
+            ]
+        );
 
         // Test with negative scalar
-        let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
         let scalar = -2.0;
-        let result = mul_scalar_tensor(&tensor, scalar);
-        assert_eq!(result, vec![vec![vec![-2.0, -4.0], vec![-6.0, -8.0]], vec![vec![-10.0, -12.0], vec![-14.0, -16.0]]]);
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![-2.0, -4.0], vec![-6.0, -8.0]],
+                vec![vec![-10.0, -12.0], vec![-14.0, -16.0]]
+            ]
+        );
     }
 
     #[test]
@@ -284,15 +503,39 @@ mod tests {
 
     #[test]
     fn test_sub_inplace_tensor() {
-        let mut main = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
-        let other = vec![vec![vec![1.0, 1.0], vec![1.0, 1.0]], vec![vec![1.0, 1.0], vec![1.0, 1.0]]];
+        let mut main = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let other = vec![
+            vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+            vec![vec![1.0, 1.0], vec![1.0, 1.0]],
+        ];
         sub_inplace_tensor(&mut main, &other);
-        assert_eq!(main, vec![vec![vec![0.0, 1.0], vec![2.0, 3.0]], vec![vec![4.0, 5.0], vec![6.0, 7.0]]]);
+        assert_eq!(
+            main,
+            vec![
+                vec![vec![0.0, 1.0], vec![2.0, 3.0]],
+                vec![vec![4.0, 5.0], vec![6.0, 7.0]]
+            ]
+        );
 
         // Test with negative numbers
-        let mut main = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
-        let other = vec![vec![vec![-1.0, -1.0], vec![-1.0, -1.0]], vec![vec![-1.0, -1.0], vec![-1.0, -1.0]]];
+        let mut main = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let other = vec![
+            vec![vec![-1.0, -1.0], vec![-1.0, -1.0]],
+            vec![vec![-1.0, -1.0], vec![-1.0, -1.0]],
+        ];
         sub_inplace_tensor(&mut main, &other);
-        assert_eq!(main, vec![vec![vec![2.0, 3.0], vec![4.0, 5.0]], vec![vec![6.0, 7.0], vec![8.0, 9.0]]]);
+        assert_eq!(
+            main,
+            vec![
+                vec![vec![2.0, 3.0], vec![4.0, 5.0]],
+                vec![vec![6.0, 7.0], vec![8.0, 9.0]]
+            ]
+        );
     }
 }
