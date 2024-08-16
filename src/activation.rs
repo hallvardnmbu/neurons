@@ -1,18 +1,4 @@
-/*
-Copyright 2024 Hallvard Høyland Lavik
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::algebra::dot;
 use crate::tensor;
@@ -52,7 +38,6 @@ impl std::fmt::Display for Function {
 
 /// Wrapper for the creation, forward, and backward methods of the activation functions.
 impl Function {
-
     /// Creates an activation function based on the provided `Activation` variant.
     pub fn create(activation: &Activation) -> Self {
         match activation {
@@ -96,7 +81,6 @@ impl Function {
 pub struct ReLU {}
 
 impl ReLU {
-
     /// Forward pass of the ReLU activation function.
     ///
     /// # Function
@@ -114,19 +98,23 @@ impl ReLU {
         let data = match &input.data {
             tensor::Data::Vector(vector) => {
                 tensor::Data::Vector(vector.iter().map(|&v| v.max(0.0)).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| v.max(0.0))
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            }
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| j.iter().map(|&v| v.max(0.0)).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 
     /// Backward pass of the ReLU activation function.
@@ -144,21 +132,28 @@ impl ReLU {
     /// * A vector of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| if v > 0.0 { 1.0 } else { 0.0 })
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            tensor::Data::Vector(vector) => tensor::Data::Vector(
+                vector
+                    .iter()
+                    .map(|&v| if v > 0.0 { 1.0 } else { 0.0 })
+                    .collect(),
+            ),
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| j.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 }
 
@@ -172,7 +167,6 @@ pub struct LeakyReLU {
 }
 
 impl LeakyReLU {
-
     /// Forward pass of the LeakyReLU activation function.
     ///
     /// # Function
@@ -188,21 +182,32 @@ impl LeakyReLU {
     /// * A vector of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { v } else { self.alpha * v }).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| if v > 0.0 { v } else { self.alpha * v })
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            tensor::Data::Vector(vector) => tensor::Data::Vector(
+                vector
+                    .iter()
+                    .map(|&v| if v > 0.0 { v } else { self.alpha * v })
+                    .collect(),
+            ),
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| {
+                                j.iter()
+                                    .map(|&v| if v > 0.0 { v } else { self.alpha * v })
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 
     /// Backward pass of the LeakyReLU activation function.
@@ -220,21 +225,32 @@ impl LeakyReLU {
     /// * A vector of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            tensor::Data::Vector(vector) => tensor::Data::Vector(
+                vector
+                    .iter()
+                    .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
+                    .collect(),
+            ),
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| {
+                                j.iter()
+                                    .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 }
 
@@ -242,7 +258,6 @@ impl LeakyReLU {
 pub struct Sigmoid {}
 
 impl Sigmoid {
-
     /// Forward pass of the Sigmoid activation function.
     ///
     /// # Function
@@ -260,19 +275,23 @@ impl Sigmoid {
         let data = match &input.data {
             tensor::Data::Vector(vector) => {
                 tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| 1.0 / (1.0 + f32::exp(-v)))
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            }
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| j.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 
     /// Backward pass of the Sigmoid activation function.
@@ -290,27 +309,38 @@ impl Sigmoid {
     /// * A vector of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| {
-                    let y = 1.0 / (1.0 + f32::exp(-v));
-                    y * (1.0 - y)
-                }).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| {
-                                let y = 1.0 / (1.0 + f32::exp(-v));
-                                y * (1.0 - y)
+            tensor::Data::Vector(vector) => tensor::Data::Vector(
+                vector
+                    .iter()
+                    .map(|&v| {
+                        let y = 1.0 / (1.0 + f32::exp(-v));
+                        y * (1.0 - y)
+                    })
+                    .collect(),
+            ),
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| {
+                                j.iter()
+                                    .map(|&v| {
+                                        let y = 1.0 / (1.0 + f32::exp(-v));
+                                        y * (1.0 - y)
+                                    })
+                                    .collect()
                             })
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 }
 
@@ -318,7 +348,6 @@ impl Sigmoid {
 pub struct Softmax {}
 
 impl Softmax {
-
     /// Forward pass of the Softmax activation function.
     ///
     /// # Function
@@ -381,7 +410,6 @@ impl Softmax {
 pub struct Tanh {}
 
 impl Tanh {
-
     /// Forward pass of the Tanh activation function.
     ///
     /// # Function
@@ -399,19 +427,23 @@ impl Tanh {
         let data = match &input.data {
             tensor::Data::Vector(vector) => {
                 tensor::Data::Vector(vector.iter().map(|&v| v.tanh()).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| v.tanh())
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            }
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| j.iter().map(|&v| v.tanh()).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 
     /// Backward pass of the Tanh activation function.
@@ -431,19 +463,23 @@ impl Tanh {
         let data = match &input.data {
             tensor::Data::Vector(vector) => {
                 tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
-            },
-            tensor::Data::Tensor(vector) => {
-                tensor::Data::Tensor(vector.iter()
-                    .map(|i| i.iter()
-                        .map(|j| j.iter()
-                            .map(|&v| 1.0 / (v.cosh().powi(2)))
-                            .collect())
-                        .collect())
-                    .collect())
-            },
+            }
+            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
+                vector
+                    .iter()
+                    .map(|i| {
+                        i.iter()
+                            .map(|j| j.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
             _ => panic!("Invalid data type"),
         };
-        tensor::Tensor { shape: input.shape.clone(), data }
+        tensor::Tensor {
+            shape: input.shape.clone(),
+            data,
+        }
     }
 }
 
@@ -451,7 +487,6 @@ impl Tanh {
 pub struct Linear {}
 
 impl Linear {
-
     /// Forward pass of the Tanh activation function.
     ///
     /// # Function
@@ -487,7 +522,6 @@ impl Linear {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -522,12 +556,20 @@ mod tests {
         // Test forward
         let output = leaky_relu.forward(&input);
         let expected = vec![-0.02, -0.01, 0.0, 1.0, 2.0];
-        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
 
         // Test backward
         let grad_output = leaky_relu.backward(&input);
         let expected = vec![0.01, 0.01, 0.01, 1.0, 1.0];
-        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            grad_output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -537,13 +579,33 @@ mod tests {
 
         // Test forward
         let output = sigmoid.forward(&input);
-        let expected = vec![0.11920292202211755, 0.2689414213699951, 0.5, 0.7310585786300049, 0.8807970779778823];
-        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        let expected = vec![
+            0.11920292202211755,
+            0.2689414213699951,
+            0.5,
+            0.7310585786300049,
+            0.8807970779778823,
+        ];
+        assert_relative_eq!(
+            output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
 
         // Test backward
         let grad_output = sigmoid.backward(&input);
-        let expected = vec![0.1049935854035065, 0.19661193324148185, 0.25, 0.19661193324148185, 0.10499358540350662];
-        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        let expected = vec![
+            0.1049935854035065,
+            0.19661193324148185,
+            0.25,
+            0.19661193324148185,
+            0.10499358540350662,
+        ];
+        assert_relative_eq!(
+            grad_output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -553,13 +615,27 @@ mod tests {
 
         // Test forward
         let output = softmax.forward(&input);
-        let expected = vec![0.011656230956039605, 0.03168492079612427, 0.0861285444362687, 0.23412165725273662, 0.6364086465588308];
-        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        let expected = vec![
+            0.011656230956039605,
+            0.03168492079612427,
+            0.0861285444362687,
+            0.23412165725273662,
+            0.6364086465588308,
+        ];
+        assert_relative_eq!(
+            output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
 
         // Test backward
         let grad_output = softmax.backward(&input);
         let expected = vec![1.4051605, 1.4051604, 1.4051604, 1.4051604, 1.4051605];
-        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            grad_output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -569,13 +645,33 @@ mod tests {
 
         // Test forward
         let output = tanh.forward(&input);
-        let expected = vec![-0.9640275800758169, -0.7615941559557649, 0.0, 0.7615941559557649, 0.9640275800758169];
-        assert_relative_eq!(output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        let expected = vec![
+            -0.9640275800758169,
+            -0.7615941559557649,
+            0.0,
+            0.7615941559557649,
+            0.9640275800758169,
+        ];
+        assert_relative_eq!(
+            output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
 
         // Test backward
         let grad_output = tanh.backward(&input);
-        let expected = vec![0.07065082485316447, 0.4199743416140261, 1.0, 0.4199743416140261, 0.07065082485316447];
-        assert_relative_eq!(grad_output.get_flat().as_slice(), expected.as_slice(), epsilon = 1e-6);
+        let expected = vec![
+            0.07065082485316447,
+            0.4199743416140261,
+            1.0,
+            0.4199743416140261,
+            0.07065082485316447,
+        ];
+        assert_relative_eq!(
+            grad_output.get_flat().as_slice(),
+            expected.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -596,10 +692,22 @@ mod tests {
     #[test]
     fn test_function_display() {
         assert_eq!(format!("{}", Function::create(&Activation::ReLU)), "ReLU");
-        assert_eq!(format!("{}", Function::create(&Activation::LeakyReLU)), "LeakyReLU");
-        assert_eq!(format!("{}", Function::create(&Activation::Sigmoid)), "Sigmoid");
-        assert_eq!(format!("{}", Function::create(&Activation::Softmax)), "Softmax");
+        assert_eq!(
+            format!("{}", Function::create(&Activation::LeakyReLU)),
+            "LeakyReLU"
+        );
+        assert_eq!(
+            format!("{}", Function::create(&Activation::Sigmoid)),
+            "Sigmoid"
+        );
+        assert_eq!(
+            format!("{}", Function::create(&Activation::Softmax)),
+            "Softmax"
+        );
         assert_eq!(format!("{}", Function::create(&Activation::Tanh)), "Tanh");
-        assert_eq!(format!("{}", Function::create(&Activation::Linear)), "Linear");
+        assert_eq!(
+            format!("{}", Function::create(&Activation::Linear)),
+            "Linear"
+        );
     }
 }

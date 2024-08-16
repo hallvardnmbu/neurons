@@ -1,18 +1,4 @@
-/*
-Copyright 2024 Hallvard Høyland Lavik
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::tensor;
 
@@ -42,32 +28,53 @@ impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Function::AE(parameters) => write!(
-                f, "AE(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "AE(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MAE(parameters) => write!(
-                f, "MAE(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "MAE(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MSE(parameters) => write!(
-                f, "MSE(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "MSE(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::RMSE(parameters) => write!(
-                f, "RMSE(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "RMSE(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::CrossEntropy(parameters) => write!(
-                f, "CrossEntropy(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "CrossEntropy(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::BinaryCrossEntropy(parameters) => write!(
-                f, "BinaryCrossEntropy(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "BinaryCrossEntropy(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::KLDivergence(parameters) => write!(
-                f, "KLDivergence(gradient_clamp={:?})",
-                parameters.clamp.unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
+                f,
+                "KLDivergence(gradient_clamp={:?})",
+                parameters
+                    .clamp
+                    .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
         }
     }
@@ -91,7 +98,9 @@ impl Function {
             Objective::MSE => Function::MSE(MSE { clamp }),
             Objective::RMSE => Function::RMSE(RMSE { clamp }),
             Objective::CrossEntropy => Function::CrossEntropy(CrossEntropy { clamp }),
-            Objective::BinaryCrossEntropy => Function::BinaryCrossEntropy(BinaryCrossEntropy { clamp }),
+            Objective::BinaryCrossEntropy => {
+                Function::BinaryCrossEntropy(BinaryCrossEntropy { clamp })
+            }
             Objective::KLDivergence => Function::KLDivergence(KLDivergence { clamp }),
         }
     }
@@ -106,7 +115,11 @@ impl Function {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         match self {
             Function::AE(act) => act.loss(prediction, target),
             Function::MAE(act) => act.loss(prediction, target),
@@ -129,7 +142,6 @@ pub struct AE {
 }
 
 impl AE {
-
     /// Calculates the loss and gradient for the AE objective function. Clamps the gradient if
     /// specified.
     ///
@@ -146,8 +158,15 @@ impl AE {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the AE objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
-        let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
+        let loss: f32 = target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).abs())
             .sum::<f32>();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
@@ -171,7 +190,7 @@ impl AE {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
@@ -184,15 +203,13 @@ impl AE {
                     }
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -207,7 +224,6 @@ pub struct MAE {
 }
 
 impl MAE {
-
     /// Calculates the loss and gradient for the MAE objective function. Clamps the gradient if
     /// specified.
     ///
@@ -224,10 +240,18 @@ impl MAE {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the MAE objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
-        let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
+        let loss: f32 = target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).abs())
-            .sum::<f32>() / target.get_flat().len() as f32;
+            .sum::<f32>()
+            / target.get_flat().len() as f32;
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -249,7 +273,7 @@ impl MAE {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
@@ -262,15 +286,13 @@ impl MAE {
                     }
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -285,7 +307,6 @@ pub struct MSE {
 }
 
 impl MSE {
-
     /// Calculates the loss and gradient for the MSE objective function. Clamps the gradient if
     /// specified.
     ///
@@ -302,10 +323,17 @@ impl MSE {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the MSE objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         let length: f32 = target.get_flat().len() as f32;
 
-        let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
+        let loss: f32 = target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).powi(2) / length)
             .sum::<f32>();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
@@ -323,22 +351,20 @@ impl MSE {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
                     gradients.push(-2.0 * (actual - predicted) / length)
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -353,7 +379,6 @@ pub struct RMSE {
 }
 
 impl RMSE {
-
     /// Calculates the loss and gradient for the RMSE objective function. Clamps the gradient if
     /// specified.
     ///
@@ -370,12 +395,21 @@ impl RMSE {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the RMSE objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         let length: f32 = target.get_flat().len() as f32;
 
-        let loss: f32 = (target.get_flat().iter().zip(prediction.get_flat().iter())
+        let loss: f32 = (target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| (actual - predicted).powi(2))
-            .sum::<f32>() / length).sqrt();
+            .sum::<f32>()
+            / length)
+            .sqrt();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -387,8 +421,10 @@ impl RMSE {
                             if actual == predicted {
                                 gradient.push(0.0);
                             } else {
-                                gradient.push(-(actual - predicted) /
-                                    ((actual - predicted).powi(2).sqrt() * length));
+                                gradient.push(
+                                    -(actual - predicted)
+                                        / ((actual - predicted).powi(2).sqrt() * length),
+                                );
                             }
                         }
                         _gradients.push(gradient);
@@ -396,27 +432,26 @@ impl RMSE {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
                     if actual == predicted {
                         gradients.push(0.0);
                     } else {
-                        gradients.push(-(actual - predicted) /
-                            ((actual - predicted).powi(2).sqrt() * length));
+                        gradients.push(
+                            -(actual - predicted) / ((actual - predicted).powi(2).sqrt() * length),
+                        );
                     }
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -431,7 +466,6 @@ pub struct CrossEntropy {
 }
 
 impl CrossEntropy {
-
     /// Calculates the loss and gradient for the CrossEntropy objective function. Clamps the
     /// gradient if specified.
     ///
@@ -448,13 +482,21 @@ impl CrossEntropy {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the CrossEntropy objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         let eps: f32 = 1e-7;
-        let loss: f32 = -target.get_flat().iter().zip(prediction.get_flat().iter())
+        let loss: f32 = -target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| {
                 let predicted = predicted.clamp(eps, 1.0 - eps);
                 actual * predicted.ln()
-            }).sum::<f32>();
+            })
+            .sum::<f32>();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -470,22 +512,20 @@ impl CrossEntropy {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
                     gradients.push(predicted - actual)
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -500,7 +540,6 @@ pub struct BinaryCrossEntropy {
 }
 
 impl BinaryCrossEntropy {
-
     /// Calculates the loss and gradient for the BinaryCrossEntropy objective function. Clamps the
     /// gradient if specified.
     ///
@@ -517,13 +556,21 @@ impl BinaryCrossEntropy {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the BinaryCrossEntropy objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         let eps: f32 = 1e-7;
-        let loss: f32 = -target.get_flat().iter().zip(prediction.get_flat().iter())
+        let loss: f32 = -target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
             .map(|(actual, predicted)| {
                 let predicted = predicted.clamp(eps, 1.0 - eps);
                 actual * predicted.ln() + (1.0 - actual) * (1.0 - predicted).ln()
-            }).sum::<f32>();
+            })
+            .sum::<f32>();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -540,7 +587,7 @@ impl BinaryCrossEntropy {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
@@ -548,15 +595,13 @@ impl BinaryCrossEntropy {
                     gradients.push((predicted - actual) / (predicted * (1.0 - predicted)));
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -571,7 +616,6 @@ pub struct KLDivergence {
 }
 
 impl KLDivergence {
-
     /// Calculates the loss and gradient for the KLDivergence objective function. Clamps the
     /// gradient if specified. [Source.](https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html)
     ///
@@ -588,12 +632,18 @@ impl KLDivergence {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient for the KLDivergence objective function.
-    pub fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         let eps: f32 = 1e-7;
-        let loss: f32 = target.get_flat().iter().zip(prediction.get_flat().iter())
-            .map(|(actual, predicted)| {
-                actual * (actual / predicted.clamp(eps, 1.0 - eps)).ln()
-            }).sum::<f32>();
+        let loss: f32 = target
+            .get_flat()
+            .iter()
+            .zip(prediction.get_flat().iter())
+            .map(|(actual, predicted)| actual * (actual / predicted.clamp(eps, 1.0 - eps)).ln())
+            .sum::<f32>();
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let mut gradients: Vec<Vec<Vec<f32>>> = vec![];
@@ -609,22 +659,20 @@ impl KLDivergence {
                     gradients.push(_gradients);
                 }
                 tensor::Tensor::from(gradients)
-            },
+            }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let mut gradients: Vec<f32> = vec![];
                 for (actual, predicted) in trg.iter().zip(prd.iter()) {
                     gradients.push(-actual / predicted.clamp(eps, 1.0 - eps));
                 }
                 tensor::Tensor::from_single(gradients)
-            },
+            }
             _ => panic!("Inconsistent data types"),
         };
 
         match self.clamp {
-            Some((min, max)) => {
-                (loss, gradient.clamp(min, max))
-            },
-            None => (loss, gradient)
+            Some((min, max)) => (loss, gradient.clamp(min, max)),
+            None => (loss, gradient),
         }
     }
 }
@@ -671,7 +719,10 @@ mod tests {
         let (loss, gradient) = mse.loss(&prediction, &target);
 
         assert_relative_eq!(loss, 0.225, epsilon = 1e-6);
-        assert_eq!(gradient.get_flat().as_slice(), vec![0.05, 0.1, -0.35, -0.3].as_slice());
+        assert_eq!(
+            gradient.get_flat().as_slice(),
+            vec![0.05, 0.1, -0.35, -0.3].as_slice()
+        );
     }
 
     #[test]
@@ -682,7 +733,10 @@ mod tests {
         let (loss, gradient) = rmse.loss(&prediction, &target);
 
         assert_relative_eq!(loss, 0.4743416490252569, epsilon = 1e-6);
-        assert_eq!(gradient.get_flat().as_slice(), vec![0.25, 0.25, -0.25, -0.25].as_slice());
+        assert_eq!(
+            gradient.get_flat().as_slice(),
+            vec![0.25, 0.25, -0.25, -0.25].as_slice()
+        );
     }
 
     #[test]
@@ -693,7 +747,10 @@ mod tests {
         let (loss, gradient) = ce.loss(&prediction, &target);
 
         assert_relative_eq!(loss, 2.120263536200091, epsilon = 1e-6);
-        assert_eq!(gradient.get_flat().as_slice(), vec![0.1, 0.2, -0.7, -0.6].as_slice());
+        assert_eq!(
+            gradient.get_flat().as_slice(),
+            vec![0.1, 0.2, -0.7, -0.6].as_slice()
+        );
     }
 
     #[test]
@@ -705,7 +762,11 @@ mod tests {
 
         assert_relative_eq!(loss, 2.448767603172127, epsilon = 1e-6);
         let expected_gradient = vec![1.111111111111111, 1.25, -3.333333333333333, -2.5];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            gradient.get_flat().as_slice(),
+            expected_gradient.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -717,7 +778,11 @@ mod tests {
         let (loss, gradient) = kld.loss(&prediction, &target);
 
         assert_relative_eq!(loss, 0.10484119778475744, epsilon = 1e-6);
-        assert_relative_eq!(gradient.get_flat().as_slice(), vec![-1.0, -1.0, -1.1, -1.0].as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            gradient.get_flat().as_slice(),
+            vec![-1.0, -1.0, -1.1, -1.0].as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
@@ -728,17 +793,45 @@ mod tests {
         let (_, gradient) = mse_clamped.loss(&prediction, &target);
 
         let expected_gradient = vec![0.05, 0.1, -0.2, -0.2];
-        assert_relative_eq!(gradient.get_flat().as_slice(), expected_gradient.as_slice(), epsilon = 1e-6);
+        assert_relative_eq!(
+            gradient.get_flat().as_slice(),
+            expected_gradient.as_slice(),
+            epsilon = 1e-6
+        );
     }
 
     #[test]
     fn test_function_display() {
-        assert_eq!(format!("{}", Function::create(Objective::AE, None)), "AE(gradient_clamp=(-inf, inf))");
-        assert_eq!(format!("{}", Function::create(Objective::MAE, Some((-1.0, 1.0)))), "MAE(gradient_clamp=(-1.0, 1.0))");
-        assert_eq!(format!("{}", Function::create(Objective::MSE, None)), "MSE(gradient_clamp=(-inf, inf))");
-        assert_eq!(format!("{}", Function::create(Objective::RMSE, Some((-0.5, 0.5)))), "RMSE(gradient_clamp=(-0.5, 0.5))");
-        assert_eq!(format!("{}", Function::create(Objective::CrossEntropy, None)), "CrossEntropy(gradient_clamp=(-inf, inf))");
-        assert_eq!(format!("{}", Function::create(Objective::BinaryCrossEntropy, Some((-2.0, 2.0)))), "BinaryCrossEntropy(gradient_clamp=(-2.0, 2.0))");
-        assert_eq!(format!("{}", Function::create(Objective::KLDivergence, None)), "KLDivergence(gradient_clamp=(-inf, inf))");
+        assert_eq!(
+            format!("{}", Function::create(Objective::AE, None)),
+            "AE(gradient_clamp=(-inf, inf))"
+        );
+        assert_eq!(
+            format!("{}", Function::create(Objective::MAE, Some((-1.0, 1.0)))),
+            "MAE(gradient_clamp=(-1.0, 1.0))"
+        );
+        assert_eq!(
+            format!("{}", Function::create(Objective::MSE, None)),
+            "MSE(gradient_clamp=(-inf, inf))"
+        );
+        assert_eq!(
+            format!("{}", Function::create(Objective::RMSE, Some((-0.5, 0.5)))),
+            "RMSE(gradient_clamp=(-0.5, 0.5))"
+        );
+        assert_eq!(
+            format!("{}", Function::create(Objective::CrossEntropy, None)),
+            "CrossEntropy(gradient_clamp=(-inf, inf))"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                Function::create(Objective::BinaryCrossEntropy, Some((-2.0, 2.0)))
+            ),
+            "BinaryCrossEntropy(gradient_clamp=(-2.0, 2.0))"
+        );
+        assert_eq!(
+            format!("{}", Function::create(Objective::KLDivergence, None)),
+            "KLDivergence(gradient_clamp=(-inf, inf))"
+        );
     }
 }

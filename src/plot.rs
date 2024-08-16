@@ -1,18 +1,4 @@
-/*
-Copyright 2024 Hallvard Høyland Lavik
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::tensor;
 use plotters::prelude::*;
@@ -24,14 +10,10 @@ use plotters::prelude::*;
 /// * `data` - The data to plot.
 /// * `title` - The title of the plot.
 /// * `path` - The path to save the plot.
-pub fn heatmap(
-    data: &tensor::Tensor,
-    title: &str,
-    path: &str
-) {
+pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
     let x = match data.data {
         tensor::Data::Tensor(ref x) => x,
-        _ => panic!("Expected a tensor, but got one-dimensional data.")
+        _ => panic!("Expected a tensor, but got one-dimensional data."),
     };
     let data = x.get(0).unwrap();
 
@@ -43,16 +25,20 @@ pub fn heatmap(
     let mut chart = ChartBuilder::on(&root)
         .margin(20)
         .caption(title, ("sans-serif", 40))
-        .build_cartesian_2d(0..cols, 0..rows).unwrap();
+        .build_cartesian_2d(0..cols, 0..rows)
+        .unwrap();
 
     chart.configure_mesh().disable_mesh().draw().unwrap();
 
     let min_value = data.iter().flatten().copied().fold(f32::INFINITY, f32::min);
-    let max_value = data.iter().flatten().copied().fold(f32::NEG_INFINITY, f32::max);
+    let max_value = data
+        .iter()
+        .flatten()
+        .copied()
+        .fold(f32::NEG_INFINITY, f32::max);
     let rows = data.len();
     for (y, row) in data.iter().enumerate() {
         for (x, &value) in row.iter().enumerate() {
-
             // Normalize the value to a range between 0 and 1
             let normalized_value = (value - min_value) / (max_value - min_value);
 
@@ -63,10 +49,12 @@ pub fn heatmap(
 
             let color = RGBColor(r, g, b);
 
-            chart.draw_series(std::iter::once(Rectangle::new(
-                [(x, rows - y), (x + 1, rows - y + 1)],
-                color.filled(),
-            ))).unwrap();
+            chart
+                .draw_series(std::iter::once(Rectangle::new(
+                    [(x, rows - y), (x + 1, rows - y + 1)],
+                    color.filled(),
+                )))
+                .unwrap();
         }
     }
 

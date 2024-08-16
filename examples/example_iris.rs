@@ -1,29 +1,22 @@
-/*
-Copyright 2024 Hallvard Høyland Lavik
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// Copyright (C) 2024 Hallvard Høyland Lavik
 
 extern crate csv;
 
-use neurons::random;
-use neurons::tensor;
-use neurons::feedforward;
 use neurons::activation;
+use neurons::feedforward;
 use neurons::objective;
 use neurons::optimizer;
+use neurons::random;
+use neurons::tensor;
 
-fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+fn data(
+    path: &str,
+) -> (
+    Vec<tensor::Tensor>,
+    Vec<tensor::Tensor>,
+    Vec<tensor::Tensor>,
+    Vec<tensor::Tensor>,
+) {
     let mut reader = csv::Reader::from_path(path).unwrap();
 
     let mut x: Vec<Vec<f32>> = Vec::new();
@@ -37,29 +30,29 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Te
             record.get(3).unwrap().parse::<f32>().unwrap(),
             record.get(4).unwrap().parse::<f32>().unwrap(),
         ]);
-        y.push(
-            match record.get(5).unwrap() {
-                "Iris-setosa" => vec![1.0, 0.0, 0.0],
-                "Iris-versicolor" => vec![0.0, 1.0, 0.0],
-                "Iris-virginica" => vec![0.0, 0.0, 1.0],
-                // "Iris-setosa" => vec![0.0],
-                // "Iris-versicolor" => vec![1.0],
-                // "Iris-virginica" => vec![2.0],
-                _ => panic!("Unknown class"),
-            }
-        );
+        y.push(match record.get(5).unwrap() {
+            "Iris-setosa" => vec![1.0, 0.0, 0.0],
+            "Iris-versicolor" => vec![0.0, 1.0, 0.0],
+            "Iris-virginica" => vec![0.0, 0.0, 1.0],
+            // "Iris-setosa" => vec![0.0],
+            // "Iris-versicolor" => vec![1.0],
+            // "Iris-virginica" => vec![2.0],
+            _ => panic!("Unknown class"),
+        });
     });
 
     let mut generator = random::Generator::create(12345);
     let mut indices: Vec<usize> = (0..x.len()).collect();
     generator.shuffle(&mut indices);
 
-    let x: Vec<tensor::Tensor> = indices.iter().map(|&i|
-        tensor::Tensor::from_single(x[i].clone())
-    ).collect();
-    let y: Vec<tensor::Tensor> = indices.iter().map(|&i|
-        tensor::Tensor::from_single(y[i].clone())
-    ).collect();
+    let x: Vec<tensor::Tensor> = indices
+        .iter()
+        .map(|&i| tensor::Tensor::from_single(x[i].clone()))
+        .collect();
+    let y: Vec<tensor::Tensor> = indices
+        .iter()
+        .map(|&i| tensor::Tensor::from_single(y[i].clone()))
+        .collect();
 
     let split = (x.len() as f32 * 0.8) as usize;
     let x = x.split_at(split);
@@ -76,10 +69,20 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>, Vec<tensor::Te
 fn main() {
     // Load the iris dataset
     let (x_train, y_train, x_test, y_test) = data("./datasets/iris.csv");
-    println!("Train data {}x{}: {} => {}",
-             x_train.len(), x_train[0].shape, x_train[0].data, y_train[0].data);
-    println!("Test data {}x{}: {} => {}",
-             x_test.len(), x_test[0].shape, x_test[0].data, y_test[0].data);
+    println!(
+        "Train data {}x{}: {} => {}",
+        x_train.len(),
+        x_train[0].shape,
+        x_train[0].data,
+        y_train[0].data
+    );
+    println!(
+        "Test data {}x{}: {} => {}",
+        x_test.len(),
+        x_test[0].shape,
+        x_test[0].data,
+        y_test[0].data
+    );
 
     // Create the network
     let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(4));
@@ -88,26 +91,22 @@ fn main() {
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));
     network.dense(3, activation::Activation::Softmax, false, Some(0.1));
 
-    network.set_optimizer(
-        optimizer::Optimizer::RMSprop(
-            optimizer::RMSprop {
-                learning_rate: 0.001,
-                alpha: 0.0,
-                epsilon: 1e-8,
+    network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
+        learning_rate: 0.001,
+        alpha: 0.0,
+        epsilon: 1e-8,
 
-                decay: Some(0.01),
-                momentum: Some(0.01),
-                centered: Some(true),
+        decay: Some(0.01),
+        momentum: Some(0.01),
+        centered: Some(true),
 
-                velocity: vec![],           // To be filled by the network
-                gradient: vec![],           // To be filled by the network
-                buffer: vec![],             // To be filled by the network
-            }
-        )
-    );
+        velocity: vec![], // To be filled by the network
+        gradient: vec![], // To be filled by the network
+        buffer: vec![],   // To be filled by the network
+    }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
-        Some((-1f32, 1f32))                 // Gradient clipping
+        Some((-1f32, 1f32)),                // Gradient clipping
     );
 
     // Train the network
@@ -119,5 +118,8 @@ fn main() {
 
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
-    println!("2. Input: {}, Target: {}, Output: {}", x_test[0].data, y_test[0].data, prediction);
+    println!(
+        "2. Input: {}, Target: {}, Output: {}",
+        x_test[0].data, y_test[0].data, prediction
+    );
 }
