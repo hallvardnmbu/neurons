@@ -50,6 +50,29 @@ impl Function {
         }
     }
 
+    pub fn to_identifier(&self) -> [u8; 4] {
+        match self {
+            Function::ReLU(_) => [0, 0, 0, 0],
+            Function::LeakyReLU(_) => [0, 0, 0, 1],
+            Function::Sigmoid(_) => [0, 0, 0, 2],
+            Function::Softmax(_) => [0, 0, 0, 3],
+            Function::Tanh(_) => [0, 0, 0, 4],
+            Function::Linear(_) => [0, 0, 0, 5],
+        }
+    }
+
+    pub fn from_identifier(id: [u8; 4]) -> Self {
+        match id {
+            [0, 0, 0, 0] => Function::ReLU(ReLU {}),
+            [0, 0, 0, 1] => Function::LeakyReLU(LeakyReLU { alpha: 0.01 }),
+            [0, 0, 0, 2] => Function::Sigmoid(Sigmoid {}),
+            [0, 0, 0, 3] => Function::Softmax(Softmax {}),
+            [0, 0, 0, 4] => Function::Tanh(Tanh {}),
+            [0, 0, 0, 5] => Function::Linear(Linear {}),
+            _ => panic!("Unknown activation function identifier: {:?}", id),
+        }
+    }
+
     /// Applies the activation function to the input vector in the forward direction using the
     /// respective formula.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {

@@ -26,7 +26,7 @@ pub struct Dense {
     pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
 
-    dropout: Option<f32>,
+    pub(crate) dropout: Option<f32>,
 
     pub(crate) training: bool,
 }

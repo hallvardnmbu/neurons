@@ -28,15 +28,16 @@ impl std::fmt::Display for Layer {
 ///
 /// # Attributes
 ///
-/// * `image` - The input dimensions of the network, for image inputs.
+/// * `input` - The input dimensions of the network.
 /// * `layers` - The layers of the network.
+/// * `feedbacks` - The feedback connections of the network.
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
 pub struct Feedforward {
-    pub input: tensor::Shape,
+    pub(crate) input: tensor::Shape,
 
-    layers: Vec<Layer>,
-    feedbacks: HashMap<usize, usize>,
+    pub(crate) layers: Vec<Layer>,
+    pub(crate) feedbacks: HashMap<usize, usize>,
 
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) objective: objective::Function,

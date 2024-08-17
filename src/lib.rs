@@ -18,4 +18,6 @@ pub mod optimizer;
 pub mod convolution;
 pub mod dense;
 pub mod feedforward;
+
 pub mod plot;
+pub mod storage;
