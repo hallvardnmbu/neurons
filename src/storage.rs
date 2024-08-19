@@ -31,7 +31,7 @@ impl feedforward::Feedforward {
         for layer in &self.layers {
             match layer {
                 feedforward::Layer::Dense(dense) => {
-                    file.write_all(&[0, 0, 0, 0])?; // Layer type identifier.
+                    file.write_all(&[0])?; // Layer type identifier. 0 = Dense
 
                     file.write_all(&dense.inputs.to_le_bytes())?;
                     file.write_all(&dense.outputs.to_le_bytes())?;
