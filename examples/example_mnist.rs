@@ -65,7 +65,7 @@ fn main() {
     let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
 
     network.convolution(
-        12,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -74,7 +74,7 @@ fn main() {
         Some(0.1),
     );
     network.convolution(
-        8,
+        1,
         (3, 3),
         (1, 1),
         (0, 0),
@@ -105,7 +105,7 @@ fn main() {
     );
 
     // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, 1);
+    let _epoch_loss = network.learn(&x_train, &y_train, 2);
 
     // Validate the network
     let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);

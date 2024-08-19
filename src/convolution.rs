@@ -170,7 +170,7 @@ impl Convolution {
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation Tensors of the layer.
+    /// The pre-activation and post-activation Tensors of the convolved input wrt. the kernels.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
         assert_eq_shape!(x.shape, self.inputs);
 
@@ -211,7 +211,7 @@ impl Convolution {
         let oc = self.kernels.len();
         let (kc, kh, kw) = match self.kernels[0].shape {
             tensor::Shape::Tensor(c, h, w) => (c, h, w),
-            _ => panic!("The kernel should be a `Convolution`-shaped Tensor."),
+            _ => panic!("The kernel should be a `Convolution`-shaped (3D) Tensor."),
         };
         assert_eq!(
             ic, kc,
@@ -227,26 +227,27 @@ impl Convolution {
         for filter in 0..oc {
             let kernel = match &self.kernels[filter].data {
                 tensor::Data::Tensor(kernel) => kernel,
-                _ => panic!("The kernels should be `Tensor`s."),
+                _ => panic!("The kernel data should be of type `Tensor` (3D)."),
             };
 
             for height in 0..oh {
                 for width in 0..ow {
                     let mut sum = 0.0;
-                    for c in 0..ic {
-                        for kernel_h in 0..kh {
-                            for kernel_w in 0..kw {
-                                let h = height * self.stride.0 + kernel_h;
-                                let w = width * self.stride.1 + kernel_w;
-                                sum += kernel[c][kernel_h][kernel_w] * x[c][h][w];
+                    for c in 0..kc {
+                        for h in 0..kh {
+                            for w in 0..kw {
+                                let _h = height * self.stride.0 + h;
+                                let _w = width * self.stride.1 + w;
+                                sum += kernel[c][h][w] * x[c][_h][_w];
                             }
                         }
                     }
-                    y[filter][height][width] = sum;
 
                     if let Some(bias) = &self.bias {
-                        y[filter][height][width] += bias[filter];
+                        sum += bias[filter];
                     }
+
+                    y[filter][height][width] = sum;
                 }
             }
         }
@@ -292,10 +293,35 @@ impl Convolution {
         assert_eq_shape!(input.shape, self.inputs);
         assert_eq_shape!(output.shape, self.outputs);
 
-        let input = input.get_data(&self.inputs);
+        // println!("Input: {}", input.shape);
+        // println!("Output: {}", output.shape);
+        // println!("Gradients in: {}", gradient.shape);
+
         let gradient = gradient.get_data(&self.outputs);
-        let derivative = self.activation.backward(&output).get_data(&self.inputs);
-        let delta = mul3d_scalar(&mul3d(&gradient, &derivative), 1.0 / self.loops);
+        let derivative = self.activation.backward(&output).get_data(&self.outputs);
+        let delta = mul3d_scalar(&mul3d(&gradient, &derivative), self.loops);
+
+        let input = input.get_data(&self.inputs);
+        let output = output.get_data(&self.outputs);
+
+        // println!(
+        //     "Gradients processed: {}x{}x{}",
+        //     gradient.len(),
+        //     gradient[0].len(),
+        //     gradient[0][0].len()
+        // );
+        // println!(
+        //     "Derivative: {}x{}x{}",
+        //     derivative.len(),
+        //     derivative[0].len(),
+        //     derivative[0][0].len()
+        // );
+        // println!(
+        //     "Delta: {}x{}x{}",
+        //     delta.len(),
+        //     delta[0].len(),
+        //     delta[0][0].len()
+        // );
 
         // Extracting the input- and output dimensions.
         let (ic, ih, iw) = match &self.inputs {
@@ -333,19 +359,32 @@ impl Convolution {
                 tensor::Data::Tensor(kernel) => kernel,
                 _ => panic!("The kernels should be `Tensor`s."),
             };
-            kgradient[filter] = convolve_3d(&delta, &kernel, &self.stride, &self.padding);
-        }
 
-        // Calculate input gradient
-        for filter in 0..kf {
-            let kernel = match &self.kernels[filter].data {
-                tensor::Data::Tensor(kernel) => kernel,
-                _ => panic!("The kernels should be `Tensor`s."),
-            };
+            // Source:
+            // https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf
+
+            // Calculate kernel gradient.
+            kgradient[filter] = convolve_3d(&input, &delta, &self.stride, &(0, 0));
+
+            // println!(
+            //     "Kernel gradient {}x{}x{}",
+            //     kgradient[filter].len(),
+            //     kgradient[filter][0].len(),
+            //     kgradient[filter][0][0].len()
+            // );
+
+            // Calculate input gradient.
             igradient = add3d(
                 &igradient,
                 &convolve_3d(&delta, &kernel, &self.stride, &self.padding),
             );
+
+            // println!(
+            //     "Input gradient {}x{}x{}",
+            //     igradient.len(),
+            //     igradient[0].len(),
+            //     igradient[0][0].len()
+            // );
         }
 
         // Calculate bias gradient if bias exists.

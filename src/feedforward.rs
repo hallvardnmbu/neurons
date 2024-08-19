@@ -406,7 +406,7 @@ impl Feedforward {
             }
         }
 
-        let checkpoint = epochs / 10;
+        let checkpoint = (epochs / 10).max(1);
         let mut losses = Vec::new();
         for epoch in 1..epochs + 1 {
             let mut _losses = 0.0f32;
@@ -414,6 +414,8 @@ impl Feedforward {
                 let (unactivated, activated) = self.forward(input);
                 let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
                 _losses += loss;
+
+                println!("{}", loss);
 
                 // TODO: Backward pass on batch instead of single input.
                 self.backward(epoch, gradient, &unactivated, &activated);

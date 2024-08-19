@@ -376,7 +376,7 @@ impl Tensor {
     ///
     /// # Arguments
     ///
-    /// * `outputs` - The shape of the output tensor (used if `self.data` is `Data::Vector`).
+    /// * `outputs` - The output shape of the data.
     ///
     /// # Returns
     ///
@@ -394,7 +394,11 @@ impl Tensor {
                     _ => panic!("Expected a Tensor output shape."),
                 };
 
-                assert_eq!(vector.len(), oc * oh * ow, "Invalid gradient vector size.");
+                assert_eq!(
+                    vector.len(),
+                    oc * oh * ow,
+                    "Wanted output shape not compatible with Tensor data."
+                );
 
                 let mut iter = vector.into_iter();
                 (0..oc)
