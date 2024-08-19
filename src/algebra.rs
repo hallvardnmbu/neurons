@@ -1,5 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
+use crate::tensor;
+
 /// Element-wise addition of two vectors in-place.
 ///
 /// # Arguments
@@ -252,133 +254,6 @@ pub fn cross_correlate_2d(image: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<
                 .collect()
         })
         .collect()
-}
-
-/// Convolution of an image and a kernel.
-///
-/// # Arguments
-///
-/// * `image` - A reference to a 2D vector of `f32`.
-/// * `kernel` - A reference to a 2D vector of `f32`.
-///
-/// # Returns
-///
-/// A 2D vector of `f32` containing the cross-correlation of `image` and `kernel`.
-///
-/// # Formula
-///
-/// The cross-correlation of an image `I` and a kernel `K` is given by:
-///
-/// ```latex
-/// (I \star K)_{i,j} = \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(i+m, j+n) K(-m, -n)
-/// ```
-///
-/// where `k1` and `k2` are the dimensions of the kernel.
-///
-/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
-pub fn convolve_2d(image: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
-    let (rows, columns) = (image.len(), image[0].len());
-    let (k1, k2) = (kernel.len(), kernel[0].len());
-
-    // Flipping the kernel.
-    // As kernel[-m][-n] == flip(kernel)[m][n]
-    let _kernel: Vec<Vec<f32>> = kernel
-        .iter()
-        .rev()
-        .map(|row| row.iter().rev().copied().collect())
-        .collect();
-
-    (0..rows - k1 + 1)
-        .map(|i| {
-            (0..columns - k2 + 1)
-                .map(|j| {
-                    let mut sum = 0.0;
-                    for m in 0..k1 {
-                        for n in 0..k2 {
-                            sum += image[i + m][j + n] * _kernel[m][n];
-                        }
-                    }
-                    sum
-                })
-                .collect()
-        })
-        .collect()
-}
-
-/// Convolution of an image and a kernel.
-///
-/// # Arguments
-///
-/// * `image` - A reference to a 3D vector of `f32`.
-/// * `kernel` - A reference to a 3D vector of `f32`.
-/// * `stride` - A tuple of two `usize` values representing the stride of the convolution.
-/// * `padding` - A tuple of two `usize` values representing the padding of the convolution.
-///
-/// # Returns
-///
-/// A 3D vector of `f32` containing the cross-correlation of `image` and `kernel`.
-///
-/// # Formula
-///
-/// The cross-correlation of an image `I` and a kernel `K` is given by:
-///
-/// ```latex
-/// (I \star K)_{f,i,j} = \sum_{c=0}^{C-1} \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(c, i+m, j+n) K(f, -m, -n)
-/// ```
-///
-/// where `k1` and `k2` are the dimensions of the kernel, and `c` the channel.
-///
-/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
-pub fn convolve_3d(
-    image: &Vec<Vec<Vec<f32>>>,
-    kernel: &Vec<Vec<Vec<f32>>>,
-    stride: &(usize, usize),
-    padding: &(usize, usize),
-) -> Vec<Vec<Vec<f32>>> {
-    let (channels, rows, columns) = (image.len(), image[0].len(), image[0][0].len());
-    let (k_channels, k1, k2) = (kernel.len(), kernel[0].len(), kernel[0][0].len());
-
-    assert_eq!(
-        channels, k_channels,
-        "The number of channels must be equal in both the image and the kernel."
-    );
-
-    // Flipping the kernel.
-    // As kernel[-c][-m][-n] == flip(kernel)[c][m][n]
-    let _kernel: Vec<Vec<Vec<f32>>> = kernel
-        .iter()
-        .rev()
-        .map(|row| {
-            row.iter()
-                .rev()
-                .map(|col| col.iter().rev().copied().collect())
-                .collect()
-        })
-        .collect();
-
-    let (stride_x, stride_y) = stride;
-    let (padding_x, padding_y) = padding;
-
-    let output_rows = (rows + 2 * padding_x - k1) / stride_x + 1;
-    let output_cols = (columns + 2 * padding_y - k2) / stride_y + 1;
-
-    let mut output = vec![vec![vec![0.0; output_cols]; output_rows]; channels];
-
-    for c in 0..channels {
-        for i in (0..rows - k1 + 1).step_by(*stride_x) {
-            for j in (0..columns - k2 + 1).step_by(*stride_y) {
-                let mut sum = 0.0;
-                for m in 0..k1 {
-                    for n in 0..k2 {
-                        sum += image[c][i + m][j + n] * _kernel[c][m][n];
-                    }
-                }
-                output[c][i / stride_x][j / stride_y] = sum;
-            }
-        }
-    }
-
-    output
 }
 
 #[cfg(test)]

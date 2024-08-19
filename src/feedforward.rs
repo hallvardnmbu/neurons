@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::activation;
+use crate::algebra::{mul3d_scalar, mul_scalar, sub_inplace, sub_inplace_tensor};
 use crate::objective;
 use crate::optimizer;
 use crate::tensor;
@@ -415,8 +416,6 @@ impl Feedforward {
                 let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
                 _losses += loss;
 
-                println!("{}", loss);
-
                 // TODO: Backward pass on batch instead of single input.
                 self.backward(epoch, gradient, &unactivated, &activated);
             }
@@ -613,7 +612,37 @@ impl Feedforward {
                 }
                 Layer::Convolution(layer) => {
                     // TODO: How to handle optimizer with momentum etc. for convolutional layers?
-                    layer.update(stepnr, &weight_gradient, &bias_gradient, 0.001);
+                    let lr = 0.001;
+
+                    let weight_gradient = match &weight_gradient.data {
+                        tensor::Data::Gradient(data) => data,
+                        _ => panic!("Expected a Tensor as the kernel (weight) gradient."),
+                    };
+
+                    for (filter, kernel) in layer.kernels.iter_mut().enumerate() {
+                        let data = match &mut kernel.data {
+                            tensor::Data::Tensor(data) => data,
+                            _ => panic!("Expected Tensor (3D) kernel."),
+                        };
+                        let gradient = &weight_gradient[filter];
+
+                        // TODO: Update wrt. optimizer.
+
+                        sub_inplace_tensor(data, &mul3d_scalar(gradient, lr));
+
+                        // TODO: Bias update wrt. optimizer.
+
+                        if let Some(bias) = &mut layer.bias {
+                            let bias_gradient = match &bias_gradient {
+                                Some(bias) => match &bias.data {
+                                    tensor::Data::Vector(data) => data,
+                                    _ => panic!("Expected a Vector as the bias gradient."),
+                                },
+                                _ => panic!("Bias gradient is missing."),
+                            };
+                            sub_inplace(bias, &mul_scalar(&bias_gradient, lr));
+                        }
+                    }
                 }
             }
         }
@@ -682,8 +711,8 @@ impl Feedforward {
                         }
                     }
                 },
-                Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for validation")
+                Layer::Convolution(_) => {
+                    unimplemented!("Image output (target) not supported.")
                 }
             };
         }
@@ -751,8 +780,8 @@ impl Feedforward {
                         }
                     }
                 },
-                Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for validation")
+                Layer::Convolution(_) => {
+                    unimplemented!("Image output (target) not supported.")
                 }
             };
         }
@@ -781,7 +810,8 @@ impl Feedforward {
                     output = out;
                 }
                 Layer::Convolution(layer) => {
-                    unimplemented!("Convolutional layer not implemented for prediction");
+                    let (_, out) = layer.forward(&output);
+                    output = out;
                 }
             }
         }
