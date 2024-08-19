@@ -4,6 +4,8 @@
 
 Create modular neural networks in Rust with ease! For educational purposes; operations are not throughly optimized.
 
+<img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg">
+
 ---
 
 ## Quickstart
