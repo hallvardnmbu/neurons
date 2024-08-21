@@ -1,7 +1,5 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::tensor;
-
 /// Element-wise addition of two vectors in-place.
 ///
 /// # Arguments
@@ -36,6 +34,27 @@ pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Ve
                 .collect()
         })
         .collect()
+}
+
+pub fn pad3d(
+    tensor: Vec<Vec<Vec<f32>>>,
+    shape: (usize, usize),
+    kernel: (usize, usize),
+) -> Vec<Vec<Vec<f32>>> {
+    let even = (kernel.0 % 2 == 0, kernel.0 % 2 == 0);
+    let dh = (kernel.0 / 2) + even.0 as usize;
+    let dw = (kernel.1 / 2) + even.1 as usize;
+
+    let mut padded = vec![vec![vec![0.0; shape.1]; shape.0]; tensor.len()];
+
+    for (i, row) in tensor.iter().enumerate() {
+        for (j, col) in row.iter().enumerate() {
+            for (k, val) in col.iter().enumerate() {
+                padded[i][j + dh][k + dw] = *val;
+            }
+        }
+    }
+    padded
 }
 
 /// Element-wise multiplication of two vectors.

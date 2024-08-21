@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::activation;
-use crate::algebra::{add3d, mul3d, mul3d_scalar};
+use crate::algebra::{mul3d, mul3d_scalar, pad3d};
 use crate::assert_eq_shape;
 use crate::random;
 use crate::tensor;
@@ -173,7 +173,7 @@ impl Convolution {
     fn convolve(
         &self,
         x: &Vec<Vec<Vec<f32>>>,
-        kernels: Vec<&Vec<Vec<Vec<f32>>>>,
+        kernels: &Vec<&Vec<Vec<Vec<f32>>>>,
     ) -> Vec<Vec<Vec<f32>>> {
         let (ic, ih, iw) = (x.len(), x[0].len(), x[0][0].len());
         let (kf, kc, kh, kw) = (
@@ -213,6 +213,41 @@ impl Convolution {
                     }
 
                     y[filter][height][width] = sum;
+                }
+            }
+        }
+
+        y
+    }
+
+    fn convolve_gradients(
+        &self,
+        a: &Vec<Vec<Vec<f32>>>,
+        b: &Vec<Vec<Vec<f32>>>,
+    ) -> Vec<Vec<Vec<Vec<f32>>>> {
+        let (ac, ah, aw) = (a.len(), a[0].len(), a[0][0].len());
+        let (bc, bh, bw) = (b.len(), b[0].len(), b[0][0].len());
+
+        // Defining the output shapes and vector.
+        let oh = (ah - bh) / self.stride.0 + 1;
+        let ow = (aw - bw) / self.stride.1 + 1;
+        let mut y = vec![vec![vec![vec![0.0; ow]; oh]; ac]; bc];
+
+        // Convolving `a` with `b`.
+        for i in 0..bc {
+            for j in 0..ac {
+                for k in 0..oh {
+                    for l in 0..ow {
+                        let mut sum = 0.0;
+                        for m in 0..bh {
+                            for n in 0..bw {
+                                let _h = m * self.stride.0 + k;
+                                let _w = n * self.stride.1 + l;
+                                sum += a[j][_h][_w] * b[i][m][n];
+                            }
+                        }
+                        y[i][j][k][l] = sum;
+                    }
                 }
             }
         }
@@ -269,15 +304,15 @@ impl Convolution {
         let kernels: Vec<&Vec<Vec<Vec<f32>>>> = self
             .kernels
             .iter()
-            .map(|k| match &k.data {
+            .map(|ref k| match k.data {
                 tensor::Data::Tensor(ref kernel) => kernel,
                 _ => panic!("Expected `Tensor` kernel data."),
             })
             .collect();
-        let oc = kernels.len();
 
         // Convolving the input with the kernels.
-        let y = self.convolve(&x, kernels);
+        let y = self.convolve(&x, &kernels);
+        let (oc, oh, ow) = (y.len(), y[0].len(), y[0][0].len());
 
         let pre = tensor::Tensor::from(y);
         let mut post = self.activation.forward(&pre);
@@ -292,7 +327,7 @@ impl Convolution {
         assert_eq_shape!(pre.shape, self.outputs);
         if self.flatten_output {
             post = post.flatten();
-            assert_eq_shape!(post.shape, tensor::Shape::Vector(oc * ph * pw));
+            assert_eq_shape!(post.shape, tensor::Shape::Vector(oc * oh * ow));
         } else {
             assert_eq_shape!(post.shape, self.outputs);
         }
@@ -320,45 +355,10 @@ impl Convolution {
         assert_eq_shape!(input.shape, self.inputs);
         assert_eq_shape!(output.shape, self.outputs);
 
-        // println!("Input: {}", input.shape);
-        // println!("Output: {}", output.shape);
-        // println!("Gradients in: {}", gradient.shape);
-
         let gradient = gradient.get_data(&self.outputs);
         let derivative = self.activation.backward(&output).get_data(&self.outputs);
         let delta = mul3d_scalar(&mul3d(&gradient, &derivative), self.loops);
-
-        let mut input = input.get_data(&self.inputs);
-        let output = output.get_data(&self.outputs);
-
-        // println!(
-        //     "Gradients processed: {}x{}x{}",
-        //     gradient.len(),
-        //     gradient[0].len(),
-        //     gradient[0][0].len()
-        // );
-        // println!(
-        //     "Derivative: {}x{}x{}",
-        //     derivative.len(),
-        //     derivative[0].len(),
-        //     derivative[0][0].len()
-        // );
-        // println!(
-        //     "Delta: {}x{}x{}",
-        //     delta.len(),
-        //     delta[0].len(),
-        //     delta[0][0].len()
-        // );
-
-        // Extracting the input- and output dimensions.
-        let (ic, ih, iw) = match &self.inputs {
-            tensor::Shape::Tensor(c, h, w) => (*c, *h, *w),
-            _ => panic!("Expected input to be a three-dimensional tensor."),
-        };
-        let (oc, oh, ow) = match &self.outputs {
-            tensor::Shape::Tensor(c, h, w) => (*c, *h, *w),
-            _ => panic!("Expected output to be a three-dimensional tensor."),
-        };
+        let input = input.get_data(&self.inputs);
 
         // Extracting the kernel dimensions.
         let kf = self.kernels.len(); // Number of filters.
@@ -367,71 +367,66 @@ impl Convolution {
             _ => panic!("Expected individual kernels to be three-dimensional."),
         };
 
-        // Asserting that shapes match.
-        assert_eq!(
-            ic, kc,
-            "The number of input channels should match the kernel channels."
-        );
-        assert_eq!(
-            oc, kf,
-            "The number of output channels should match the kernel filters."
-        );
-
-        // Initialize input- and kernel gradients; to be filled.
-        let mut igradient = vec![vec![vec![0.0; iw]; ih]; ic];
-        let mut kgradient = vec![vec![vec![vec![0.0; kw]; kh]; kc]; kf];
-
         // Source:
         // https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf
 
-        // TODO: Fix.
         // dL/dF = Conv(X, dL/dY)
-        kgradient = vec![self.convolve(&input, vec![&delta; kf])];
-
-        // println!(
-        //     "Kernel gradient {}x{}x{}",
-        //     kgradient[filter].len(),
-        //     kgradient[filter][0].len(),
-        //     kgradient[filter][0][0].len()
-        // );
+        let kgradient = self.convolve_gradients(&input, &delta);
 
         // Flipping the kernels.
-        // As kernel[-c][-m][-n] == flip(kernel)[c][m][n]
-        let kernels: Vec<&Vec<Vec<Vec<f32>>>> = self
+        let kernels: Vec<Vec<Vec<Vec<f32>>>> = self
             .kernels
             .iter()
             .map(|k| match &k.data {
-                tensor::Data::Tensor(ref kernel) => kernel,
+                tensor::Data::Tensor(ref kernel) => {
+                    let mut flipped_kernel = kernel.clone();
+                    flipped_kernel.reverse();
+                    for channel in &mut flipped_kernel {
+                        for row in channel {
+                            row.reverse();
+                        }
+                    }
+                    flipped_kernel
+                }
                 _ => panic!("Expected `Tensor` kernel data."),
             })
             .collect();
 
-        // Extend the delta to match the input size, to provide full convolution.
-        let mut _delta = vec![vec![vec![0.0; iw]; ih]; ic];
-        for (i, c) in delta.iter().enumerate() {
-            for (j, h) in c.iter().enumerate() {
-                for (k, value) in h.iter().enumerate() {
-                    _delta[i][j][k] = *value;
+        // Rearrange from FxCxHxW to CxFxHxW
+        let kernels: Vec<Vec<Vec<Vec<f32>>>> = {
+            let mut rearranged = vec![vec![vec![vec![0.0; kw]; kh]; kf]; kc];
+            for c in 0..kc {
+                for f in 0..kf {
+                    for h in 0..kh {
+                        for w in 0..kw {
+                            rearranged[c][f][h][w] = kernels[f][c][h][w];
+                        }
+                    }
                 }
             }
-        }
+            rearranged
+        };
 
-        // TODO: Fix?
+        // Pad the delta tensor to provide a full convolution.
+        // Based on the formula for the convolutional output, we can derive the formula for the padding:
+        let (ih, iw) = (input[0].len(), input[0][0].len());
+        let ph = ih * self.stride.0 + kh - self.stride.0;
+        let pw = iw * self.stride.1 + kw - self.stride.1;
+        let delta = pad3d(delta, (ph, pw), (kh, kw));
+
         // dL/dX = FullConv(dL/dY, flip(F))
-        igradient = add3d(&igradient, &self.convolve(&_delta, kernels));
+        let igradient = self.convolve(&delta, &kernels.iter().map(|k| k.as_ref()).collect());
 
-        // println!(
-        //     "Input gradient {}x{}x{}",
-        //     igradient.len(),
-        //     igradient[0].len(),
-        //     igradient[0][0].len()
-        // );
+        assert_eq_shape!(
+            self.inputs,
+            tensor::Shape::Tensor(igradient.len(), igradient[0].len(), igradient[0][0].len())
+        );
 
         // Calculate bias gradient if bias exists.
         let bias_gradient = self.bias.as_ref().map(|_| {
-            let mut bias_grad = vec![0.0; oc];
-            for c in 0..oc {
-                bias_grad[oc] = gradient[c].iter().flatten().sum();
+            let mut bias_grad = vec![0.0; kf];
+            for c in 0..kf {
+                bias_grad[kf] = gradient[c].iter().flatten().sum();
             }
             tensor::Tensor::from_single(bias_grad)
         });

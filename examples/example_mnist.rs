@@ -65,7 +65,7 @@ fn main() {
     let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
 
     network.convolution(
-        1,
+        5,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -74,7 +74,7 @@ fn main() {
         Some(0.1),
     );
     network.convolution(
-        1,
+        3,
         (3, 3),
         (1, 1),
         (0, 0),
