@@ -1,33 +1,35 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::activation;
-use crate::algebra::{mul3d, mul3d_scalar, pad3d};
-use crate::assert_eq_shape;
-use crate::random;
-use crate::tensor;
+use crate::{activation, algebra, random, tensor};
 
-/// A dense layer in a neural network.
+/// A convolutional layer.
 ///
 /// # Attributes
 ///
-/// * `weights` - The weights of the layer.
-/// * `bias` - The bias of the layer.
-/// * `activation` - The activation function of the layer.
+/// * `inputs` - The `tensor::Shape` of the input to the layer.
+/// * `outputs` - The `tensor::Shape` of the output from the layer.
+/// * `loops` - The number of loops to run the layer.
+/// * `kernels` - The kernels of the layer.
+/// * `stride` - The stride of the filter.
+/// * `padding` - The padding applied to the input before convolving.
+/// * `activation` - The `activation::Function` of the layer.
+/// * `dropout` - The dropout rate of the layer (when training).
+/// * `flatten_output` - Whether the output should be flattened.
+/// * `training` - Whether the layer is training.
 pub struct Convolution {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
+    pub(crate) loops: f32,
 
     pub kernels: Vec<tensor::Tensor>,
-    pub(crate) activation: activation::Function,
-
-    dropout: Option<f32>,
     stride: (usize, usize),
     padding: (usize, usize),
 
+    pub(crate) activation: activation::Function,
+
+    dropout: Option<f32>,
     pub flatten_output: bool,
     pub training: bool,
-
-    pub(crate) loops: f32,
 }
 
 impl std::fmt::Display for Convolution {
@@ -60,7 +62,7 @@ impl Convolution {
     ///
     /// # Returns
     ///
-    /// The shape of the output from the layer.
+    /// The `tensor::Shape` of the output from the layer.
     fn calculate_output_size(
         input: &tensor::Shape,
         channels: &usize,
@@ -83,13 +85,13 @@ impl Convolution {
         tensor::Shape::Tensor(*channels, height, width)
     }
 
-    /// Creates a new convolutional layer with random weights.
+    /// Creates a new convolutional layer with randomized kernel weights.
     ///
     /// # Arguments
     ///
-    /// * `input` - The shape of the input to the layer.
-    /// * `channels` - The number of output channels from the layer (i.e., number of filters).
-    /// * `activation` - The activation function of the layer.
+    /// * `input` - The `tensor::Shape` of the input to the layer.
+    /// * `filters` - The number of output channels from the layer.
+    /// * `activation` - The `activation::Activation` function of the layer.
     /// * `kernel` - The size of each filter.
     /// * `stride` - The stride of the filter.
     /// * `padding` - The padding applied to the input before convolving.
@@ -156,6 +158,7 @@ impl Convolution {
         }
     }
 
+    /// Extract the number of parameters in the layer.
     pub fn parameters(&self) -> usize {
         self.kernels.len()
             * match self.kernels[0].data {
@@ -226,6 +229,27 @@ impl Convolution {
         y
     }
 
+    /// Convolves the two gradients.
+    ///
+    /// # Arguments
+    ///
+    /// * `a` - The first gradient tensor.
+    /// * `b` - The second gradient tensor.
+    ///
+    /// # Returns
+    ///
+    /// The convolved gradients.
+    ///
+    /// # Notes
+    ///
+    /// The outputted gradient tensor will have the shape:
+    ///
+    /// * `[a_channels, b_channels, height, width]`
+    ///
+    /// Where `height` and `width` are calculated as:
+    ///
+    /// * `height = (a_height - b_height) / stride.0 + 1`
+    /// * `width = (a_width - b_width) / stride.1 + 1`
     fn convolve_gradients(
         &self,
         a: &Vec<Vec<Vec<f32>>>,
@@ -261,18 +285,17 @@ impl Convolution {
         y
     }
 
-    /// Applies the forward pass (convolution) to the input Tensor.
+    /// Applies the forward pass (convolution) to the input `tensor::Tensor`.
+    /// Assumes `x` to match `self.inputs`, and for performance reasons does not check.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input Tensor to the layer.
+    /// * `x` - The input `tensor::Tensor` to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation Tensors of the convolved input wrt. the kernels.
+    /// The pre-activation and post-activation `tensor::Tensor`s of the convolved input wrt. the kernels.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
-        assert_eq_shape!(x.shape, self.inputs);
-
         // Extracting the data from the input Tensor.
         let (mut x, ic, ih, iw) = match &x.data {
             tensor::Data::Vector(vector) => {
@@ -318,7 +341,6 @@ impl Convolution {
 
         // Convolving the input with the kernels.
         let y = self.convolve(&x, &kernels);
-        let (oc, oh, ow) = (y.len(), y[0].len(), y[0][0].len());
 
         let pre = tensor::Tensor::from(y);
         let mut post = self.activation.forward(&pre);
@@ -330,24 +352,22 @@ impl Convolution {
             }
         }
 
-        assert_eq_shape!(pre.shape, self.outputs);
         if self.flatten_output {
             post = post.flatten();
-            assert_eq_shape!(post.shape, tensor::Shape::Vector(oc * oh * ow));
-        } else {
-            assert_eq_shape!(post.shape, self.outputs);
         }
 
         (pre, post)
     }
 
-    /// Applies the backward pass of the layer to the gradient vector.
+    /// Applies the backward pass of the layer to the gradient `tensor::Tensor`.
+    /// Assumes `input` to match `self.inputs`, and for performance reasons does not check.
+    /// Assumes `output` to match `self.outputs`, and for performance reasons does not check.
     ///
     /// # Arguments
     ///
-    /// * `gradient` - The gradient vector to the layer.
-    /// * `input` - The input vector to the layer.
-    /// * `output` - The output vector of the layer.
+    /// * `gradient` - The gradient `tensor::Tensor` to the layer.
+    /// * `input` - The input `tensor::Tensor` to the layer.
+    /// * `output` - The output `tensor::Tensor` of the layer.
     ///
     /// # Returns
     ///
@@ -362,12 +382,9 @@ impl Convolution {
         input: &tensor::Tensor,
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
-        assert_eq_shape!(input.shape, self.inputs);
-        assert_eq_shape!(output.shape, self.outputs);
-
         let gradient = gradient.get_data(&self.outputs);
         let derivative = self.activation.backward(&output).get_data(&self.outputs);
-        let delta = mul3d_scalar(&mul3d(&gradient, &derivative), self.loops);
+        let delta = algebra::mul3d_scalar(&algebra::mul3d(&gradient, &derivative), self.loops);
 
         // Extracting the kernel dimensions.
         let kf = self.kernels.len(); // Number of filters.
@@ -384,7 +401,7 @@ impl Convolution {
         // Based on the formula for the convolutional output, we can derive the formula for the padding:
         let ph = ih * self.stride.0 + delta[0].len() - self.stride.0;
         let pw = iw * self.stride.1 + delta[0][0].len() - self.stride.1;
-        let input = pad3d(&input, (ph, pw));
+        let input = algebra::pad3d(&input, (ph, pw));
 
         // dL/dF = Conv(X, dL/dY)
         let kgradient = self.convolve_gradients(&input, &delta);
@@ -427,15 +444,10 @@ impl Convolution {
         // Based on the formula for the convolutional output, we can derive the formula for the padding:
         let ph = ih * self.stride.0 + kh - self.stride.0;
         let pw = iw * self.stride.1 + kw - self.stride.1;
-        let delta = pad3d(&delta, (ph, pw));
+        let delta = algebra::pad3d(&delta, (ph, pw));
 
         // dL/dX = FullConv(dL/dY, flip(F))
         let igradient = self.convolve(&delta, &kernels.iter().map(|k| k.as_ref()).collect());
-
-        assert_eq_shape!(
-            self.inputs,
-            tensor::Shape::Tensor(igradient.len(), igradient[0].len(), igradient[0][0].len())
-        );
 
         // // Calculate bias gradient if bias exists.
         // let bias_gradient = self.bias.as_ref().map(|_| {

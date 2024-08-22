@@ -1,15 +1,10 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::activation;
-use crate::objective;
-use crate::optimizer;
-use crate::tensor;
-
-use crate::convolution;
-use crate::dense;
-
 use std::collections::HashMap;
 
+use crate::{activation, convolution, dense, objective, optimizer, tensor};
+
+/// Layer types of the network.
 pub enum Layer {
     Dense(dense::Dense),
     Convolution(convolution::Convolution),
@@ -25,6 +20,7 @@ impl std::fmt::Display for Layer {
 }
 
 impl Layer {
+    /// Extracts the number of parameters in the layer.
     fn parameters(&self) -> usize {
         match self {
             Layer::Dense(layer) => layer.parameters(),
@@ -37,11 +33,11 @@ impl Layer {
 ///
 /// # Attributes
 ///
-/// * `input` - The input dimensions of the network.
-/// * `layers` - The layers of the network.
+/// * `input` - The input `tensor::Shape` of the network.
+/// * `layers` - The `Layer`s of the network.
 /// * `feedbacks` - The feedback connections of the network.
-/// * `optimizer` - The optimizer function of the network.
-/// * `objective` - The objective function of the network.
+/// * `optimizer` - The `optimizer::Optimizer` function of the network.
+/// * `objective` - The `objective::Function` of the network.
 pub struct Network {
     pub(crate) input: tensor::Shape,
 
@@ -99,7 +95,7 @@ impl Network {
         }
     }
 
-    /// Adds a new dense layer to the network.
+    /// Add a dense layer to the network.
     ///
     /// The layer is added to the end of the network, and the number of inputs to the layer must
     /// be equal to the number of outputs from the previous layer. The activation function of the
@@ -108,12 +104,13 @@ impl Network {
     /// # Arguments
     ///
     /// * `outputs` - The number of outputs from the layer.
-    /// * `activation` - The activation function of the layer.
-    /// * `bias` - Whether the layer should have a bias.
-    /// * `dropout` - The dropout rate of the layer.
+    /// * `activation` - The `activation::Activation` function of the layer.
+    /// * `bias` - Whether the layer should contain a bias.
+    /// * `dropout` - The dropout rate of the layer (applied during training only).
     ///
     /// # Panics
     ///
+    /// * If the network is configured for image inputs, and the first layer is not convolutional.
     /// * If the number of inputs to the layer is not equal to the number of outputs from the
     /// previous layer.
     pub fn dense(
@@ -172,14 +169,8 @@ impl Network {
     /// * `kernel` - The size of the kernel.
     /// * `stride` - The stride of the kernel.
     /// * `padding` - The padding of the input.
-    /// * `activation` - The activation function of the layer.
-    /// * `bias` - Whether the layer should have a bias.
-    /// * `dropout` - The dropout rate of the layer.
-    ///
-    /// # Panics
-    ///
-    /// * If the number of inputs to the layer is not equal to the number of outputs from the
-    /// previous layer.
+    /// * `activation` - The `activation::Activation` function of the layer.
+    /// * `dropout` - The dropout rate of the layer (applied during training).
     pub fn convolution(
         &mut self,
         filters: usize,
@@ -217,6 +208,14 @@ impl Network {
             )));
     }
 
+    /// Add a feedback connection between two layers.
+    ///
+    /// INCOMPLETE: Currently only supports feedback connections between dense layers.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - The index of the layer to connect from.
+    /// * `to` - The index of the layer to connect to.
     pub fn feedback(&mut self, from: usize, to: usize) {
         if from > self.layers.len() || to >= self.layers.len() || from <= to {
             panic!("Invalid layer indices for feedback connection.");
@@ -251,16 +250,17 @@ impl Network {
         self.feedbacks.insert(from, to);
     }
 
+    /// Extract the total number of parameters in the network.
     fn parameters(&self) -> usize {
         self.layers.iter().map(|layer| layer.parameters()).sum()
     }
 
-    /// Set the activation function of a layer.
+    /// Set the `activation::Activation` function of a layer.
     ///
     /// # Arguments
     ///
     /// * `layer` - The index of the layer (in the `self.layers` vector).
-    /// * `activation` - The new activation function to be used.
+    /// * `activation` - The new `activation::Activation` function to be used.
     ///
     /// # Panics
     ///
@@ -279,11 +279,11 @@ impl Network {
         }
     }
 
-    /// Set the optimizer function of the network.
+    /// Set the `optimizer::Optimizer` function of the network.
     ///
     /// # Arguments
     ///
-    /// * `optimizer` - The new optimizer function to be used.
+    /// * `optimizer` - The new `optimizer::Optimizer` function to be used.
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
         // Create the placeholder vector used for various optimizer functions.
         // See the `match optimizer` below.
@@ -377,17 +377,17 @@ impl Network {
         self.optimizer = optimizer;
     }
 
-    /// Set the objective function of the network.
+    /// Set the `objective::Objective` function of the network.
     ///
     /// # Arguments
     ///
-    /// * `objective` - The new objective function to be used.
+    /// * `objective` - The new `objective::Objective` function to be used.
     /// * `clamp` - The clamp values for the objective function.
     pub fn set_objective(&mut self, objective: objective::Objective, clamp: Option<(f32, f32)>) {
         self.objective = objective::Function::create(objective, clamp);
     }
 
-    /// Train the network on the given inputs and targets.
+    /// Train the network on the given inputs and targets for the given number of epochs.
     ///
     /// Computes the forward and backward pass of the network for the given number of epochs,
     /// with respect to the given inputs and targets. The loss and gradient of the network is
@@ -396,8 +396,8 @@ impl Network {
     ///
     /// # Arguments
     ///
-    /// * `inputs` - The input data (x).
-    /// * `targets` - The targets of the given inputs (y).
+    /// * `inputs` - The individual inputs (x) stored in a vector.
+    /// * `targets` - The respective individual (y) targets stored in a vector.
     /// * `epochs` - The number of epochs to train the network for.
     ///
     /// # Returns
@@ -472,8 +472,6 @@ impl Network {
             let (mut pre, mut post) = self._forward(activated.last().unwrap(), i - 1, i);
 
             if self.feedbacks.contains_key(&i) {
-                // println!("Feedback {} -> {}", i, self.feedbacks[&i]);
-
                 let (fpre, fpost) = self._forward(post.last().unwrap(), self.feedbacks[&i], i);
 
                 // Adding the forward pass (before feedback) to the unactivated and activated vectors.
@@ -578,7 +576,6 @@ impl Network {
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
     ) {
-        // let mut gradient = gradient.clone();
         for (i, layer) in self.layers.iter_mut().rev().enumerate() {
             let input: &tensor::Tensor = &activated[activated.len() - i - 2];
             let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];

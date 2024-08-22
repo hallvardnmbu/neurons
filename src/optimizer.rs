@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::algebra::*;
+use crate::algebra;
 
 /// The optimizer function.
 pub enum Optimizer {
@@ -93,6 +93,7 @@ impl Optimizer {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer.
     /// * `channel` - The channel of the layer.
     /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
@@ -149,9 +150,9 @@ impl SGD {
     /// * `gradients` - The gradients of the layer.
     pub fn update(&mut self, values: &mut Vec<f32>, gradients: &mut Vec<f32>) {
         if let Some(decay) = self.decay {
-            add_inplace(gradients, &mul_scalar(values, decay))
+            algebra::add_inplace(gradients, &algebra::mul_scalar(values, decay))
         }
-        sub_inplace(values, &mul_scalar(gradients, self.learning_rate));
+        algebra::sub_inplace(values, &algebra::mul_scalar(gradients, self.learning_rate));
     }
 }
 
@@ -162,7 +163,7 @@ impl SGD {
 /// * `learning_rate` - The learning rate of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, filter, weight_row, weight_row)
+/// * `velocity` - The velocity of the optimizer. (layer, filter, channel, row, column)
 pub struct SGDM {
     pub learning_rate: f32,
     pub momentum: f32,
@@ -221,8 +222,8 @@ impl SGDM {
 /// * `beta2` - The beta2 of the optimizer.
 /// * `epsilon` - The epsilon of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
-/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_row)
+/// * `velocity` - The velocity of the optimizer. (layer, filter, channel, row, column)
+/// * `momentum` - The momentum of the optimizer. (layer, filter, channel, row, column)
 pub struct Adam {
     pub learning_rate: f32,
     pub beta1: f32,
@@ -299,8 +300,8 @@ impl Adam {
 /// * `beta2` - The beta2 of the optimizer.
 /// * `epsilon` - The epsilon of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
-/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_row)
+/// * `velocity` - The velocity of the optimizer. (layer, filter, channel, row, column)
+/// * `momentum` - The momentum of the optimizer. (layer, filter, channel, row, column)
 pub struct AdamW {
     pub learning_rate: f32,
     pub beta1: f32,
@@ -377,9 +378,9 @@ impl AdamW {
 /// * `decay` - The decay of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 /// * `centered` - If the optimizer is centered.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
-/// * `gradient` - The gradient of the optimizer. (layer, weight_row, weight_row)
-/// * `buffer` - The buffer of the optimizer. (layer, weight_row, weight_row)
+/// * `velocity` - The velocity of the optimizer. (layer, filter, channel, row, column)
+/// * `gradient` - The gradient of the optimizer. (layer, filter, channel, row, column)
+/// * `buffer` - The buffer of the optimizer. (layer, filter, channel, row, column)
 pub struct RMSprop {
     pub learning_rate: f32,
     pub alpha: f32,

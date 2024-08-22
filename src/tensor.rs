@@ -2,6 +2,7 @@
 
 use crate::random;
 
+/// The different `Tensor` shapes.
 #[derive(Clone, Debug)]
 pub enum Shape {
     Vector(usize),
@@ -49,6 +50,7 @@ macro_rules! assert_eq_shape {
     }};
 }
 
+/// The different `Tensor` data types.
 #[derive(Clone, Debug)]
 pub enum Data {
     Vector(Vec<f32>),
@@ -140,6 +142,12 @@ impl std::fmt::Display for Data {
     }
 }
 
+/// Basic Tensor struct.
+///
+/// # Fields
+///
+/// * `shape` - The `Shape` of the Tensor.
+/// * `data` - The `Data` of the Tensor.
 #[derive(Clone)]
 pub struct Tensor {
     pub shape: Shape,
@@ -286,6 +294,7 @@ impl Tensor {
         }
     }
 
+    /// One-hot encodes a value into a `Shape::Vector`.
     pub fn one_hot(value: f32, max: f32) -> Self {
         let mut data = vec![0.0; max as usize];
         data[value as usize] = 1.0;
@@ -295,6 +304,7 @@ impl Tensor {
         }
     }
 
+    /// Creates a new Tensor from the given three-dimensional vector.
     pub fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
         let shape = Shape::Tensor(data.len(), data[0].len(), data[0][0].len());
         Tensor {
@@ -303,6 +313,7 @@ impl Tensor {
         }
     }
 
+    /// Creates a new Tensor from the given vector.
     pub fn from_single(data: Vec<f32>) -> Self {
         let shape = Shape::Vector(data.len());
         Tensor {
@@ -311,6 +322,7 @@ impl Tensor {
         }
     }
 
+    /// Creates a new Tensor from the given four-dimensional vector.
     pub fn gradient(data: Vec<Vec<Vec<Vec<f32>>>>) -> Self {
         let shape = Shape::Gradient(
             data.len(),
@@ -490,6 +502,7 @@ impl Tensor {
         }
     }
 
+    /// Add two Tensors together returning a new Tensor.
     pub fn add(&self, other: &Tensor) -> Self {
         match (&self.data, &other.data) {
             (Data::Vector(data1), Data::Vector(data2)) => {
@@ -541,6 +554,7 @@ impl Tensor {
         }
     }
 
+    /// Add another Tensor to this Tensor inplace.
     pub fn add_inplace(&mut self, other: &Tensor) {
         match (&mut self.data, &other.data) {
             (Data::Vector(data1), Data::Vector(data2)) => {
@@ -583,6 +597,7 @@ impl Tensor {
         }
     }
 
+    /// Multiply another Tensor with this Tensor inplace.
     pub fn mul_inplace(&mut self, other: &Tensor) {
         match (&mut self.data, &other.data) {
             (Data::Vector(data1), Data::Vector(data2)) => {
@@ -625,6 +640,7 @@ impl Tensor {
         }
     }
 
+    /// Randomly set elements of the Tensor to zero with a given probability.
     pub fn dropout(&mut self, dropout: f32) {
         let mut generator = random::Generator::create(12345);
         match &mut self.data {
@@ -650,6 +666,7 @@ impl Tensor {
         }
     }
 
+    /// Clamp the values of the Tensor to a given range.
     pub fn clamp(mut self, min: f32, max: f32) -> Self {
         match self.data {
             Data::Vector(ref mut data) => {

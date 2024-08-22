@@ -1,7 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::algebra::dot;
-use crate::tensor;
+use crate::{algebra::dot, tensor};
 
 /// Activation functions for neural networks.
 pub enum Activation {
@@ -50,6 +49,8 @@ impl Function {
         }
     }
 
+    /// Unique identifier for each activation function.
+    /// Used for serialization.
     pub fn to_identifier(&self) -> [u8; 4] {
         match self {
             Function::ReLU(_) => [0, 0, 0, 0],
@@ -61,6 +62,8 @@ impl Function {
         }
     }
 
+    /// Creates an activation function based on the provided identifier.
+    /// Used for deserialization.
     pub fn from_identifier(id: [u8; 4]) -> Self {
         match id {
             [0, 0, 0, 0] => Function::ReLU(ReLU {}),
@@ -75,6 +78,14 @@ impl Function {
 
     /// Applies the activation function to the input vector in the forward direction using the
     /// respective formula.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - A `tensor::Tensor` of input values.
+    ///
+    /// # Returns
+    ///
+    /// * A `tensor::Tensor` of the output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         match self {
             Function::ReLU(act) => act.forward(input),
@@ -88,6 +99,14 @@ impl Function {
 
     /// Applies the derivative of the activation function to the input vector in the backward
     /// direction using the derivative of the respective forward function.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - A `tensor::Tensor` of input values.
+    ///
+    /// # Returns
+    ///
+    /// * A `tensor::Tensor` of the output values.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         match self {
             Function::ReLU(act) => act.backward(input),

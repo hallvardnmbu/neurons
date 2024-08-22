@@ -1,6 +1,8 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 /// Element-wise addition of two vectors in-place.
+/// For performance reasons, this function does not validate the length of the vectors.
+/// It is assumed that the vectors have the same length.
 ///
 /// # Arguments
 ///
@@ -24,6 +26,18 @@ pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
     }
 }
 
+/// Element-wise addition of two tensors.
+/// For performance reasons, this function does not validate the length of the tensors.
+/// It is assumed that the tensors have the same length.
+///
+/// # Arguments
+///
+/// * `ten1` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `ten2` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise sum of `ten1` and `ten2`.
 pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
     ten1.iter()
         .zip(ten2.iter())
@@ -36,6 +50,16 @@ pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Ve
         .collect()
 }
 
+/// Pad a three-dimensional tensor with zeros to match the desired shape.
+///
+/// # Arguments
+///
+/// * `tensor` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `reshaped` - A tuple of two `usize` values representing the desired shape.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the padded tensor.
 pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<Vec<f32>>> {
     let dh = (reshaped.0 - tensor[0].len()) / 2;
     let dw = (reshaped.1 - tensor[0][0].len()) / 2;
@@ -53,6 +77,8 @@ pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<V
 }
 
 /// Element-wise multiplication of two vectors.
+/// For performance reasons, this function does not validate the length of the vectors.
+/// It is assumed that the vectors have the same length.
 ///
 /// # Arguments
 ///
@@ -78,6 +104,18 @@ pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
     vec1.iter().zip(vec2.iter()).map(|(a, b)| a * b).collect()
 }
 
+/// Element-wise multiplication of two tensors.
+/// For performance reasons, this function does not validate the length of the tensors.
+/// It is assumed that the tensors have the same length.
+///
+/// # Arguments
+///
+/// * `ten1` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `ten2` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
 pub fn mul3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
     ten1.iter()
         .zip(ten2.iter())
@@ -150,6 +188,8 @@ pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32
 }
 
 /// Dot product of two vectors.
+/// For performance reasons, this function does not validate the length of the vectors.
+/// It is assumed that the vectors have the same length.
 ///
 /// # Examples
 ///
@@ -176,6 +216,8 @@ pub fn dot(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
 }
 
 /// Element-wise subtraction of two vectors in-place.
+/// For performance reasons, this function does not validate the length of the vectors.
+/// It is assumed that the vectors have the same length.
 ///
 /// # Examples
 ///
@@ -200,6 +242,8 @@ pub fn sub_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 }
 
 /// Element-wise subtraction of two tensors in-place.
+/// For performance reasons, this function does not validate the length of the tensors.
+/// It is assumed that the tensors have the same length.
 ///
 /// # Arguments
 ///
@@ -225,49 +269,6 @@ pub fn sub_inplace_tensor(main: &mut Vec<Vec<Vec<f32>>>, other: &Vec<Vec<Vec<f32
             }
         }
     }
-}
-
-/// Cross-correlation of an image and a kernel.
-///
-/// # Arguments
-///
-/// * `image` - A reference to a 2D vector of `f32`.
-/// * `kernel` - A reference to a 2D vector of `f32`.
-///
-/// # Returns
-///
-/// A 2D vector of `f32` containing the cross-correlation of `image` and `kernel`.
-///
-/// # Formula
-///
-/// The cross-correlation of an image `I` and a kernel `K` is given by:
-///
-/// ```latex
-/// (I \otimes K)_{i,j} = \sum_{m=0}^{k1-1} \sum_{n=0}^{k2-1} I(i+m, j+n) K(m, n)
-/// ```
-///
-/// where `k1` and `k2` are the dimensions of the kernel.
-///
-/// [Source](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
-pub fn cross_correlate_2d(image: &Vec<Vec<f32>>, kernel: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
-    let (rows, columns) = (image.len(), image[0].len());
-    let (k1, k2) = (kernel.len(), kernel[0].len());
-
-    (0..rows - k1 + 1)
-        .map(|i| {
-            (0..columns - k2 + 1)
-                .map(|j| {
-                    let mut sum = 0.0;
-                    for m in 0..k1 {
-                        for n in 0..k2 {
-                            sum += image[i + m][j + n] * kernel[m][n];
-                        }
-                    }
-                    sum
-                })
-                .collect()
-        })
-        .collect()
 }
 
 #[cfg(test)]

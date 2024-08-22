@@ -1,10 +1,8 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::activation;
-use crate::algebra::*;
-use crate::{random, tensor};
+use crate::{activation, algebra, random, tensor};
 
-/// A dense layer in a neural network.
+/// A dense layer.
 ///
 /// # Attributes
 ///
@@ -13,21 +11,20 @@ use crate::{random, tensor};
 /// * `loops` - The number of loops, i.e., feedback connections.
 /// * `weights` - The weights of the layer.
 /// * `bias` - The bias of the layer.
-/// * `activation` - The activation function of the layer.
+/// * `activation` - The `activation::Function` of the layer.
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `training` - Whether the network is training.
 pub struct Dense {
     pub(crate) inputs: usize,
     pub(crate) outputs: usize,
-
     pub(crate) loops: f32,
 
     pub(crate) weights: Vec<Vec<f32>>,
     pub(crate) bias: Option<Vec<f32>>,
+
     pub(crate) activation: activation::Function,
 
     pub(crate) dropout: Option<f32>,
-
     pub(crate) training: bool,
 }
 
@@ -51,13 +48,13 @@ impl std::fmt::Display for Dense {
 }
 
 impl Dense {
-    /// Creates a new dense layer with random weights and bias.
+    /// Creates a new dense layer with randomized weights and bias.
     ///
     /// # Arguments
     ///
     /// * `inputs` - The number of inputs to the layer.
     /// * `outputs` - The number of outputs from the layer.
-    /// * `activation` - The activation function of the layer.
+    /// * `activation` - The `activation::Activation` function of the layer.
     /// * `bias` - Whether the layer should have a bias.
     /// * `dropout` - The dropout rate of the layer (when training).
     ///
@@ -93,23 +90,26 @@ impl Dense {
         }
     }
 
+    /// Extract the number of parameters in the layer.
     pub fn parameters(&self) -> usize {
         self.inputs * self.outputs + if self.bias.is_some() { self.outputs } else { 0 }
     }
 
-    /// Applies the forward pass of the layer to the input Tensor.
+    /// Applies the forward pass of the layer to the input `tensor::Tensor`.
     ///
     /// # Arguments
     ///
-    /// * `x` - The input Tensor to the layer.
+    /// * `x` - The input `tensor::Tensor` to the layer.
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation Tensors of the layer.
+    /// The pre-activation and post-activation `tensor::Tensor`s of the layer.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
         let x = x.get_flat();
 
-        let pre = tensor::Tensor::from_single(self.weights.iter().map(|w| dot(&w, &x)).collect());
+        let pre = tensor::Tensor::from_single(
+            self.weights.iter().map(|w| algebra::dot(&w, &x)).collect(),
+        );
         let mut post = match &self.bias {
             Some(bias) => self
                 .activation
@@ -132,9 +132,9 @@ impl Dense {
     ///
     /// # Arguments
     ///
-    /// * `gradient` - The gradient vector to the layer.
-    /// * `input` - The input vector to the layer.
-    /// * `output` - The output vector of the layer.
+    /// * `gradient` - The gradient `tensor::Tensor` to the layer.
+    /// * `input` - The input `tensor::Tensor` to the layer.
+    /// * `output` - The output `tensor::Tensor` of the layer.
     ///
     /// # Returns
     ///
@@ -146,10 +146,8 @@ impl Dense {
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         let derivative: Vec<f32> = self.activation.backward(&output).get_flat();
-
-        // TODO: Should the loops be multiplied as-is? 1/loops? sqrt(loops)? etc.
-        // Iris; better with *loops than /loops => Converges faster.
-        let delta: Vec<f32> = mul_scalar(&mul(&gradient.get_flat(), &derivative), self.loops);
+        let delta: Vec<f32> =
+            algebra::mul_scalar(&algebra::mul(&gradient.get_flat(), &derivative), self.loops);
 
         let weight_gradient: Vec<Vec<f32>> = delta
             .iter()

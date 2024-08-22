@@ -162,7 +162,7 @@ Examples can be found in the `examples` directory.
     - [ ] Entire network weights
     - [ ] Custom (binary) file format, with header explaining contents
   - [ ] Logging
-  - [ ] Add number of parameters when displaying `Network`
+  - [x] Add number of parameters when displaying `Network`
 
 ---
 
