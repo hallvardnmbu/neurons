@@ -159,7 +159,7 @@ impl Feedforward {
     ///
     /// # Arguments
     ///
-    /// * `channels` - The number of filters of the layer.
+    /// * `filters` - The number of filters of the layer.
     /// * `kernel` - The size of the kernel.
     /// * `stride` - The stride of the kernel.
     /// * `padding` - The padding of the input.
@@ -173,7 +173,7 @@ impl Feedforward {
     /// previous layer.
     pub fn convolution(
         &mut self,
-        channels: usize,
+        filters: usize,
         kernel: (usize, usize),
         stride: (usize, usize),
         padding: (usize, usize),
@@ -185,7 +185,7 @@ impl Feedforward {
             self.layers
                 .push(Layer::Convolution(convolution::Convolution::create(
                     self.input.clone(),
-                    channels,
+                    filters,
                     &activation,
                     bias,
                     kernel,
@@ -201,7 +201,7 @@ impl Feedforward {
                     Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
                     Layer::Convolution(layer) => layer.outputs.clone(),
                 },
-                channels,
+                filters,
                 &activation,
                 bias,
                 kernel,

@@ -103,7 +103,7 @@ impl Convolution {
     /// A new layer with random weights and bias with the given dimensions.
     pub fn create(
         input: tensor::Shape,
-        channels: usize,
+        filters: usize,
         activation: &activation::Activation,
         bias: bool,
         kernel: (usize, usize),
@@ -115,7 +115,7 @@ impl Convolution {
         Convolution {
             inputs: input.clone(),
             outputs: Convolution::calculate_output_size(
-                &input, &channels, &kernel, &stride, &padding,
+                &input, &filters, &kernel, &stride, &padding,
             ),
 
             kernels: {
@@ -124,7 +124,7 @@ impl Convolution {
                     tensor::Shape::Tensor(ch, _, _) => ch,
                     _ => unimplemented!("Expected a dense or convolutional input shape."),
                 };
-                (0..channels)
+                (0..filters)
                     .map(|_| {
                         tensor::Tensor::from(
                             (0..in_channels)
@@ -144,7 +144,7 @@ impl Convolution {
             },
             bias: match bias {
                 true => Some(
-                    (0..channels)
+                    (0..filters)
                         .map(|_| generator.generate(-1.0, 1.0))
                         .collect(),
                 ),
@@ -229,8 +229,8 @@ impl Convolution {
         let (bc, bh, bw) = (b.len(), b[0].len(), b[0][0].len());
 
         // Defining the output shapes and vector.
-        let oh = (ah - bh) / self.stride.0 + 1;
-        let ow = (aw - bw) / self.stride.1 + 1;
+        let oh = ((ah - bh) / self.stride.0) + 1;
+        let ow = ((aw - bw) / self.stride.1) + 1;
         let mut y = vec![vec![vec![vec![0.0; ow]; oh]; ac]; bc];
 
         // Convolving `a` with `b`.
@@ -358,7 +358,15 @@ impl Convolution {
         let gradient = gradient.get_data(&self.outputs);
         let derivative = self.activation.backward(&output).get_data(&self.outputs);
         let delta = mul3d_scalar(&mul3d(&gradient, &derivative), self.loops);
-        let input = input.get_data(&self.inputs);
+
+        // Padding the input wrt. `self.padding`.
+        let input = pad3d(
+            &input.get_data(&self.inputs),
+            (
+                delta[0].len() + 2 * self.padding.0,
+                delta[0][0].len() + 2 * self.padding.1,
+            ),
+        );
 
         // Extracting the kernel dimensions.
         let kf = self.kernels.len(); // Number of filters.
@@ -410,9 +418,9 @@ impl Convolution {
         // Pad the delta tensor to provide a full convolution.
         // Based on the formula for the convolutional output, we can derive the formula for the padding:
         let (ih, iw) = (input[0].len(), input[0][0].len());
-        let ph = ih * self.stride.0 + kh - self.stride.0;
-        let pw = iw * self.stride.1 + kw - self.stride.1;
-        let delta = pad3d(delta, (ph, pw), (kh, kw));
+        let ph = ih * self.stride.0 + kh - self.stride.0 - 2 * self.padding.0;
+        let pw = iw * self.stride.1 + kw - self.stride.1 - 2 * self.padding.1;
+        let delta = pad3d(&delta, (ph, pw));
 
         // dL/dX = FullConv(dL/dY, flip(F))
         let igradient = self.convolve(&delta, &kernels.iter().map(|k| k.as_ref()).collect());
@@ -544,12 +552,24 @@ mod tests {
             vec![7.0, 8.0, 9.0],
         ]]);
 
+        // Double-check to ensure the forward pass is correct.
+        let (pre, post) = conv.forward(&input);
+        assert_eq_data!(pre.data, output.data);
+        assert_eq_data!(post.data, output.data);
+
         let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]]);
 
         let (input_gradient, kernel_gradient, _) = conv.backward(&gradient, &input, &output);
 
-        assert_eq_data!(input_gradient.data, input.data);
-        assert_eq_data!(kernel_gradient.data, conv.kernels[0].data);
+        let _input_gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]]);
+        let _kernel_gradient = tensor::Tensor::gradient(vec![vec![vec![
+            vec![12.0, 21.0, 16.0],
+            vec![27.0, 45.0, 33.0],
+            vec![24.0, 39.0, 28.0],
+        ]]]);
+
+        assert_eq_data!(input_gradient.data, _input_gradient.data);
+        assert_eq_data!(kernel_gradient.data, _kernel_gradient.data);
     }
 
     #[test]
