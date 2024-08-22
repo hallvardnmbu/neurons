@@ -2,12 +2,7 @@
 
 extern crate csv;
 
-use neurons::activation;
-use neurons::network;
-use neurons::objective;
-use neurons::optimizer;
-use neurons::random;
-use neurons::tensor;
+use neurons::{activation, network, objective, optimizer, random, tensor};
 
 fn data(
     path: &str,
@@ -100,9 +95,10 @@ fn main() {
         momentum: Some(0.01),
         centered: Some(true),
 
-        velocity: vec![], // To be filled by the network
-        gradient: vec![], // To be filled by the network
-        buffer: vec![],   // To be filled by the network
+        // To be filled by the network:
+        velocity: vec![],
+        gradient: vec![],
+        buffer: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function

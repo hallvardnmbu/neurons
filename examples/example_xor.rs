@@ -1,10 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::activation;
-use neurons::network;
-use neurons::objective;
-use neurons::optimizer;
-use neurons::tensor;
+use neurons::{activation, network, objective, optimizer, tensor};
 
 fn main() {
     // Create the training data for the binary AND operation

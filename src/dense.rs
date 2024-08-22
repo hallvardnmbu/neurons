@@ -35,11 +35,16 @@ impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "Dense{}({} -> {}, bias: {}, loops: {})",
+            "Dense{}({} -> {}, bias: {}, dropout: {}, loops: {})",
             self.activation,
             self.inputs,
             self.outputs,
             self.bias.is_some(),
+            if let Some(dropout) = self.dropout {
+                dropout.to_string()
+            } else {
+                "false".to_string()
+            },
             self.loops
         )
     }
@@ -86,6 +91,10 @@ impl Dense {
             dropout,
             training: false,
         }
+    }
+
+    pub fn parameters(&self) -> usize {
+        self.inputs * self.outputs + if self.bias.is_some() { self.outputs } else { 0 }
     }
 
     /// Applies the forward pass of the layer to the input Tensor.

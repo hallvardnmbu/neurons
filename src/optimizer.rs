@@ -93,24 +93,33 @@ impl Optimizer {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
-    /// * `column` - The column of the layer.
+    /// * `channel` - The channel of the layer.
+    /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
         layer: usize,
-        column: usize,
+        filter: usize,
+        channel: usize,
+        row: usize,
         stepnr: i32,
         values: &mut Vec<f32>,
         gradients: &mut Vec<f32>,
     ) {
         match self {
             Optimizer::SGD(sgd) => sgd.update(values, gradients),
-            Optimizer::SGDM(sgdm) => sgdm.update(layer, column, values, gradients),
-            Optimizer::Adam(adam) => adam.update(layer, column, stepnr, values, gradients),
-            Optimizer::AdamW(adamw) => adamw.update(layer, column, stepnr, values, gradients),
-            Optimizer::RMSprop(rmsprop) => rmsprop.update(layer, column, values, gradients),
+            Optimizer::SGDM(sgdm) => sgdm.update(layer, filter, channel, row, values, gradients),
+            Optimizer::Adam(adam) => {
+                adam.update(layer, filter, channel, row, stepnr, values, gradients)
+            }
+            Optimizer::AdamW(adamw) => {
+                adamw.update(layer, filter, channel, row, stepnr, values, gradients)
+            }
+            Optimizer::RMSprop(rmsprop) => {
+                rmsprop.update(layer, filter, channel, row, values, gradients)
+            }
         }
     }
 }
@@ -153,13 +162,13 @@ impl SGD {
 /// * `learning_rate` - The learning rate of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
+/// * `velocity` - The velocity of the optimizer. (layer, filter, weight_row, weight_row)
 pub struct SGDM {
     pub learning_rate: f32,
     pub momentum: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,
+    pub velocity: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
 }
 
 impl SGDM {
@@ -174,13 +183,16 @@ impl SGDM {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
-    /// * `column` - The column of the layer.
+    /// * `channel` - The channel of the layer.
+    /// * `row` - The row of the layer.
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
         layer: usize,
-        column: usize,
+        filter: usize,
+        channel: usize,
+        row: usize,
         values: &mut Vec<f32>,
         gradients: &mut Vec<f32>,
     ) {
@@ -192,9 +204,10 @@ impl SGDM {
                 if let Some(decay) = self.decay {
                     *gradient += decay * *value;
                 }
-                self.velocity[layer][column][i] = self.momentum * self.velocity[layer][column][i]
+                self.velocity[layer][filter][channel][row][i] = self.momentum
+                    * self.velocity[layer][filter][channel][row][i]
                     + self.learning_rate * *gradient;
-                *value -= self.velocity[layer][column][i];
+                *value -= self.velocity[layer][filter][channel][row][i];
             });
     }
 }
@@ -208,8 +221,8 @@ impl SGDM {
 /// * `beta2` - The beta2 of the optimizer.
 /// * `epsilon` - The epsilon of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
-/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_column)
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
+/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_row)
 pub struct Adam {
     pub learning_rate: f32,
     pub beta1: f32,
@@ -217,8 +230,8 @@ pub struct Adam {
     pub epsilon: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,
-    pub momentum: Vec<Vec<Vec<f32>>>,
+    pub velocity: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
+    pub momentum: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
 }
 
 impl Adam {
@@ -236,14 +249,17 @@ impl Adam {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
-    /// * `column` - The column of the layer.
+    /// * `channel` - The channel of the layer.
+    /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
         layer: usize,
-        column: usize,
+        filter: usize,
+        channel: usize,
+        row: usize,
         stepnr: i32,
         values: &mut Vec<f32>,
         gradients: &mut Vec<f32>,
@@ -256,14 +272,18 @@ impl Adam {
                 if let Some(decay) = self.decay {
                     *gradient += decay * *value;
                 }
-                self.momentum[layer][column][i] =
-                    self.beta1 * self.momentum[layer][column][i] + (1.0 - self.beta1) * *gradient;
+                self.momentum[layer][filter][channel][row][i] = self.beta1
+                    * self.momentum[layer][filter][channel][row][i]
+                    + (1.0 - self.beta1) * *gradient;
 
-                self.velocity[layer][column][i] = self.beta2 * self.velocity[layer][column][i]
+                self.velocity[layer][filter][channel][row][i] = self.beta2
+                    * self.velocity[layer][filter][channel][row][i]
                     + (1.0 - self.beta2) * gradient.powi(2);
 
-                let m = self.momentum[layer][column][i] / (1.0 - self.beta1.powi(stepnr));
-                let v = self.velocity[layer][column][i] / (1.0 - self.beta2.powi(stepnr));
+                let m =
+                    self.momentum[layer][filter][channel][row][i] / (1.0 - self.beta1.powi(stepnr));
+                let v =
+                    self.velocity[layer][filter][channel][row][i] / (1.0 - self.beta2.powi(stepnr));
 
                 *value -= (self.learning_rate * m) / (v.sqrt() + self.epsilon);
             });
@@ -279,8 +299,8 @@ impl Adam {
 /// * `beta2` - The beta2 of the optimizer.
 /// * `epsilon` - The epsilon of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
-/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_column)
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
+/// * `momentum` - The momentum of the optimizer. (layer, weight_row, weight_row)
 pub struct AdamW {
     pub learning_rate: f32,
     pub beta1: f32,
@@ -288,8 +308,8 @@ pub struct AdamW {
     pub epsilon: f32,
     pub decay: f32,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,
-    pub momentum: Vec<Vec<Vec<f32>>>,
+    pub velocity: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
+    pub momentum: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
 }
 
 impl AdamW {
@@ -307,14 +327,17 @@ impl AdamW {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
-    /// * `column` - The column of the layer.
+    /// * `channel` - The channel of the layer.
+    /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
         layer: usize,
-        column: usize,
+        filter: usize,
+        channel: usize,
+        row: usize,
         stepnr: i32,
         values: &mut Vec<f32>,
         gradients: &mut Vec<f32>,
@@ -326,14 +349,18 @@ impl AdamW {
             .for_each(|(i, (value, gradient))| {
                 *value -= self.learning_rate * self.decay * *value;
 
-                self.momentum[layer][column][i] =
-                    self.beta1 * self.momentum[layer][column][i] + (1.0 - self.beta1) * *gradient;
+                self.momentum[layer][filter][channel][row][i] = self.beta1
+                    * self.momentum[layer][filter][channel][row][i]
+                    + (1.0 - self.beta1) * *gradient;
 
-                self.velocity[layer][column][i] = self.beta2 * self.velocity[layer][column][i]
+                self.velocity[layer][filter][channel][row][i] = self.beta2
+                    * self.velocity[layer][filter][channel][row][i]
                     + (1.0 - self.beta2) * gradient.powi(2);
 
-                let m = self.momentum[layer][column][i] / (1.0 - self.beta1.powi(stepnr));
-                let v = self.velocity[layer][column][i] / (1.0 - self.beta2.powi(stepnr));
+                let m =
+                    self.momentum[layer][filter][channel][row][i] / (1.0 - self.beta1.powi(stepnr));
+                let v =
+                    self.velocity[layer][filter][channel][row][i] / (1.0 - self.beta2.powi(stepnr));
 
                 *value -= (self.learning_rate * m) / (v.sqrt() + self.epsilon);
             });
@@ -350,9 +377,9 @@ impl AdamW {
 /// * `decay` - The decay of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 /// * `centered` - If the optimizer is centered.
-/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_column)
-/// * `gradient` - The gradient of the optimizer. (layer, weight_row, weight_column)
-/// * `buffer` - The buffer of the optimizer. (layer, weight_row, weight_column)
+/// * `velocity` - The velocity of the optimizer. (layer, weight_row, weight_row)
+/// * `gradient` - The gradient of the optimizer. (layer, weight_row, weight_row)
+/// * `buffer` - The buffer of the optimizer. (layer, weight_row, weight_row)
 pub struct RMSprop {
     pub learning_rate: f32,
     pub alpha: f32,
@@ -361,9 +388,9 @@ pub struct RMSprop {
     pub momentum: Option<f32>,
     pub centered: Option<bool>,
 
-    pub velocity: Vec<Vec<Vec<f32>>>,
-    pub gradient: Vec<Vec<Vec<f32>>>,
-    pub buffer: Vec<Vec<Vec<f32>>>,
+    pub velocity: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
+    pub gradient: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
+    pub buffer: Vec<Vec<Vec<Vec<Vec<f32>>>>>,
 }
 
 impl RMSprop {
@@ -382,13 +409,16 @@ impl RMSprop {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
-    /// * `column` - The column of the layer.
+    /// * `channel` - The channel of the layer.
+    /// * `row` - The row of the layer.
     /// * `values` - The weights of the layer.
     /// * `gradients` - The gradients of the layer.
     pub fn update(
         &mut self,
         layer: usize,
-        column: usize,
+        filter: usize,
+        channel: usize,
+        row: usize,
         values: &mut Vec<f32>,
         gradients: &mut Vec<f32>,
     ) {
@@ -400,21 +430,24 @@ impl RMSprop {
                 if let Some(decay) = self.decay {
                     *gradient += decay * *value;
                 }
-                self.velocity[layer][column][i] = self.alpha * self.velocity[layer][column][i]
+                self.velocity[layer][filter][channel][row][i] = self.alpha
+                    * self.velocity[layer][filter][channel][row][i]
                     + (1.0 - self.alpha) * gradient.powi(2);
-                let mut v = self.velocity[layer][column][i];
+                let mut v = self.velocity[layer][filter][channel][row][i];
 
                 if self.centered.unwrap_or(false) {
-                    self.gradient[layer][column][i] = self.alpha * self.gradient[layer][column][i]
+                    self.gradient[layer][filter][channel][row][i] = self.alpha
+                        * self.gradient[layer][filter][channel][row][i]
                         + (1.0 - self.alpha) * *gradient;
-                    v -= self.gradient[layer][column][i].powi(2);
+                    v -= self.gradient[layer][filter][channel][row][i].powi(2);
                 }
 
                 let momentum = self.momentum.unwrap_or(0.0);
                 if momentum > 0.0 {
-                    self.buffer[layer][column][i] = momentum * self.buffer[layer][column][i]
+                    self.buffer[layer][filter][channel][row][i] = momentum
+                        * self.buffer[layer][filter][channel][row][i]
                         + *gradient / (v.sqrt() + self.epsilon);
-                    *value -= self.learning_rate * self.buffer[layer][column][i];
+                    *value -= self.learning_rate * self.buffer[layer][filter][channel][row][i];
                 } else {
                     *value -= self.learning_rate * *gradient / (v.sqrt() + self.epsilon);
                 }
@@ -452,12 +485,12 @@ mod tests {
             learning_rate: 0.1,
             momentum: 0.9,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.5, 0.0]]],
+            velocity: vec![vec![vec![vec![vec![0.5, 0.0]]]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = vec![0.539, 1.948];
 
-        sgdm.update(0, 0, &mut values, &mut gradients);
+        sgdm.update(0, 0, 0, 0, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
             assert_relative_eq!(v, e, epsilon = 1e-6);
@@ -472,13 +505,13 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.5, 0.0]]],
-            momentum: vec![vec![vec![0.2, 0.1]]],
+            velocity: vec![vec![vec![vec![vec![0.5, 0.0]]]]],
+            momentum: vec![vec![vec![vec![vec![0.2, 0.1]]]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = vec![0.999915, 1.997269];
 
-        adam.update(0, 0, 1, &mut values, &mut gradients);
+        adam.update(0, 0, 0, 0, 1, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
             assert_relative_eq!(v, e, epsilon = 1e-6);
@@ -493,13 +526,13 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![vec![0.5, 0.0]]],
-            momentum: vec![vec![vec![0.2, 0.1]]],
+            velocity: vec![vec![vec![vec![vec![0.5, 0.0]]]]],
+            momentum: vec![vec![vec![vec![vec![0.2, 0.1]]]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = vec![0.999905, 1.99718];
 
-        adamw.update(0, 0, 1, &mut values, &mut gradients);
+        adamw.update(0, 0, 0, 0, 1, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
             assert_relative_eq!(v, e, epsilon = 1e-6);
@@ -515,14 +548,14 @@ mod tests {
             decay: Some(0.01),
             momentum: Some(0.9),
             centered: Some(true),
-            velocity: vec![vec![vec![0.5, 0.01]]],
-            gradient: vec![vec![vec![0.2, 0.1]]],
-            buffer: vec![vec![vec![0.9, 0.01]]],
+            velocity: vec![vec![vec![vec![vec![0.5, 0.01]]]]],
+            gradient: vec![vec![vec![vec![vec![0.2, 0.1]]]]],
+            buffer: vec![vec![vec![vec![vec![0.9, 0.01]]]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = vec![0.9902701, 1.875477];
 
-        rmsprop.update(0, 0, &mut values, &mut gradients);
+        rmsprop.update(0, 0, 0, 0, &mut values, &mut gradients);
 
         for (v, e) in values.iter().zip(expected.iter()) {
             assert_relative_eq!(v, e, epsilon = 1e-6);
@@ -538,7 +571,7 @@ mod tests {
         let (mut values, mut gradients) = create_test_case();
         let expected = vec![0.989, 1.948];
 
-        optimizer.update(0, 0, 1, &mut values, &mut gradients);
+        optimizer.update(0, 0, 0, 0, 1, &mut values, &mut gradients);
 
         assert_eq!(values, expected);
     }
@@ -555,7 +588,7 @@ mod tests {
             learning_rate: 0.1,
             momentum: 0.9,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.0]]],
+            velocity: vec![vec![vec![vec![vec![0.0]]]]],
         });
         assert!(format!("{}", sgdm).contains("SGDM"));
 
@@ -565,8 +598,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![vec![0.0]]],
-            momentum: vec![vec![vec![0.0]]],
+            velocity: vec![vec![vec![vec![vec![0.0]]]]],
+            momentum: vec![vec![vec![vec![vec![0.0]]]]],
         });
         assert!(format!("{}", adam).contains("Adam"));
 
@@ -576,8 +609,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![vec![0.0]]],
-            momentum: vec![vec![vec![0.0]]],
+            velocity: vec![vec![vec![vec![vec![0.0]]]]],
+            momentum: vec![vec![vec![vec![vec![0.0]]]]],
         });
         assert!(format!("{}", adamw).contains("AdamW"));
 
@@ -588,9 +621,9 @@ mod tests {
             decay: Some(0.01),
             momentum: Some(0.9),
             centered: Some(true),
-            velocity: vec![vec![vec![0.0]]],
-            gradient: vec![vec![vec![0.0]]],
-            buffer: vec![vec![vec![0.0]]],
+            velocity: vec![vec![vec![vec![vec![0.0]]]]],
+            gradient: vec![vec![vec![vec![vec![0.0]]]]],
+            buffer: vec![vec![vec![vec![vec![0.0]]]]],
         });
         assert!(format!("{}", rmsprop).contains("RMSprop"));
     }

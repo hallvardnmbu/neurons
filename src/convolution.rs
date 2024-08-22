@@ -18,7 +18,6 @@ pub struct Convolution {
     pub(crate) outputs: tensor::Shape,
 
     pub kernels: Vec<tensor::Tensor>,
-    pub(crate) bias: Option<Vec<f32>>,
     pub(crate) activation: activation::Function,
 
     dropout: Option<f32>,
@@ -35,7 +34,7 @@ impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "Convolution{}({} -> {}, kernel: {}x({}), stride: {:?}, padding: {:?}, bias: {}, loops: {})",
+            "Convolution{}({} -> {}, kernel: {}x({}), stride: {:?}, padding: {:?}, loops: {})",
             self.activation,
             self.inputs,
             self.outputs,
@@ -43,7 +42,6 @@ impl std::fmt::Display for Convolution {
             self.kernels[0].shape,
             self.stride,
             self.padding,
-            self.bias.is_some(),
             self.loops
         )
     }
@@ -85,14 +83,13 @@ impl Convolution {
         tensor::Shape::Tensor(*channels, height, width)
     }
 
-    /// Creates a new convolutional layer with random weights and bias.
+    /// Creates a new convolutional layer with random weights.
     ///
     /// # Arguments
     ///
     /// * `input` - The shape of the input to the layer.
     /// * `channels` - The number of output channels from the layer (i.e., number of filters).
     /// * `activation` - The activation function of the layer.
-    /// * `bias` - Whether the filters should have a bias.
     /// * `kernel` - The size of each filter.
     /// * `stride` - The stride of the filter.
     /// * `padding` - The padding applied to the input before convolving.
@@ -100,12 +97,11 @@ impl Convolution {
     ///
     /// # Returns
     ///
-    /// A new layer with random weights and bias with the given dimensions.
+    /// A new layer with random weights with the given dimensions.
     pub fn create(
         input: tensor::Shape,
         filters: usize,
         activation: &activation::Activation,
-        bias: bool,
         kernel: (usize, usize),
         stride: (usize, usize),
         padding: (usize, usize),
@@ -142,14 +138,14 @@ impl Convolution {
                     })
                     .collect()
             },
-            bias: match bias {
-                true => Some(
-                    (0..filters)
-                        .map(|_| generator.generate(-1.0, 1.0))
-                        .collect(),
-                ),
-                false => None,
-            },
+            // bias: match bias {
+            //     true => Some(
+            //         (0..filters)
+            //             .map(|_| generator.generate(-1.0, 1.0))
+            //             .collect(),
+            //     ),
+            //     false => None,
+            // },
             activation: activation::Function::create(&activation),
             dropout,
             stride,
@@ -158,6 +154,16 @@ impl Convolution {
             flatten_output: false,
             loops: 1.0,
         }
+    }
+
+    pub fn parameters(&self) -> usize {
+        self.kernels.len()
+            * match self.kernels[0].data {
+                tensor::Data::Tensor(ref tensor) => {
+                    tensor.len() * tensor[0].len() * tensor[0][0].len()
+                }
+                _ => 0,
+            }
     }
 
     /// Convolves `x` with the given `kernels`.
@@ -208,9 +214,9 @@ impl Convolution {
                         }
                     }
 
-                    if let Some(bias) = &self.bias {
-                        sum += bias[filter];
-                    }
+                    // if let Some(bias) = &self.bias {
+                    //     sum += bias[filter];
+                    // }
 
                     y[filter][height][width] = sum;
                 }
@@ -346,6 +352,10 @@ impl Convolution {
     /// # Returns
     ///
     /// The input-, weight- and bias gradient of the layer.
+    ///
+    /// # Notes
+    ///
+    /// [Source](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
     pub fn backward(
         &self,
         gradient: &tensor::Tensor,
@@ -359,15 +369,6 @@ impl Convolution {
         let derivative = self.activation.backward(&output).get_data(&self.outputs);
         let delta = mul3d_scalar(&mul3d(&gradient, &derivative), self.loops);
 
-        // Padding the input wrt. `self.padding`.
-        let input = pad3d(
-            &input.get_data(&self.inputs),
-            (
-                delta[0].len() + 2 * self.padding.0,
-                delta[0][0].len() + 2 * self.padding.1,
-            ),
-        );
-
         // Extracting the kernel dimensions.
         let kf = self.kernels.len(); // Number of filters.
         let (kc, kh, kw) = match self.kernels[0].shape {
@@ -375,8 +376,15 @@ impl Convolution {
             _ => panic!("Expected individual kernels to be three-dimensional."),
         };
 
-        // Source:
-        // https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf
+        // Extracting the input and its dimensions.
+        let input = input.get_data(&self.inputs);
+        let (ih, iw) = (input[0].len(), input[0][0].len());
+
+        // Pad the input tensor to provide the kernel gradient when convolving the delta.
+        // Based on the formula for the convolutional output, we can derive the formula for the padding:
+        let ph = ih * self.stride.0 + delta[0].len() - self.stride.0;
+        let pw = iw * self.stride.1 + delta[0][0].len() - self.stride.1;
+        let input = pad3d(&input, (ph, pw));
 
         // dL/dF = Conv(X, dL/dY)
         let kgradient = self.convolve_gradients(&input, &delta);
@@ -417,9 +425,8 @@ impl Convolution {
 
         // Pad the delta tensor to provide a full convolution.
         // Based on the formula for the convolutional output, we can derive the formula for the padding:
-        let (ih, iw) = (input[0].len(), input[0][0].len());
-        let ph = ih * self.stride.0 + kh - self.stride.0 - 2 * self.padding.0;
-        let pw = iw * self.stride.1 + kw - self.stride.1 - 2 * self.padding.1;
+        let ph = ih * self.stride.0 + kh - self.stride.0;
+        let pw = iw * self.stride.1 + kw - self.stride.1;
         let delta = pad3d(&delta, (ph, pw));
 
         // dL/dX = FullConv(dL/dY, flip(F))
@@ -430,19 +437,19 @@ impl Convolution {
             tensor::Shape::Tensor(igradient.len(), igradient[0].len(), igradient[0][0].len())
         );
 
-        // Calculate bias gradient if bias exists.
-        let bias_gradient = self.bias.as_ref().map(|_| {
-            let mut bias_grad = vec![0.0; kf];
-            for c in 0..kf {
-                bias_grad[kf] = gradient[c].iter().flatten().sum();
-            }
-            tensor::Tensor::from_single(bias_grad)
-        });
+        // // Calculate bias gradient if bias exists.
+        // let bias_gradient = self.bias.as_ref().map(|_| {
+        //     let mut bias_grad = vec![0.0; kf];
+        //     for c in 0..kf {
+        //         bias_grad[kf] = gradient[c].iter().flatten().sum();
+        //     }
+        //     tensor::Tensor::from_single(bias_grad)
+        // });
 
         (
             tensor::Tensor::from(igradient),
             tensor::Tensor::gradient(kgradient),
-            bias_gradient,
+            Some(tensor::Tensor::from_single(vec![0.0])),
         )
     }
 }
@@ -472,7 +479,6 @@ mod tests {
             tensor::Shape::Tensor(1, 5, 5),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (1, 1),
             (0, 0),
@@ -482,7 +488,6 @@ mod tests {
         assert_eq!(conv.inputs, tensor::Shape::Tensor(1, 5, 5));
         assert_eq!(conv.outputs, tensor::Shape::Tensor(1, 3, 3));
         assert_eq!(conv.kernels.len(), 1);
-        assert_eq!(conv.bias, None);
         assert_eq!(conv.dropout, None);
         assert_eq!(conv.stride, (1, 1));
         assert_eq!(conv.padding, (0, 0));
@@ -498,7 +503,6 @@ mod tests {
             tensor::Shape::Tensor(1, 3, 3),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (1, 1),
             (1, 1),
@@ -528,7 +532,6 @@ mod tests {
             tensor::Shape::Tensor(1, 3, 3),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (1, 1),
             (1, 1),
@@ -578,7 +581,6 @@ mod tests {
             tensor::Shape::Tensor(1, 3, 3),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (1, 1),
             (1, 1),
@@ -606,7 +608,6 @@ mod tests {
             tensor::Shape::Tensor(1, 5, 5),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (1, 1),
             (0, 0),
@@ -648,7 +649,6 @@ mod tests {
             tensor::Shape::Tensor(1, 5, 5),
             1,
             &activation::Activation::Linear,
-            false,
             (3, 3),
             (2, 2),
             (1, 1),

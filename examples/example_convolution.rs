@@ -1,20 +1,16 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::activation;
-use neurons::network;
-use neurons::plot;
-use neurons::tensor;
+use neurons::{activation, network, plot, tensor};
 
 fn main() {
     let mut network = network::Network::new(tensor::Shape::Tensor(1, 24, 24));
 
     network.convolution(
-        1,
+        5,
         (3, 3),
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        false,
         Some(0.1),
     );
     network.convolution(
@@ -23,7 +19,6 @@ fn main() {
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        false,
         Some(0.1),
     );
 

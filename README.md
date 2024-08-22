@@ -2,7 +2,7 @@
 
 # Modular neural networks in Rust.
 
-Create modular neural networks in Rust with ease! For educational purposes; operations are not throughly optimized.
+Create modular neural networks in Rust with ease!
 
 <img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg">
 
@@ -11,25 +11,21 @@ Create modular neural networks in Rust with ease! For educational purposes; oper
 ## Quickstart
 
 ```rust
-use neurons::tensor::Shape;
-use neurons::network::Network;
-use neurons::activation::Activation;
-use neurons::optimizer::Optimizer;
-use neurons::objective::Objective;
+use neurons::{activation, network, objective, optimizer, tensor};
 
 fn main() {
 
     // New feedforward network with four inputs
-    let mut network = Network::new(Shape::Dense(4));
+    let mut network = network::Network::new(tensor::Shape::Dense(4));
 
     // Dense(output, activation, bias, Some(dropout))
-    network.dense(100, Activation::ReLU, false, None);
+    network.dense(100, activation::Activation::ReLU, false, None);
 
-    // Convolution(filters, kernel, stride, padding, activation, bias, Some(dropout))
-    network.convolution(5, (5, 5), (1, 1), (1, 1), Activation::ReLU, false, Some(0.1));
+    // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
+    network.convolution(5, (5, 5), (1, 1), (1, 1), activation::Activation::ReLU, Some(0.1));
 
     // Dense(output, activation, bias, Some(dropout))
-    network.dense(10, Activation::Softmax, false, None);
+    network.dense(10, activation::Activation::Softmax, false, None);
 
     network.set_optimizer(
         optimizer::Optimizer::AdamW(
@@ -40,8 +36,9 @@ fn main() {
                 epsilon: 1e-8,
                 decay: 0.01,
 
-                momentum: vec![],           // To be filled by the network
-                velocity: vec![],           // To be filled by the network
+                // To be filled by the network:
+                momentum: vec![],
+                velocity: vec![],
             }
         )
     );
@@ -75,6 +72,7 @@ Examples can be found in the `examples` directory.
       - [x] Padding
       - [x] Stride
       - [ ] Dilation
+    - [ ] Max pooling
 
 - Activation functions
   - [x] Linear
@@ -142,7 +140,7 @@ Examples can be found in the `examples` directory.
   - [ ] MNIST
     - [ ] MLP
     - [ ] MLP + Feedback
-    - [ ] CNN
+    - [x] CNN
     - [ ] CNN + Feedback
   - [ ] CIFAR-10
     - [ ] CNN
@@ -164,6 +162,7 @@ Examples can be found in the `examples` directory.
     - [ ] Entire network weights
     - [ ] Custom (binary) file format, with header explaining contents
   - [ ] Logging
+  - [ ] Add number of parameters when displaying `Network`
 
 ---
 

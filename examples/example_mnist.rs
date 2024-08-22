@@ -65,26 +65,23 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Tensor(1, 28, 28));
 
     network.convolution(
-        5,
+        6,
         (3, 3),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        false,
-        Some(0.1),
+        None,
     );
     network.convolution(
-        3,
+        2,
         (3, 3),
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        false,
-        Some(0.1),
+        None,
     );
-    network.dense(10, activation::Activation::Softmax, true, Some(0.1));
-
-    println!("{}", network);
+    network.dense(128, activation::Activation::ReLU, true, Some(0.25));
+    network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
         learning_rate: 0.001,
@@ -95,14 +92,17 @@ fn main() {
         momentum: Some(0.01),
         centered: Some(true),
 
-        velocity: vec![], // To be filled by the network
-        gradient: vec![], // To be filled by the network
-        buffer: vec![],   // To be filled by the network
+        // To be filled by the network:
+        velocity: vec![],
+        gradient: vec![],
+        buffer: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
         Some((-1f32, 1f32)),                // Gradient clipping
     );
+
+    println!("{}", network);
 
     // Train the network
     let _epoch_loss = network.learn(&x_train, &y_train, 10);

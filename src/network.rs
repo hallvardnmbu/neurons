@@ -1,7 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::activation;
-use crate::algebra::{mul3d_scalar, mul_scalar, sub_inplace, sub_inplace_tensor};
 use crate::objective;
 use crate::optimizer;
 use crate::tensor;
@@ -21,6 +20,15 @@ impl std::fmt::Display for Layer {
         match self {
             Layer::Dense(layer) => write!(f, "{}", layer),
             Layer::Convolution(layer) => write!(f, "{}", layer),
+        }
+    }
+}
+
+impl Layer {
+    fn parameters(&self) -> usize {
+        match self {
+            Layer::Dense(layer) => layer.parameters(),
+            Layer::Convolution(layer) => layer.parameters(),
         }
     }
 }
@@ -51,11 +59,12 @@ impl std::fmt::Display for Network {
         write!(f, "\toptimizer: (\n{}\n", self.optimizer)?;
         write!(f, "\tobjective: (\n\t\t{}\n\t)\n", self.objective)?;
 
-        write!(f, " \tlayers: (\n")?;
+        write!(f, "\tlayers: (\n")?;
         for (i, layer) in self.layers.iter().enumerate() {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
-        write!(f, "\t)\n)")?;
+        write!(f, "\t)\n")?;
+        write!(f, "\tparameters: {}\n)", self.parameters())?;
         Ok(())
     }
 }
@@ -178,7 +187,6 @@ impl Network {
         stride: (usize, usize),
         padding: (usize, usize),
         activation: activation::Activation,
-        bias: bool,
         dropout: Option<f32>,
     ) {
         if self.layers.is_empty() {
@@ -187,7 +195,6 @@ impl Network {
                     self.input.clone(),
                     filters,
                     &activation,
-                    bias,
                     kernel,
                     stride,
                     padding,
@@ -203,7 +210,6 @@ impl Network {
                 },
                 filters,
                 &activation,
-                bias,
                 kernel,
                 stride,
                 padding,
@@ -245,6 +251,10 @@ impl Network {
         self.feedbacks.insert(from, to);
     }
 
+    fn parameters(&self) -> usize {
+        self.layers.iter().map(|layer| layer.parameters()).sum()
+    }
+
     /// Set the activation function of a layer.
     ///
     /// # Arguments
@@ -277,26 +287,25 @@ impl Network {
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
         // Create the placeholder vector used for various optimizer functions.
         // See the `match optimizer` below.
-        let vector: Vec<Vec<Vec<f32>>> = self
+        let vector: Vec<Vec<Vec<Vec<Vec<f32>>>>> = self
             .layers
             .iter()
             .rev()
-            .map(|layer| {
-                let (inputs, outputs, bias) = match layer {
-                    Layer::Dense(layer) => (layer.inputs, layer.outputs, layer.bias.is_some()),
-                    Layer::Convolution(layer) => {
-                        let (chi, hei, wii) = match layer.inputs {
-                            tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
-                            _ => panic!("Expected Convolution shape"),
-                        };
-                        let (cho, heo, wio) = match layer.outputs {
-                            tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
-                            _ => panic!("Expected Convolution shape"),
-                        };
-                        (chi * hei * wii, cho * heo * wio, layer.bias.is_some())
-                    }
-                };
-                vec![vec![0.0; inputs]; outputs + if bias { 1 } else { 0 }]
+            .map(|layer| match layer {
+                Layer::Dense(layer) => {
+                    vec![vec![vec![
+                        vec![0.0; layer.inputs];
+                        layer.outputs
+                            + if layer.bias.is_some() { 1 } else { 0 }
+                    ]]]
+                }
+                Layer::Convolution(layer) => {
+                    let (ch, kh, kw) = match layer.kernels[0].shape {
+                        tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
+                        _ => panic!("Expected Convolution shape"),
+                    };
+                    vec![vec![vec![vec![0.0; kw]; kh]; ch]; layer.kernels.len()]
+                }
             })
             .collect();
 
@@ -595,7 +604,8 @@ impl Network {
                         )
                         .enumerate()
                     {
-                        self.optimizer.update(i, j, stepnr, weights, gradients);
+                        self.optimizer
+                            .update(i, 0, 0, j, stepnr, weights, gradients);
                     }
 
                     // Bias update.
@@ -603,6 +613,8 @@ impl Network {
                         // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
                         self.optimizer.update(
                             i,
+                            0,
+                            0,
                             layer.weights.len(),
                             stepnr,
                             bias,
@@ -611,36 +623,28 @@ impl Network {
                     }
                 }
                 Layer::Convolution(layer) => {
-                    // TODO: How to handle optimizer with momentum etc. for convolutional layers?
-                    let lr = 0.001;
-
-                    let weight_gradient = match &weight_gradient.data {
+                    let mut weight_gradient = match weight_gradient.data {
                         tensor::Data::Gradient(data) => data,
-                        _ => panic!("Expected a Tensor as the kernel (weight) gradient."),
+                        _ => panic!("Expected four-dimensional data."),
                     };
-
-                    for (filter, kernel) in layer.kernels.iter_mut().enumerate() {
-                        let data = match &mut kernel.data {
+                    for (f, (filter, gradients)) in layer
+                        .kernels
+                        .iter_mut()
+                        .zip(weight_gradient.iter_mut())
+                        .enumerate()
+                    {
+                        let filter = match &mut filter.data {
                             tensor::Data::Tensor(data) => data,
-                            _ => panic!("Expected Tensor (3D) kernel."),
+                            _ => panic!("Expected a tensor, but got one-dimensional data."),
                         };
-                        let gradient = &weight_gradient[filter];
-
-                        // TODO: Update wrt. optimizer.
-
-                        sub_inplace_tensor(data, &mul3d_scalar(gradient, lr));
-
-                        // TODO: Bias update wrt. optimizer.
-
-                        if let Some(bias) = &mut layer.bias {
-                            let bias_gradient = match &bias_gradient {
-                                Some(bias) => match &bias.data {
-                                    tensor::Data::Vector(data) => data,
-                                    _ => panic!("Expected a Vector as the bias gradient."),
-                                },
-                                _ => panic!("Bias gradient is missing."),
-                            };
-                            sub_inplace(bias, &mul_scalar(&bias_gradient, lr));
+                        for (c, (kernel, gradients)) in
+                            filter.iter_mut().zip(gradients.iter_mut()).enumerate()
+                        {
+                            for (r, (weight, gradient)) in
+                                kernel.iter_mut().zip(gradients.iter_mut()).enumerate()
+                            {
+                                self.optimizer.update(i, f, c, r, stepnr, weight, gradient);
+                            }
                         }
                     }
                 }
