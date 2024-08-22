@@ -36,16 +36,11 @@ pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Ve
         .collect()
 }
 
-pub fn pad3d(
-    tensor: Vec<Vec<Vec<f32>>>,
-    shape: (usize, usize),
-    kernel: (usize, usize),
-) -> Vec<Vec<Vec<f32>>> {
-    let even = (kernel.0 % 2 == 0, kernel.0 % 2 == 0);
-    let dh = (kernel.0 / 2) + even.0 as usize;
-    let dw = (kernel.1 / 2) + even.1 as usize;
+pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<Vec<f32>>> {
+    let dh = (reshaped.0 - tensor[0].len()) / 2;
+    let dw = (reshaped.1 - tensor[0][0].len()) / 2;
 
-    let mut padded = vec![vec![vec![0.0; shape.1]; shape.0]; tensor.len()];
+    let mut padded = vec![vec![vec![0.0; reshaped.1]; reshaped.0]; tensor.len()];
 
     for (i, row) in tensor.iter().enumerate() {
         for (j, col) in row.iter().enumerate() {
