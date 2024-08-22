@@ -212,7 +212,7 @@ mod tests {
         dense.bias = Some(vec![0.0, 0.0]);
 
         let input = tensor::Tensor::from_single(vec![1.0, 2.0, 3.0]);
-        let (pre, post) = dense.forward(&input);
+        let (_, post) = dense.forward(&input);
         let gradient = tensor::Tensor::from_single(vec![1.0, 1.0]);
 
         let (input_gradient, weight_gradient, bias_gradient) =
