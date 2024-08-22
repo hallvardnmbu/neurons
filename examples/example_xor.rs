@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use neurons::activation;
-use neurons::feedforward;
+use neurons::network;
 use neurons::objective;
 use neurons::optimizer;
 use neurons::tensor;
@@ -22,7 +22,7 @@ fn main() {
     ];
 
     // Create the network
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(2));
+    let mut network = network::Network::new(tensor::Shape::Vector(2));
 
     network.dense(10, activation::Activation::Linear, true, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);

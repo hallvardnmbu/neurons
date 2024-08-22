@@ -2,7 +2,7 @@
 
 // Saving and loading logic for the neural network.
 
-use crate::{activation, dense, feedforward, tensor};
+use crate::{activation, dense, network, tensor};
 
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -11,7 +11,7 @@ const MAGIC_NUMBER: u32 = 0x6e6575726f6e73; // "neurons" in ASCII
 const VERSION: u32 = 1;
 const HEADER_SIZE: usize = 24; // Magic number (4) + Version (4) + Layer count (4) + Reserved (12)
 
-impl feedforward::Feedforward {
+impl network::Network {
     pub fn save(&self, path: &str) -> io::Result<()> {
         let mut file = File::create(path)?;
 
@@ -30,7 +30,7 @@ impl feedforward::Feedforward {
         // Writing the layer weights.
         for layer in &self.layers {
             match layer {
-                feedforward::Layer::Dense(dense) => {
+                network::Layer::Dense(dense) => {
                     file.write_all(&[0])?; // Layer type identifier. 0 = Dense
 
                     file.write_all(&dense.inputs.to_le_bytes())?;
@@ -149,7 +149,7 @@ impl feedforward::Feedforward {
                         }
                     }
 
-                    layers.push(feedforward::Layer::Dense(dense::Dense {
+                    layers.push(network::Layer::Dense(dense::Dense {
                         inputs,
                         outputs,
                         loops,
@@ -169,16 +169,16 @@ impl feedforward::Feedforward {
             }
         }
 
-        Ok(feedforward::Feedforward { input: (), layers: (), feedbacks: (), optimizer: (), objective: () })
+        Ok(network::Network { input: (), layers: (), feedbacks: (), optimizer: (), objective: () })
     }
 }
 
 // Example usage
 fn main() -> io::Result<()> {
     // Create a sample neural network
-    let nn = feedforward::Feedforward {
+    let nn = network::Network {
         input: tensor::Shape::Vector(3),
-        layers: vec![feedforward::Layer::Dense(dense::Dense {
+        layers: vec![network::Layer::Dense(dense::Dense {
             inputs: 3,
             outputs: 2,
             loops: 1f32,
@@ -197,7 +197,7 @@ fn main() -> io::Result<()> {
     nn.save("network.neurons")?;
 
     // Load the neural network
-    let loaded_nn = feedforward::Feedforward::load("network.neurons")?;
+    let loaded_nn = network::Network::load("network.neurons")?;
 
     println!("Loaded neural network: {}", loaded_nn);
 

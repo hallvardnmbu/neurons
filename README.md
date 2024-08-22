@@ -12,7 +12,7 @@ Create modular neural networks in Rust with ease! For educational purposes; oper
 
 ```rust
 use neurons::tensor::Shape;
-use neurons::feedforward::Feedforward;
+use neurons::network::Network;
 use neurons::activation::Activation;
 use neurons::optimizer::Optimizer;
 use neurons::objective::Objective;
@@ -20,7 +20,7 @@ use neurons::objective::Objective;
 fn main() {
 
     // New feedforward network with four inputs
-    let mut network = Feedforward::new(Shape::Dense(4));
+    let mut network = Network::new(Shape::Dense(4));
 
     // Dense(output, activation, bias, Some(dropout))
     network.dense(100, Activation::ReLU, false, None);
@@ -66,14 +66,14 @@ Examples can be found in the `examples` directory.
 
 - Layer types
   - [x] Dense
-  - [ ] Convolutional
+  - [x] Convolutional
     - [x] Forward pass
       - [x] Padding
       - [x] Stride
       - [ ] Dilation
-    - [ ] Backward pass
-      - [ ] Padding
-      - [ ] Stride
+    - [x] Backward pass
+      - [x] Padding
+      - [x] Stride
       - [ ] Dilation
 
 - Activation functions
@@ -102,8 +102,8 @@ Examples can be found in the `examples` directory.
   - [ ] Minibatch
 
 - Architecture
-  - [x] Feedforward
-  - [ ] Convolutional
+  - [x] Feedforward (dubbed `Network`)
+  - [x] Convolutional
   - [ ] Recurrent
   - [ ] Feedback connections
     - [x] Dense to Dense
@@ -180,6 +180,9 @@ Examples can be found in the `examples` directory.
 * [Adam](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
 * [AdamW](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
 * [RMSprop](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
+* [backpropagation convolution 1](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
+* [backpropagation convolution 2](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
+* [backpropagation convolution 3](https://sites.cc.gatech.edu/classes/AY2021/cs7643_spring/assets/L11_CNNs.pdf)
 
 
 * [GitHub Copilot](https://github.com/features/copilot)

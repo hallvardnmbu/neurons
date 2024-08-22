@@ -34,7 +34,7 @@ impl std::fmt::Display for Layer {
 /// * `feedbacks` - The feedback connections of the network.
 /// * `optimizer` - The optimizer function of the network.
 /// * `objective` - The objective function of the network.
-pub struct Feedforward {
+pub struct Network {
     pub(crate) input: tensor::Shape,
 
     pub(crate) layers: Vec<Layer>,
@@ -44,7 +44,7 @@ pub struct Feedforward {
     pub(crate) objective: objective::Function,
 }
 
-impl std::fmt::Display for Feedforward {
+impl std::fmt::Display for Network {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Network (\n")?;
 
@@ -60,7 +60,7 @@ impl std::fmt::Display for Feedforward {
     }
 }
 
-impl Feedforward {
+impl Network {
     /// Creates a new (empty) feedforward neural network.
     ///
     /// Generates a new neural network with no layers, with a standard optimizer and objective,
@@ -78,7 +78,7 @@ impl Feedforward {
     ///
     /// An empty neural network, with no layers.
     pub fn new(input: tensor::Shape) -> Self {
-        Feedforward {
+        Network {
             input,
             layers: Vec::new(),
             feedbacks: HashMap::new(),

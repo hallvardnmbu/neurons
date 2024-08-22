@@ -3,7 +3,7 @@
 extern crate csv;
 
 use neurons::activation;
-use neurons::feedforward;
+use neurons::network;
 use neurons::objective;
 use neurons::optimizer;
 use neurons::random;
@@ -85,7 +85,7 @@ fn main() {
     );
 
     // Create the network
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(4));
+    let mut network = network::Network::new(tensor::Shape::Vector(4));
 
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));

@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, feedforward, objective, optimizer, plot, tensor};
+use neurons::{activation, network, objective, optimizer, plot, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
@@ -62,7 +62,7 @@ fn main() {
         x_test.len()
     );
 
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 28, 28));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 28, 28));
 
     network.convolution(
         5,

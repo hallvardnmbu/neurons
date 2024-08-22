@@ -1,12 +1,12 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use neurons::activation;
-use neurons::feedforward;
+use neurons::network;
 use neurons::plot;
 use neurons::tensor;
 
 fn main() {
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Tensor(1, 24, 24));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 24, 24));
 
     network.convolution(
         1,

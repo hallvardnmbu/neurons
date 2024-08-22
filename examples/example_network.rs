@@ -1,11 +1,11 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use neurons::activation::Activation::{ReLU, Softmax};
-use neurons::feedforward;
+use neurons::network;
 use neurons::tensor;
 
 fn main() {
-    let mut network = feedforward::Feedforward::new(tensor::Shape::Vector(2));
+    let mut network = network::Network::new(tensor::Shape::Vector(2));
 
     network.dense(100, ReLU, false, None);
     network.convolution(5, (5, 5), (1, 1), (1, 1), ReLU, false, Some(0.1));
