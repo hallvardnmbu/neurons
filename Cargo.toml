@@ -6,7 +6,7 @@ description = "Modular neural networks in Rust."
 authors = ["Hallvard Høyland Lavik"]
 homepage = "https://github.com/hallvardnmbu/neurons"
 readme = "README.md"
-license = "Apache-2.0"
+license = "GPL-3.0"
 repository = "https://github.com/hallvardnmbu/neurons"
 include = ["**/*.rs", "Cargo.toml", "documentation/neurons.html"]
 

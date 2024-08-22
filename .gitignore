@@ -19,3 +19,12 @@ Cargo.lock
 **/*.png
 **/*.svg
 **/*.gif
+
+# Others.
+.DS_Store
+.idea/
+Icon?
+**/*.py
+
+# Datasets.
+datasets/mnist/*
