@@ -1,8 +1,8 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use std::collections::HashMap;
-
 use crate::{activation, convolution, dense, objective, optimizer, tensor};
+
+use std::collections::HashMap;
 
 /// Layer types of the network.
 pub enum Layer {
@@ -409,15 +409,15 @@ impl Network {
         targets: &Vec<tensor::Tensor>,
         epochs: i32,
     ) -> Vec<f32> {
-        for layer in &mut self.layers {
-            match layer {
-                Layer::Dense(layer) => layer.training = true,
-                Layer::Convolution(layer) => layer.training = true,
-            }
-        }
+        self.layers.iter_mut().for_each(|layer| match layer {
+            Layer::Dense(layer) => layer.training = true,
+            Layer::Convolution(layer) => layer.training = true,
+        });
 
         let checkpoint = (epochs / 10).max(1);
         let mut losses = Vec::new();
+
+        // TODO: Paralleize the forward etc., and combine results => batches.
         for epoch in 1..epochs + 1 {
             let mut _losses = 0.0f32;
             for (input, target) in inputs.iter().zip(targets.iter()) {
@@ -576,77 +576,82 @@ impl Network {
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
     ) {
-        for (i, layer) in self.layers.iter_mut().rev().enumerate() {
-            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
-            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
+        // TODO: Paralleize this. Handle the optimizer wrt. this.
+        self.layers
+            .iter_mut()
+            .rev()
+            .enumerate()
+            .for_each(|(i, layer)| {
+                let input: &tensor::Tensor = &activated[activated.len() - i - 2];
+                let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
 
-            let (_gradient, weight_gradient, bias_gradient) = match layer {
-                Layer::Dense(layer) => layer.backward(&gradient, input, output),
-                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
-            };
-            gradient = _gradient;
+                let (_gradient, weight_gradient, bias_gradient) = match layer {
+                    Layer::Dense(layer) => layer.backward(&gradient, input, output),
+                    Layer::Convolution(layer) => layer.backward(&gradient, input, output),
+                };
+                gradient = _gradient;
 
-            match layer {
-                Layer::Dense(layer) => {
-                    // Weight update.
-                    for (j, (weights, gradients)) in layer
-                        .weights
-                        .iter_mut()
-                        .zip(
-                            match weight_gradient.data {
+                match layer {
+                    Layer::Dense(layer) => {
+                        // Weight update.
+                        for (j, (weights, gradients)) in layer
+                            .weights
+                            .iter_mut()
+                            .zip(
+                                match weight_gradient.data {
+                                    tensor::Data::Tensor(data) => data,
+                                    _ => panic!("Expected a tensor, but got one-dimensional data."),
+                                }[0]
+                                .iter_mut(),
+                            )
+                            .enumerate()
+                        {
+                            self.optimizer
+                                .update(i, 0, 0, j, stepnr, weights, gradients);
+                        }
+
+                        // Bias update.
+                        if let Some(ref mut bias) = layer.bias {
+                            // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
+                            self.optimizer.update(
+                                i,
+                                0,
+                                0,
+                                layer.weights.len(),
+                                stepnr,
+                                bias,
+                                &mut bias_gradient.unwrap().get_flat(),
+                            );
+                        }
+                    }
+                    Layer::Convolution(layer) => {
+                        let mut weight_gradient = match weight_gradient.data {
+                            tensor::Data::Gradient(data) => data,
+                            _ => panic!("Expected four-dimensional data."),
+                        };
+                        for (f, (filter, gradients)) in layer
+                            .kernels
+                            .iter_mut()
+                            .zip(weight_gradient.iter_mut())
+                            .enumerate()
+                        {
+                            let filter = match &mut filter.data {
                                 tensor::Data::Tensor(data) => data,
                                 _ => panic!("Expected a tensor, but got one-dimensional data."),
-                            }[0]
-                            .iter_mut(),
-                        )
-                        .enumerate()
-                    {
-                        self.optimizer
-                            .update(i, 0, 0, j, stepnr, weights, gradients);
-                    }
-
-                    // Bias update.
-                    if let Some(ref mut bias) = layer.bias {
-                        // Using `layer.weights.len()` as the bias' momentum/velocity is stored therein.
-                        self.optimizer.update(
-                            i,
-                            0,
-                            0,
-                            layer.weights.len(),
-                            stepnr,
-                            bias,
-                            &mut bias_gradient.unwrap().get_flat(),
-                        );
-                    }
-                }
-                Layer::Convolution(layer) => {
-                    let mut weight_gradient = match weight_gradient.data {
-                        tensor::Data::Gradient(data) => data,
-                        _ => panic!("Expected four-dimensional data."),
-                    };
-                    for (f, (filter, gradients)) in layer
-                        .kernels
-                        .iter_mut()
-                        .zip(weight_gradient.iter_mut())
-                        .enumerate()
-                    {
-                        let filter = match &mut filter.data {
-                            tensor::Data::Tensor(data) => data,
-                            _ => panic!("Expected a tensor, but got one-dimensional data."),
-                        };
-                        for (c, (kernel, gradients)) in
-                            filter.iter_mut().zip(gradients.iter_mut()).enumerate()
-                        {
-                            for (r, (weight, gradient)) in
-                                kernel.iter_mut().zip(gradients.iter_mut()).enumerate()
+                            };
+                            for (c, (kernel, gradients)) in
+                                filter.iter_mut().zip(gradients.iter_mut()).enumerate()
                             {
-                                self.optimizer.update(i, f, c, r, stepnr, weight, gradient);
+                                for (r, (weight, gradient)) in
+                                    kernel.iter_mut().zip(gradients.iter_mut()).enumerate()
+                                {
+                                    self.optimizer.update(i, f, c, r, stepnr, weight, gradient);
+                                }
                             }
                         }
                     }
                 }
-            }
-        }
+            });
     }
 
     /// Validate the network on the given inputs and targets.

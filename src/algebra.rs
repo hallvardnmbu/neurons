@@ -1,5 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
+use rayon::prelude::*;
+
 /// Element-wise addition of two vectors in-place.
 /// For performance reasons, this function does not validate the length of the vectors.
 /// It is assumed that the vectors have the same length.
@@ -21,9 +23,9 @@
 /// assert_eq!(vec1, vec![5.0, 7.0, 9.0]);
 /// ```
 pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
-    for (a, b) in vec1.iter_mut().zip(vec2.iter()) {
-        *a += b;
-    }
+    vec1.iter_mut().zip(vec2.iter()).for_each(|(a, b)| {
+        *a += *b;
+    });
 }
 
 /// Element-wise addition of two tensors.
@@ -39,15 +41,20 @@ pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise sum of `ten1` and `ten2`.
 pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-    ten1.iter()
-        .zip(ten2.iter())
+    ten1.par_iter()
+        .zip(ten2.par_iter())
         .map(|(a, b)| {
             a.iter()
                 .zip(b.iter())
-                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e + f).collect())
-                .collect()
+                .map(|(c, d)| {
+                    c.iter()
+                        .zip(d.iter())
+                        .map(|(e, f)| e + f)
+                        .collect::<Vec<f32>>()
+                })
+                .collect::<Vec<Vec<f32>>>()
         })
-        .collect()
+        .collect::<Vec<Vec<Vec<f32>>>>()
 }
 
 /// Pad a three-dimensional tensor with zeros to match the desired shape.
@@ -66,13 +73,17 @@ pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<V
 
     let mut padded = vec![vec![vec![0.0; reshaped.1]; reshaped.0]; tensor.len()];
 
-    for (i, row) in tensor.iter().enumerate() {
-        for (j, col) in row.iter().enumerate() {
-            for (k, val) in col.iter().enumerate() {
-                padded[i][j + dh][k + dw] = *val;
+    padded
+        .par_chunks_mut(64)
+        .enumerate()
+        .for_each(|(i, chunk)| {
+            let row = &tensor[i];
+            for (j, col) in row.iter().enumerate() {
+                for (k, val) in col.iter().enumerate() {
+                    chunk[0][j + dh][k + dw] = *val;
+                }
             }
-        }
-    }
+        });
     padded
 }
 
@@ -117,8 +128,8 @@ pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
 pub fn mul3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-    ten1.iter()
-        .zip(ten2.iter())
+    ten1.par_iter()
+        .zip(ten2.par_iter())
         .map(|(a, b)| {
             a.iter()
                 .zip(b.iter())
@@ -178,7 +189,7 @@ pub fn mul_scalar(vec: &Vec<f32>, scalar: f32) -> Vec<f32> {
 /// ```
 pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
     tensor
-        .iter()
+        .par_iter()
         .map(|row| {
             row.iter()
                 .map(|col| col.iter().map(|a| a * scalar).collect())
@@ -236,9 +247,9 @@ pub fn dot(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
 /// * `vec1` - A mutable reference to a vector of `f32`.
 /// * `vec2` - A reference to a vector of `f32`.
 pub fn sub_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
-    for (a, b) in vec1.iter_mut().zip(vec2.iter()) {
-        *a -= b;
-    }
+    vec1.iter_mut().zip(vec2.iter()).for_each(|(a, b)| {
+        *a -= *b;
+    });
 }
 
 /// Element-wise subtraction of two tensors in-place.
@@ -262,13 +273,17 @@ pub fn sub_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 /// assert_eq!(main, vec![vec![vec![0.0, 1.0], vec![2.0, 3.0]], vec![vec![4.0, 5.0], vec![6.0, 7.0]]]);
 /// ```
 pub fn sub_inplace_tensor(main: &mut Vec<Vec<Vec<f32>>>, other: &Vec<Vec<Vec<f32>>>) {
-    for (row, vec_row) in main.iter_mut().zip(other.iter()) {
-        for (col, vec_col) in row.iter_mut().zip(vec_row.iter()) {
-            for (a, b) in col.iter_mut().zip(vec_col.iter()) {
-                *a -= b;
-            }
-        }
-    }
+    main.par_iter_mut()
+        .zip(other.par_iter())
+        .for_each(|(row, vec_row)| {
+            row.iter_mut()
+                .zip(vec_row.iter())
+                .for_each(|(col, vec_col)| {
+                    col.iter_mut().zip(vec_col.iter()).for_each(|(a, b)| {
+                        *a -= b;
+                    });
+                });
+        });
 }
 
 #[cfg(test)]

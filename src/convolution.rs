@@ -2,6 +2,8 @@
 
 use crate::{activation, algebra, random, tensor};
 
+use rayon::prelude::*;
+
 /// A convolutional layer.
 ///
 /// # Attributes
@@ -409,16 +411,16 @@ impl Convolution {
         // Flipping the kernels.
         let kernels: Vec<Vec<Vec<Vec<f32>>>> = self
             .kernels
-            .iter()
+            .par_iter()
             .map(|k| match &k.data {
                 tensor::Data::Tensor(ref kernel) => {
                     let mut flipped_kernel = kernel.clone();
-                    flipped_kernel.reverse();
-                    for channel in &mut flipped_kernel {
-                        for row in channel {
+                    flipped_kernel.iter_mut().for_each(|channel| {
+                        channel.iter_mut().for_each(|row| {
                             row.reverse();
-                        }
-                    }
+                        });
+                        channel.reverse();
+                    });
                     flipped_kernel
                 }
                 _ => panic!("Expected `Tensor` kernel data."),
@@ -461,7 +463,7 @@ impl Convolution {
         (
             tensor::Tensor::from(igradient),
             tensor::Tensor::gradient(kgradient),
-            Some(tensor::Tensor::from_single(vec![0.0])),
+            None,
         )
     }
 }

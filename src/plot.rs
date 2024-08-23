@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
 use crate::tensor;
+
 use plotters::prelude::*;
 
 /// Plots a heatmap of the given data.

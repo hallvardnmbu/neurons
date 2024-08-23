@@ -2,6 +2,8 @@
 
 use crate::random;
 
+use rayon::prelude::*;
+
 /// The different `Tensor` shapes.
 #[derive(Clone, Debug)]
 pub enum Shape {
@@ -448,6 +450,7 @@ impl Tensor {
                     "Reshape requires the same number of elements"
                 );
 
+                // TODO: Parallelize.
                 let data = {
                     let mut iter = self.get_flat().into_iter();
                     Data::Tensor(
@@ -472,6 +475,7 @@ impl Tensor {
                     "Reshape requires the same number of elements"
                 );
 
+                // TODO: Parallelize.
                 let data = {
                     let mut iter = self.get_flat().into_iter();
                     Data::Tensor(
@@ -536,8 +540,8 @@ impl Tensor {
                 );
 
                 let data = data1
-                    .iter()
-                    .zip(data2.iter())
+                    .par_iter()
+                    .zip(data2.par_iter())
                     .map(|(c1, c2)| {
                         c1.iter()
                             .zip(c2.iter())
@@ -564,9 +568,10 @@ impl Tensor {
                     "Add requires the same number of elements"
                 );
 
-                for (a, b) in data1.iter_mut().zip(data2.iter()) {
-                    *a += b;
-                }
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a += b);
             }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
@@ -585,13 +590,16 @@ impl Tensor {
                     "Add requires the same number of columns"
                 );
 
-                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
-                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
-                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
-                            *a += b;
-                        }
-                    }
-                }
+                data1
+                    .par_iter_mut()
+                    .zip(data2.par_iter())
+                    .for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                                *a += b;
+                            });
+                        });
+                    });
             }
             _ => panic!("Invalid add"),
         }
@@ -607,9 +615,10 @@ impl Tensor {
                     "Multiply requires the same number of elements"
                 );
 
-                for (a, b) in data1.iter_mut().zip(data2.iter()) {
-                    *a *= b;
-                }
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a *= b);
             }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
@@ -628,13 +637,16 @@ impl Tensor {
                     "Multiply requires the same number of columns"
                 );
 
-                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
-                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
-                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
-                            *a *= b;
-                        }
-                    }
-                }
+                data1
+                    .par_iter_mut()
+                    .zip(data2.par_iter())
+                    .for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                                *a *= b;
+                            });
+                        });
+                    });
             }
             _ => panic!("Invalid multiply"),
         }
@@ -652,6 +664,7 @@ impl Tensor {
                 }
             }
             Data::Tensor(data) => {
+                // TODO: Parallelize.
                 for c in data.iter_mut() {
                     for r in c.iter_mut() {
                         for x in r.iter_mut() {
@@ -670,29 +683,23 @@ impl Tensor {
     pub fn clamp(mut self, min: f32, max: f32) -> Self {
         match self.data {
             Data::Vector(ref mut data) => {
-                for x in data.iter_mut() {
-                    *x = x.clamp(min, max);
-                }
+                data.iter_mut().for_each(|x| *x = x.clamp(min, max));
             }
             Data::Tensor(ref mut data) => {
-                for c in data.iter_mut() {
-                    for r in c.iter_mut() {
-                        for x in r.iter_mut() {
-                            *x = x.clamp(min, max);
-                        }
-                    }
-                }
+                data.par_iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|r| {
+                        r.iter_mut().for_each(|x| *x = x.clamp(min, max));
+                    });
+                });
             }
             Data::Gradient(ref mut data) => {
-                for c in data.iter_mut() {
-                    for f in c.iter_mut() {
-                        for r in f.iter_mut() {
-                            for x in r.iter_mut() {
-                                *x = x.clamp(min, max);
-                            }
-                        }
-                    }
-                }
+                data.par_iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|f| {
+                        f.iter_mut().for_each(|r| {
+                            r.iter_mut().for_each(|x| *x = x.clamp(min, max));
+                        });
+                    });
+                });
             }
         }
         self
