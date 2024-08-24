@@ -62,40 +62,35 @@ fn main() {
         x_test.len()
     );
 
+    let x_train: Vec<&tensor::Tensor> = x_train.iter().collect();
+    let y_train: Vec<&tensor::Tensor> = y_train.iter().collect();
+    let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
+    let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
+
     let mut network = network::Network::new(tensor::Shape::Tensor(1, 28, 28));
 
     network.convolution(
-        6,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
-    network.convolution(
-        2,
-        (3, 3),
+        3,
+        (5, 5),
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
         None,
     );
-    network.dense(128, activation::Activation::ReLU, true, Some(0.25));
+    network.convolution(
+        3,
+        (5, 5),
+        (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.dense(32, activation::Activation::ReLU, true, Some(0.1));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
-        learning_rate: 0.001,
-        alpha: 0.0,
-        epsilon: 1e-8,
-
+    network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
+        learning_rate: 0.01,
         decay: Some(0.01),
-        momentum: Some(0.01),
-        centered: Some(true),
-
-        // To be filled by the network:
-        velocity: vec![],
-        gradient: vec![],
-        buffer: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
@@ -105,7 +100,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, 10);
+    let _epoch_loss = network.learn(&x_train, &y_train, Some(1000), 10);
 
     // Validate the network
     let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);

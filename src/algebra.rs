@@ -1,7 +1,5 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use rayon::prelude::*;
-
 /// Element-wise addition of two vectors in-place.
 /// For performance reasons, this function does not validate the length of the vectors.
 /// It is assumed that the vectors have the same length.
@@ -41,20 +39,15 @@ pub fn add_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise sum of `ten1` and `ten2`.
 pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-    ten1.par_iter()
-        .zip(ten2.par_iter())
+    ten1.iter()
+        .zip(ten2.iter())
         .map(|(a, b)| {
             a.iter()
                 .zip(b.iter())
-                .map(|(c, d)| {
-                    c.iter()
-                        .zip(d.iter())
-                        .map(|(e, f)| e + f)
-                        .collect::<Vec<f32>>()
-                })
-                .collect::<Vec<Vec<f32>>>()
+                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e + f).collect())
+                .collect()
         })
-        .collect::<Vec<Vec<Vec<f32>>>>()
+        .collect()
 }
 
 /// Pad a three-dimensional tensor with zeros to match the desired shape.
@@ -73,17 +66,14 @@ pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<V
 
     let mut padded = vec![vec![vec![0.0; reshaped.1]; reshaped.0]; tensor.len()];
 
-    padded
-        .par_chunks_mut(64)
-        .enumerate()
-        .for_each(|(i, chunk)| {
-            let row = &tensor[i];
-            for (j, col) in row.iter().enumerate() {
-                for (k, val) in col.iter().enumerate() {
-                    chunk[0][j + dh][k + dw] = *val;
-                }
+    for (i, row) in tensor.iter().enumerate() {
+        for (j, col) in row.iter().enumerate() {
+            for (k, val) in col.iter().enumerate() {
+                padded[i][j + dh][k + dw] = *val;
             }
-        });
+        }
+    }
+
     padded
 }
 
@@ -128,8 +118,8 @@ pub fn mul(vec1: &Vec<f32>, vec2: &Vec<f32>) -> Vec<f32> {
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
 pub fn mul3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-    ten1.par_iter()
-        .zip(ten2.par_iter())
+    ten1.iter()
+        .zip(ten2.iter())
         .map(|(a, b)| {
             a.iter()
                 .zip(b.iter())
@@ -189,7 +179,7 @@ pub fn mul_scalar(vec: &Vec<f32>, scalar: f32) -> Vec<f32> {
 /// ```
 pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
     tensor
-        .par_iter()
+        .iter()
         .map(|row| {
             row.iter()
                 .map(|col| col.iter().map(|a| a * scalar).collect())
@@ -273,8 +263,8 @@ pub fn sub_inplace(vec1: &mut Vec<f32>, vec2: &Vec<f32>) {
 /// assert_eq!(main, vec![vec![vec![0.0, 1.0], vec![2.0, 3.0]], vec![vec![4.0, 5.0], vec![6.0, 7.0]]]);
 /// ```
 pub fn sub_inplace_tensor(main: &mut Vec<Vec<Vec<f32>>>, other: &Vec<Vec<Vec<f32>>>) {
-    main.par_iter_mut()
-        .zip(other.par_iter())
+    main.iter_mut()
+        .zip(other.iter())
         .for_each(|(row, vec_row)| {
             row.iter_mut()
                 .zip(vec_row.iter())

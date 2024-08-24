@@ -44,21 +44,64 @@ Create modular neural networks in Rust with ease!
           )
       );
       network.set_objective(
-          objective::Objective::MSE,          // Objective function
-          Some((-1f32, 1f32))                 // Gradient clipping
+          objective::Objective::MSE,                        // Objective function
+          Some((-1f32, 1f32))                               // Gradient clipping
       );
 
       println!("{}", network);
 
-      let (x, y) = {  };                      // Load data
+      let (x, y) = {  };                                    // Load data
+      let batch = 32;
       let epochs = 1000;
-      let loss = network.learn(x, y, epochs); // Train the network
+      let loss = network.learn(x, y, Some(batch), epochs);  // Train the network
   }
   ```
 
   ## Examples
 
   Examples can be found in the `examples` directory.
+
+</details>
+
+<details>
+  <summary>Releases</summary>
+
+  ## 0.3.0 (Batched training; parallelization)
+
+  * Batched training (`network::Network::learn`)
+  * Parallelization of batches (`rayon`)
+
+  ### Benchmarking example/example_benchmark.rs
+
+  ```raw
+  v0.3.0: 0.318811179s (6.95x speedup)
+  v0.2.2: 2.218362758s
+  ```
+
+  ## 0.2.2 (Convolution)
+
+  * Convolutional layer
+  * Improved documentation
+
+  ## 0.2.0 (Feedback)
+
+  * Feedback connections
+
+  ## 0.1.5
+
+  * Improved documentation
+
+  ## 0.1.1
+
+  * Custom tensor struct
+  * Unit tests
+
+  ## 0.1.0 (Dense)
+
+  * Dense feedforward network
+  * Activation functions
+  * Objective functions
+  * Optimization techniques
 
 </details>
 
@@ -101,7 +144,7 @@ Create modular neural networks in Rust with ease!
     - [x] Adam
     - [x] AdamW
     - [x] RMSprop
-    - [ ] Minibatch
+    - [x] Minibatch
 
   ## Architecture
     - [x] Feedforward (dubbed `Network`)
@@ -119,7 +162,9 @@ Create modular neural networks in Rust with ease!
     - [ ] Early stopping
 
   ## Parallelization
-    - [ ] Multi-threading
+    - [x] Parallelization of batches
+    - [ ] Other parallelization?
+      - NOTE: Slowdown when parallelizing _everything_ (commit: 1f94cea56630a46d40755af5da20714bc0357146).
 
   ## Testing
     - [x] Unit tests
@@ -167,52 +212,6 @@ Create modular neural networks in Rust with ease!
       - [ ] Custom (binary) file format, with header explaining contents
     - [ ] Logging
     - [x] Add number of parameters when displaying `Network`
-
-</details>
-
-<details>
-  <summary>Releases</summary>
-
-  ## PROPOSED: 0.3.0 (Parallelization)
-
-  * Parallelization of iterators
-    * Note,
-    * Not yet parallelized:
-      * `optimizer::{SGDM, Adam, AdamW, RMSprop}::update`
-      * `network::Network::{learn, backward}`
-      * `tensor::Tensor::{get_data, reshape, dropout}`
-
-  ### Benchmarking example/example_benchmark.rs
-
-  ```raw
-  v0.2.2: 2.218362758s
-  v0.3.0: 4.383568666s   !!! SLOWER !!! Overused `par_*` iterators? Or too small network?
-  ```
-
-  ## 0.2.2 (Convolution)
-
-  * Convolutional layer
-  * Improved documentation
-
-  ## 0.2.0 (Feedback)
-
-  * Feedback connections
-
-  ## 0.1.5
-
-  * Improved documentation
-
-  ## 0.1.1
-
-  * Custom tensor struct
-  * Unit tests
-
-  ## 0.1.0 (Dense)
-
-  * Dense feedforward network
-  * Activation functions
-  * Objective functions
-  * Optimization techniques
 
 </details>
 

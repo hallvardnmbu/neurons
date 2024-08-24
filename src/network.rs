@@ -2,6 +2,7 @@
 
 use crate::{activation, convolution, dense, objective, optimizer, tensor};
 
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// Layer types of the network.
@@ -398,6 +399,7 @@ impl Network {
     ///
     /// * `inputs` - The individual inputs (x) stored in a vector.
     /// * `targets` - The respective individual (y) targets stored in a vector.
+    /// * `batch` - The batch size to use when training.
     /// * `epochs` - The number of epochs to train the network for.
     ///
     /// # Returns
@@ -405,8 +407,9 @@ impl Network {
     /// A vector of the average loss of the network per epoch.
     pub fn learn(
         &mut self,
-        inputs: &Vec<tensor::Tensor>,
-        targets: &Vec<tensor::Tensor>,
+        inputs: &Vec<&tensor::Tensor>,
+        targets: &Vec<&tensor::Tensor>,
+        batch: Option<usize>,
         epochs: i32,
     ) -> Vec<f32> {
         self.layers.iter_mut().for_each(|layer| match layer {
@@ -414,30 +417,88 @@ impl Network {
             Layer::Convolution(layer) => layer.training = true,
         });
 
-        let checkpoint = (epochs / 10).max(1);
+        let print = (epochs / 10).max(1);
         let mut losses = Vec::new();
 
-        // TODO: Paralleize the forward etc., and combine results => batches.
+        // Split the input data into batches.
+        // If no batch size is provided, it defaults to 1.
+        let batch = batch.unwrap_or(1);
+        let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = inputs
+            .par_chunks(batch)
+            .zip(targets.par_chunks(batch))
+            .collect();
+        let batch = batch as f32;
+
         for epoch in 1..epochs + 1 {
             let mut _losses = 0.0f32;
-            for (input, target) in inputs.iter().zip(targets.iter()) {
-                let (unactivated, activated) = self.forward(input);
-                let (loss, gradient) = self.loss(&activated.last().unwrap(), target);
-                _losses += loss;
 
-                // TODO: Backward pass on batch instead of single input.
-                self.backward(epoch, gradient, &unactivated, &activated);
+            let results: Vec<_> = batches
+                .par_iter()
+                .map(|(inputs, targets)| {
+                    let mut loss = 0.0f32;
+                    let mut weight_gradients: Vec<tensor::Tensor> = Vec::new();
+                    let mut bias_gradients: Vec<Option<tensor::Tensor>> = Vec::new();
+
+                    for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
+                        let (unactivated, activated) = self.forward(input);
+                        let (_loss, gradient) = self.loss(&activated.last().unwrap(), target);
+                        loss += _loss;
+
+                        let (wg, bg) = self.backward(gradient, &unactivated, &activated);
+
+                        if i == 0 {
+                            weight_gradients = wg;
+                            bias_gradients = bg;
+                        } else {
+                            for (gradient, new) in weight_gradients.iter_mut().zip(wg.iter()) {
+                                gradient.add_inplace(new)
+                            }
+
+                            for (gradient, new) in bias_gradients.iter_mut().zip(bg.iter()) {
+                                match gradient {
+                                    Some(gradient) => match new {
+                                        Some(new) => gradient.add_inplace(new),
+                                        None => panic!("Expected Some, got None."),
+                                    },
+                                    None => match new {
+                                        Some(_) => panic!("Expected None, got Some."),
+                                        None => (),
+                                    },
+                                }
+                            }
+                        }
+                    }
+
+                    if batch > 1.0 {
+                        weight_gradients
+                            .iter_mut()
+                            .for_each(|gradient| gradient.div_scalar_inplace(batch));
+                        bias_gradients.iter_mut().for_each(|gradient| {
+                            if let Some(gradient) = gradient {
+                                gradient.div_scalar_inplace(batch);
+                            }
+                        });
+                    }
+
+                    (loss, weight_gradients, bias_gradients)
+                })
+                .collect();
+
+            for (loss, weight_gradients, bias_gradients) in results {
+                self.update(epoch, weight_gradients, bias_gradients);
+                _losses += loss / batch;
             }
-            losses.push(_losses / inputs.len() as f32);
 
-            if epoch % checkpoint == 0 && epoch > 0 {
+            losses.push(_losses);
+
+            if epoch % print == 0 && epoch > 0 {
                 println!(
                     "Epoch: {} Loss: {}",
                     epoch,
-                    losses[(epoch as usize) - (checkpoint as usize)..(epoch as usize)]
+                    losses[(epoch as usize) - (print as usize)..(epoch as usize)]
                         .iter()
                         .sum::<f32>()
-                        / checkpoint as f32
+                        / print as f32
                 );
             }
         }
@@ -461,10 +522,7 @@ impl Network {
     /// # Returns
     ///
     /// A tuple containing the pre-activation and post-activation values of each layer.
-    pub fn forward(
-        &mut self,
-        input: &tensor::Tensor,
-    ) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+    pub fn forward(&self, input: &tensor::Tensor) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
 
@@ -517,7 +575,7 @@ impl Network {
     ///
     /// A tuple containing the pre-activation and post-activation values of each layer inbetween.
     fn _forward(
-        &mut self,
+        &self,
         input: &tensor::Tensor,
         from: usize,
         to: usize,
@@ -552,58 +610,70 @@ impl Network {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient of the network for the given prediction and target.
-    fn loss(
-        &mut self,
-        prediction: &tensor::Tensor,
-        target: &tensor::Tensor,
-    ) -> (f32, tensor::Tensor) {
+    fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
         self.objective.loss(prediction, target)
     }
 
-    /// Compute the backward pass of the network for the given gradient, and update the weights
-    /// and biases of the network accordingly.
+    /// Compute the backward pass of the network for the given output gradient.
     ///
     /// # Arguments
     ///
-    /// * `stepnr` - The current step number (i.e., epoch number).
     /// * `gradient` - The gradient of the output.
     /// * `unactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
     fn backward(
-        &mut self,
-        stepnr: i32,
+        &self,
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
+    ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
+        let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
+        let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
+        self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
+            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
+            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
+
+            let (input_gradient, wg, bg) = match layer {
+                Layer::Dense(layer) => layer.backward(&gradient, input, output),
+                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
+            };
+
+            weight_gradient.push(wg);
+            bias_gradient.push(bg);
+
+            gradient = input_gradient;
+        });
+        (weight_gradient, bias_gradient)
+    }
+
+    /// Update the weights and biases of the network using the given gradients.
+    ///
+    /// # Arguments
+    ///
+    /// * `stepnr` - The current step number (i.e., epoch number).
+    /// * `gradients` - The gradients to perform weight updates with respect to.
+    fn update(
+        &mut self,
+        stepnr: i32,
+        weight_gradients: Vec<tensor::Tensor>,
+        bias_gradients: Vec<Option<tensor::Tensor>>,
     ) {
-        // TODO: Paralleize this. Handle the optimizer wrt. this.
         self.layers
             .iter_mut()
             .rev()
             .enumerate()
             .for_each(|(i, layer)| {
-                let input: &tensor::Tensor = &activated[activated.len() - i - 2];
-                let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
-
-                let (_gradient, weight_gradient, bias_gradient) = match layer {
-                    Layer::Dense(layer) => layer.backward(&gradient, input, output),
-                    Layer::Convolution(layer) => layer.backward(&gradient, input, output),
-                };
-                gradient = _gradient;
-
                 match layer {
                     Layer::Dense(layer) => {
                         // Weight update.
+                        let mut weight_gradient = match &weight_gradients[i].data {
+                            tensor::Data::Tensor(data) => data.clone(),
+                            _ => panic!("Expected four-dimensional data."),
+                        };
                         for (j, (weights, gradients)) in layer
                             .weights
                             .iter_mut()
-                            .zip(
-                                match weight_gradient.data {
-                                    tensor::Data::Tensor(data) => data,
-                                    _ => panic!("Expected a tensor, but got one-dimensional data."),
-                                }[0]
-                                .iter_mut(),
-                            )
+                            .zip(weight_gradient[0].iter_mut())
                             .enumerate()
                         {
                             self.optimizer
@@ -620,13 +690,13 @@ impl Network {
                                 layer.weights.len(),
                                 stepnr,
                                 bias,
-                                &mut bias_gradient.unwrap().get_flat(),
+                                &mut bias_gradients[i].as_ref().unwrap().get_flat(),
                             );
                         }
                     }
                     Layer::Convolution(layer) => {
-                        let mut weight_gradient = match weight_gradient.data {
-                            tensor::Data::Gradient(data) => data,
+                        let mut weight_gradient = match &weight_gradients[i].data {
+                            tensor::Data::Gradient(data) => data.clone(),
                             _ => panic!("Expected four-dimensional data."),
                         };
                         for (f, (filter, gradients)) in layer
@@ -671,8 +741,8 @@ impl Network {
     /// A tuple containing the total accuracy and loss of the network.
     pub fn validate(
         &mut self,
-        inputs: &Vec<tensor::Tensor>,
-        targets: &Vec<tensor::Tensor>,
+        inputs: &Vec<&tensor::Tensor>,
+        targets: &Vec<&tensor::Tensor>,
         tol: f32,
     ) -> (f32, f32) {
         let mut losses = Vec::new();
@@ -746,8 +816,8 @@ impl Network {
     /// The accuracy of the network on the given inputs and targets.
     pub fn accuracy(
         &self,
-        predictions: &Vec<tensor::Tensor>,
-        targets: &Vec<tensor::Tensor>,
+        predictions: &Vec<&tensor::Tensor>,
+        targets: &Vec<&tensor::Tensor>,
         tol: f32,
     ) -> f32 {
         let mut accuracy: Vec<f32> = Vec::new();
@@ -833,7 +903,7 @@ impl Network {
     /// # Returns
     ///
     /// The output of the network for each of the given inputs.
-    pub fn predict_batch(&self, inputs: &Vec<tensor::Tensor>) -> Vec<tensor::Tensor> {
+    pub fn predict_batch(&self, inputs: &Vec<&tensor::Tensor>) -> Vec<tensor::Tensor> {
         inputs.iter().map(|input| self.predict(input)).collect()
     }
 }

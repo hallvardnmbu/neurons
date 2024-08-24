@@ -2,8 +2,6 @@
 
 use crate::random;
 
-use rayon::prelude::*;
-
 /// The different `Tensor` shapes.
 #[derive(Clone, Debug)]
 pub enum Shape {
@@ -450,7 +448,6 @@ impl Tensor {
                     "Reshape requires the same number of elements"
                 );
 
-                // TODO: Parallelize.
                 let data = {
                     let mut iter = self.get_flat().into_iter();
                     Data::Tensor(
@@ -475,7 +472,6 @@ impl Tensor {
                     "Reshape requires the same number of elements"
                 );
 
-                // TODO: Parallelize.
                 let data = {
                     let mut iter = self.get_flat().into_iter();
                     Data::Tensor(
@@ -540,8 +536,8 @@ impl Tensor {
                 );
 
                 let data = data1
-                    .par_iter()
-                    .zip(data2.par_iter())
+                    .iter()
+                    .zip(data2.iter())
                     .map(|(c1, c2)| {
                         c1.iter()
                             .zip(c2.iter())
@@ -590,16 +586,40 @@ impl Tensor {
                     "Add requires the same number of columns"
                 );
 
-                data1
-                    .par_iter_mut()
-                    .zip(data2.par_iter())
-                    .for_each(|(c1, c2)| {
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                            *a += b;
+                        });
+                    });
+                });
+            }
+            (Data::Gradient(data1), Data::Gradient(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Add requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Add requires the same number of columns"
+                );
+
+                data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
+                    f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
                         c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
                             r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
                                 *a += b;
                             });
                         });
                     });
+                });
             }
             _ => panic!("Invalid add"),
         }
@@ -637,18 +657,40 @@ impl Tensor {
                     "Multiply requires the same number of columns"
                 );
 
-                data1
-                    .par_iter_mut()
-                    .zip(data2.par_iter())
-                    .for_each(|(c1, c2)| {
-                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
-                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
-                                *a *= b;
-                            });
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                            *a *= b;
                         });
                     });
+                });
             }
             _ => panic!("Invalid multiply"),
+        }
+    }
+
+    /// Divide the data of this Tensor by a scalar.
+    pub fn div_scalar_inplace(&mut self, scalar: f32) {
+        match &mut self.data {
+            Data::Vector(data) => {
+                data.iter_mut().for_each(|x| *x /= scalar);
+            }
+            Data::Tensor(data) => {
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|r| {
+                        r.iter_mut().for_each(|x| *x /= scalar);
+                    });
+                });
+            }
+            Data::Gradient(data) => {
+                data.iter_mut().for_each(|f| {
+                    f.iter_mut().for_each(|c| {
+                        c.iter_mut().for_each(|r| {
+                            r.iter_mut().for_each(|x| *x /= scalar);
+                        });
+                    });
+                });
+            }
         }
     }
 
@@ -664,7 +706,6 @@ impl Tensor {
                 }
             }
             Data::Tensor(data) => {
-                // TODO: Parallelize.
                 for c in data.iter_mut() {
                     for r in c.iter_mut() {
                         for x in r.iter_mut() {
@@ -686,14 +727,14 @@ impl Tensor {
                 data.iter_mut().for_each(|x| *x = x.clamp(min, max));
             }
             Data::Tensor(ref mut data) => {
-                data.par_iter_mut().for_each(|c| {
+                data.iter_mut().for_each(|c| {
                     c.iter_mut().for_each(|r| {
                         r.iter_mut().for_each(|x| *x = x.clamp(min, max));
                     });
                 });
             }
             Data::Gradient(ref mut data) => {
-                data.par_iter_mut().for_each(|c| {
+                data.iter_mut().for_each(|c| {
                     c.iter_mut().for_each(|f| {
                         f.iter_mut().for_each(|r| {
                             r.iter_mut().for_each(|x| *x = x.clamp(min, max));

@@ -4,18 +4,21 @@ use neurons::{activation, network, objective, optimizer, tensor};
 
 fn main() {
     // Create the training data for the binary AND operation
-    let inputs: Vec<tensor::Tensor> = vec![
+    let x: Vec<tensor::Tensor> = vec![
         tensor::Tensor::from_single(vec![0.0, 0.0]),
         tensor::Tensor::from_single(vec![0.0, 1.0]),
         tensor::Tensor::from_single(vec![1.0, 0.0]),
         tensor::Tensor::from_single(vec![1.0, 1.0]),
     ];
-    let targets: Vec<tensor::Tensor> = vec![
+    let y: Vec<tensor::Tensor> = vec![
         tensor::Tensor::from_single(vec![0.0]),
         tensor::Tensor::from_single(vec![0.0]),
         tensor::Tensor::from_single(vec![0.0]),
         tensor::Tensor::from_single(vec![1.0]),
     ];
+
+    let inputs: Vec<&tensor::Tensor> = x.iter().collect();
+    let targets: Vec<&tensor::Tensor> = y.iter().collect();
 
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Vector(2));
@@ -30,7 +33,7 @@ fn main() {
     network.set_objective(objective::Objective::BinaryCrossEntropy, None);
 
     // Train the network
-    let _epoch_loss = network.learn(&inputs, &targets, 250);
+    let _epoch_loss = network.learn(&inputs, &targets, None, 250);
 
     // Validate the network
     let (val_acc, val_loss) = network.validate(&inputs, &targets, 0.1);

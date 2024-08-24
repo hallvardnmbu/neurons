@@ -2,8 +2,6 @@
 
 use crate::tensor;
 
-use rayon::prelude::*;
-
 /// Objective functions for neural networks.
 pub enum Objective {
     AE,
@@ -174,8 +172,8 @@ impl AE {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -265,8 +263,8 @@ impl MAE {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -358,8 +356,8 @@ impl MSE {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -437,8 +435,8 @@ impl RMSE {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -531,8 +529,8 @@ impl CrossEntropy {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -610,8 +608,8 @@ impl BinaryCrossEntropy {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())
@@ -692,8 +690,8 @@ impl KLDivergence {
         let gradient: tensor::Tensor = match (&target.data, &prediction.data) {
             (tensor::Data::Tensor(trg), tensor::Data::Tensor(prd)) => {
                 let gradients: Vec<Vec<Vec<f32>>> = trg
-                    .par_iter()
-                    .zip(prd.par_iter())
+                    .iter()
+                    .zip(prd.iter())
                     .map(|(_trg, _prd)| {
                         _trg.iter()
                             .zip(_prd.iter())

@@ -4,14 +4,7 @@ extern crate csv;
 
 use neurons::{activation, network, objective, optimizer, random, tensor};
 
-fn data(
-    path: &str,
-) -> (
-    Vec<tensor::Tensor>,
-    Vec<tensor::Tensor>,
-    Vec<tensor::Tensor>,
-    Vec<tensor::Tensor>,
-) {
+fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let mut reader = csv::Reader::from_path(path).unwrap();
 
     let mut x: Vec<Vec<f32>> = Vec::new();
@@ -49,21 +42,22 @@ fn data(
         .map(|&i| tensor::Tensor::from_single(y[i].clone()))
         .collect();
 
-    let split = (x.len() as f32 * 0.8) as usize;
-    let x = x.split_at(split);
-    let y = y.split_at(split);
-
-    let x_train = x.0.to_vec();
-    let y_train = y.0.to_vec();
-    let x_test = x.1.to_vec();
-    let y_test = y.1.to_vec();
-
-    (x_train, y_train, x_test, y_test)
+    (x, y)
 }
 
 fn main() {
     // Load the iris dataset
-    let (x_train, y_train, x_test, y_test) = data("./datasets/iris.csv");
+    let (x, y) = data("./datasets/iris.csv");
+
+    let split = (x.len() as f32 * 0.8) as usize;
+    let x = x.split_at(split);
+    let y = y.split_at(split);
+
+    let x_train: Vec<&tensor::Tensor> = x.0.iter().collect();
+    let y_train: Vec<&tensor::Tensor> = y.0.iter().collect();
+    let x_test: Vec<&tensor::Tensor> = x.1.iter().collect();
+    let y_test: Vec<&tensor::Tensor> = y.1.iter().collect();
+
     println!(
         "Train data {}x{}: {} => {}",
         x_train.len(),
@@ -108,7 +102,7 @@ fn main() {
     );
 
     // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, 500);
+    let _epoch_loss = network.learn(&x_train, &y_train, Some(25), 500);
 
     // Validate the network
     let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);

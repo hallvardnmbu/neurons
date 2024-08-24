@@ -2,8 +2,6 @@
 
 use crate::{algebra::dot, tensor};
 
-use rayon::prelude::*;
-
 /// Activation functions for neural networks.
 pub enum Activation {
     ReLU,
@@ -145,7 +143,7 @@ impl ReLU {
             }
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| v.max(0.0)).collect())
@@ -184,7 +182,7 @@ impl ReLU {
             ),
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
@@ -234,7 +232,7 @@ impl LeakyReLU {
             ),
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -277,7 +275,7 @@ impl LeakyReLU {
             ),
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -322,7 +320,7 @@ impl Sigmoid {
             }
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
@@ -364,7 +362,7 @@ impl Sigmoid {
             ),
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -410,7 +408,7 @@ impl Softmax {
 
         let max = x.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
         let exps: Vec<f32> = x.iter().map(|v| (v - max).exp()).collect();
-        let sum: f32 = exps.par_iter().sum();
+        let sum: f32 = exps.iter().sum();
 
         let y = exps.iter().map(|v| v / sum).collect();
 
@@ -474,7 +472,7 @@ impl Tanh {
             }
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| v.tanh()).collect())
@@ -510,7 +508,7 @@ impl Tanh {
             }
             tensor::Data::Tensor(vector) => tensor::Data::Tensor(
                 vector
-                    .par_iter()
+                    .iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
