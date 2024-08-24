@@ -1,8 +1,9 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-extern crate csv;
-
 use neurons::{activation, network, objective, optimizer, random, tensor};
+
+use std::time;
+extern crate csv;
 
 fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let mut reader = csv::Reader::from_path(path).unwrap();
@@ -58,6 +59,12 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x.1.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y.1.iter().collect();
 
+    let (x_train, y_train, x_test, y_test) = (
+        x_train.to_vec(),
+        y_train.to_vec(),
+        x_test.to_vec(),
+        y_test.to_vec(),
+    );
     println!(
         "Train data {}x{}: {} => {}",
         x_train.len(),
@@ -73,45 +80,45 @@ fn main() {
         y_test[0].data
     );
 
-    // Create the network
-    let mut network = network::Network::new(tensor::Shape::Vector(4));
+    let mut times: Vec<time::Duration> = Vec::new();
 
-    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.dense(3, activation::Activation::Softmax, false, Some(0.1));
+    for _ in 0..10 {
+        let start = time::Instant::now();
 
-    network.feedback(2, 1);
+        // Create the network
+        let mut network = network::Network::new(tensor::Shape::Vector(4));
 
-    network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
-        learning_rate: 0.001,
-        alpha: 0.0,
-        epsilon: 1e-8,
+        network.dense(50, activation::Activation::ReLU, false, Some(0.1));
+        network.dense(50, activation::Activation::ReLU, false, Some(0.1));
+        network.dense(3, activation::Activation::Softmax, false, Some(0.1));
 
-        decay: Some(0.01),
-        momentum: Some(0.01),
-        centered: Some(true),
+        network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
+            learning_rate: 0.001,
+            alpha: 0.0,
+            epsilon: 1e-8,
 
-        // To be filled by the network:
-        velocity: vec![],
-        gradient: vec![],
-        buffer: vec![],
-    }));
-    network.set_objective(
-        objective::Objective::CrossEntropy, // Objective function
-        Some((-1f32, 1f32)),                // Gradient clipping
-    );
+            decay: Some(0.01),
+            momentum: Some(0.01),
+            centered: Some(true),
 
-    // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, Some(25), 500);
+            // To be filled by the network:
+            velocity: vec![],
+            gradient: vec![],
+            buffer: vec![],
+        }));
+        network.set_objective(
+            objective::Objective::CrossEntropy, // Objective function
+            Some((-1f32, 1f32)),                // Gradient clipping
+        );
 
-    // Validate the network
-    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
-    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
+        // Train the network
+        let _epoch_loss = network.learn(&x_train, &y_train, Some(25), 500);
 
-    // Use the network
-    let prediction = network.predict(x_test.get(0).unwrap());
-    println!(
-        "2. Input: {}, Target: {}, Output: {}",
-        x_test[0].data, y_test[0].data, prediction
-    );
+        let duration = start.elapsed();
+        times.push(duration);
+    }
+
+    let sum: time::Duration = times.iter().sum();
+    let avg = sum / times.len() as u32;
+    println!("Average time: {:?}", avg);
 }

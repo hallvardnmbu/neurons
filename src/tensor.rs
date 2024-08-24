@@ -564,9 +564,10 @@ impl Tensor {
                     "Add requires the same number of elements"
                 );
 
-                for (a, b) in data1.iter_mut().zip(data2.iter()) {
-                    *a += b;
-                }
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a += b);
             }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
@@ -585,13 +586,40 @@ impl Tensor {
                     "Add requires the same number of columns"
                 );
 
-                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
-                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
-                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
                             *a += b;
-                        }
-                    }
-                }
+                        });
+                    });
+                });
+            }
+            (Data::Gradient(data1), Data::Gradient(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Add requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Add requires the same number of columns"
+                );
+
+                data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
+                    f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                                *a += b;
+                            });
+                        });
+                    });
+                });
             }
             _ => panic!("Invalid add"),
         }
@@ -607,9 +635,10 @@ impl Tensor {
                     "Multiply requires the same number of elements"
                 );
 
-                for (a, b) in data1.iter_mut().zip(data2.iter()) {
-                    *a *= b;
-                }
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a *= b);
             }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
@@ -628,15 +657,40 @@ impl Tensor {
                     "Multiply requires the same number of columns"
                 );
 
-                for (c1, c2) in data1.iter_mut().zip(data2.iter()) {
-                    for (r1, r2) in c1.iter_mut().zip(c2.iter()) {
-                        for (a, b) in r1.iter_mut().zip(r2.iter()) {
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
                             *a *= b;
-                        }
-                    }
-                }
+                        });
+                    });
+                });
             }
             _ => panic!("Invalid multiply"),
+        }
+    }
+
+    /// Divide the data of this Tensor by a scalar.
+    pub fn div_scalar_inplace(&mut self, scalar: f32) {
+        match &mut self.data {
+            Data::Vector(data) => {
+                data.iter_mut().for_each(|x| *x /= scalar);
+            }
+            Data::Tensor(data) => {
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|r| {
+                        r.iter_mut().for_each(|x| *x /= scalar);
+                    });
+                });
+            }
+            Data::Gradient(data) => {
+                data.iter_mut().for_each(|f| {
+                    f.iter_mut().for_each(|c| {
+                        c.iter_mut().for_each(|r| {
+                            r.iter_mut().for_each(|x| *x /= scalar);
+                        });
+                    });
+                });
+            }
         }
     }
 
@@ -670,29 +724,23 @@ impl Tensor {
     pub fn clamp(mut self, min: f32, max: f32) -> Self {
         match self.data {
             Data::Vector(ref mut data) => {
-                for x in data.iter_mut() {
-                    *x = x.clamp(min, max);
-                }
+                data.iter_mut().for_each(|x| *x = x.clamp(min, max));
             }
             Data::Tensor(ref mut data) => {
-                for c in data.iter_mut() {
-                    for r in c.iter_mut() {
-                        for x in r.iter_mut() {
-                            *x = x.clamp(min, max);
-                        }
-                    }
-                }
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|r| {
+                        r.iter_mut().for_each(|x| *x = x.clamp(min, max));
+                    });
+                });
             }
             Data::Gradient(ref mut data) => {
-                for c in data.iter_mut() {
-                    for f in c.iter_mut() {
-                        for r in f.iter_mut() {
-                            for x in r.iter_mut() {
-                                *x = x.clamp(min, max);
-                            }
-                        }
-                    }
-                }
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|f| {
+                        f.iter_mut().for_each(|r| {
+                            r.iter_mut().for_each(|x| *x = x.clamp(min, max));
+                        });
+                    });
+                });
             }
         }
         self

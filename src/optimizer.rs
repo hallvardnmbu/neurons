@@ -17,6 +17,7 @@ impl std::fmt::Display for Optimizer {
             Optimizer::SGD(structure) => {
                 write!(f, "\t\tSGD (\n")?;
                 write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t)")
             }
             Optimizer::SGDM(structure) => {

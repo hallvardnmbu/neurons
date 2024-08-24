@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2021"
 description = "Modular neural networks in Rust."
 authors = ["Hallvard Høyland Lavik"]
@@ -14,6 +14,7 @@ include = ["**/*.rs", "Cargo.toml", "documentation/neurons.html"]
 rustdoc-args = ["--html-in-header", "documentation/neurons.html"]
 
 [dependencies]
+rayon = "1.10"
 csv = "1.3.0"
 plotters = "0.3.6"
 
@@ -35,6 +36,10 @@ path = "examples/example_iris.rs"
 [[example]]
 name = "example_iris_feedback"
 path = "examples/example_iris_feedback.rs"
+
+[[example]]
+name = "example_benchmark"
+path = "examples/example_benchmark.rs"
 
 [[example]]
 name = "example_convolution"
