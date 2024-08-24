@@ -14,7 +14,8 @@ use plotters::prelude::*;
 pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
     let x = match data.data {
         tensor::Data::Tensor(ref x) => x,
-        _ => panic!("Expected a tensor, but got one-dimensional data."),
+        _ => return (),
+        // _ => panic!("Expected a tensor, but got one-dimensional data."),
     };
     let data = x.get(0).unwrap();
 
@@ -58,6 +59,38 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
                 .unwrap();
         }
     }
+
+    root.present().unwrap();
+}
+
+/// Plots a simple line plot of the given data.
+///
+/// # Arguments
+///
+/// * `data` - The data to plot.
+/// * `title` - The title of the plot.
+/// * `path` - The path to save the plot.
+pub fn loss(data: &Vec<f32>, title: &str, path: &str) {
+    let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(20)
+        .caption(title, ("sans-serif", 40))
+        .build_cartesian_2d(
+            0..data.len(),
+            0.0..data.iter().copied().fold(f32::NEG_INFINITY, f32::max),
+        )
+        .unwrap();
+
+    chart.configure_mesh().disable_mesh().draw().unwrap();
+
+    chart
+        .draw_series(LineSeries::new(
+            data.iter().enumerate().map(|(i, &value)| (i, value)),
+            &RED,
+        ))
+        .unwrap();
 
     root.present().unwrap();
 }

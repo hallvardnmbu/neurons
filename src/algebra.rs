@@ -51,6 +51,7 @@ pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Ve
 }
 
 /// Pad a three-dimensional tensor with zeros to match the desired shape.
+/// If the desired shape is smaller, the tensor will be cropped from the end.
 ///
 /// # Arguments
 ///
@@ -61,15 +62,29 @@ pub fn add3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Ve
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the padded tensor.
 pub fn pad3d(tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<Vec<f32>>> {
-    let dh = (reshaped.0 - tensor[0].len()) / 2;
-    let dw = (reshaped.1 - tensor[0][0].len()) / 2;
+    let dh = if reshaped.0 > tensor[0].len() {
+        (reshaped.0 - tensor[0].len()) / 2
+    } else {
+        0
+    };
+    let dw = if reshaped.1 > tensor[0][0].len() {
+        (reshaped.1 - tensor[0][0].len()) / 2
+    } else {
+        0
+    };
 
     let mut padded = vec![vec![vec![0.0; reshaped.1]; reshaped.0]; tensor.len()];
 
-    for (i, row) in tensor.iter().enumerate() {
-        for (j, col) in row.iter().enumerate() {
-            for (k, val) in col.iter().enumerate() {
-                padded[i][j + dh][k + dw] = *val;
+    for (c, channel) in tensor.iter().enumerate() {
+        for (h, height) in channel.iter().enumerate() {
+            if h >= reshaped.0 {
+                break;
+            }
+            for (w, val) in height.iter().enumerate() {
+                if w >= reshaped.1 {
+                    break;
+                }
+                padded[c][h + dh][w + dw] = *val;
             }
         }
     }

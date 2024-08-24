@@ -502,6 +502,62 @@ impl Tensor {
         }
     }
 
+    pub fn resize(&self, shape: Shape) -> Self {
+        match (&self.shape, &shape) {
+            (Shape::Tensor(old_c, old_h, old_w), Shape::Tensor(new_c, new_h, new_w)) => {
+                let old_data = match &self.data {
+                    Data::Tensor(data) => data.clone(),
+                    _ => panic!("Expected Tensor data!"),
+                };
+                let mut new_data = vec![vec![vec![0.0; *new_w]; *new_h]; *new_c];
+
+                let c_ratio = old_c / new_c;
+                let h_ratio = old_h / new_h;
+                let w_ratio = old_w / new_w;
+
+                for c in 0..*new_c {
+                    for h in 0..*new_h {
+                        for w in 0..*new_w {
+                            let mut sum = 0.0;
+                            let mut count = 0;
+                            for i in (c * c_ratio)..((c + 1) * c_ratio) {
+                                for j in (h * h_ratio)..((h + 1) * h_ratio) {
+                                    for k in (w * w_ratio)..((w + 1) * w_ratio) {
+                                        if i < *old_c && j < *old_h && k < *old_w {
+                                            sum += old_data[i][j][k];
+                                            count += 1;
+                                        }
+                                    }
+                                }
+                            }
+                            new_data[c][h][w] = sum / (count as f32);
+                        }
+                    }
+                }
+
+                Self {
+                    shape,
+                    data: Data::Tensor(new_data),
+                }
+            }
+            _ => panic!("Expected a Tensor."),
+        }
+    }
+
+    /// Get the index of the maximum value in the Tensor.
+    pub fn onehot(&self) -> usize {
+        match &self.data {
+            Data::Vector(data) => {
+                data.iter()
+                    .enumerate()
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                    .unwrap()
+                    .0
+            }
+            _ => panic!("One-hot-index not implemented for Tensors"),
+        }
+    }
+
     /// Add two Tensors together returning a new Tensor.
     pub fn add(&self, other: &Tensor) -> Self {
         match (&self.data, &other.data) {

@@ -42,7 +42,7 @@ impl Layer {
 pub struct Network {
     pub(crate) input: tensor::Shape,
 
-    pub(crate) layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
     pub(crate) feedbacks: HashMap<usize, usize>,
 
     pub(crate) optimizer: optimizer::Optimizer,
@@ -323,7 +323,7 @@ impl Network {
                 if params.momentum == 0.0 {
                     params.momentum = 0.9;
                 }
-                params.velocity = vector.clone();
+                params.velocity = vector;
             }
             optimizer::Optimizer::Adam(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -340,7 +340,7 @@ impl Network {
                 }
 
                 params.velocity = vector.clone();
-                params.momentum = vector.clone();
+                params.momentum = vector;
             }
             optimizer::Optimizer::AdamW(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -357,7 +357,7 @@ impl Network {
                 }
 
                 params.velocity = vector.clone();
-                params.momentum = vector.clone();
+                params.momentum = vector;
             }
             optimizer::Optimizer::RMSprop(ref mut params) => {
                 if params.learning_rate == 0.0 {
@@ -372,7 +372,7 @@ impl Network {
 
                 params.velocity = vector.clone();
                 params.gradient = vector.clone();
-                params.buffer = vector.clone();
+                params.buffer = vector;
             }
         };
         self.optimizer = optimizer;
@@ -417,7 +417,7 @@ impl Network {
             Layer::Convolution(layer) => layer.training = true,
         });
 
-        let print = (epochs / 10).max(1);
+        let print = 1; //(epochs / 10).max(1);
         let mut losses = Vec::new();
 
         // Split the input data into batches.
@@ -486,10 +486,10 @@ impl Network {
 
             for (loss, weight_gradients, bias_gradients) in results {
                 self.update(epoch, weight_gradients, bias_gradients);
-                _losses += loss / batch;
+                _losses += loss;
             }
 
-            losses.push(_losses);
+            losses.push(_losses / batch);
 
             if epoch % print == 0 && epoch > 0 {
                 println!(
@@ -610,7 +610,11 @@ impl Network {
     /// # Returns
     ///
     /// A tuple containing the loss and gradient of the network for the given prediction and target.
-    fn loss(&self, prediction: &tensor::Tensor, target: &tensor::Tensor) -> (f32, tensor::Tensor) {
+    pub fn loss(
+        &self,
+        prediction: &tensor::Tensor,
+        target: &tensor::Tensor,
+    ) -> (f32, tensor::Tensor) {
         self.objective.loss(prediction, target)
     }
 
@@ -621,7 +625,7 @@ impl Network {
     /// * `gradient` - The gradient of the output.
     /// * `unactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
-    fn backward(
+    pub fn backward(
         &self,
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
@@ -652,7 +656,7 @@ impl Network {
     ///
     /// * `stepnr` - The current step number (i.e., epoch number).
     /// * `gradients` - The gradients to perform weight updates with respect to.
-    fn update(
+    pub fn update(
         &mut self,
         stepnr: i32,
         weight_gradients: Vec<tensor::Tensor>,
@@ -709,6 +713,7 @@ impl Network {
                                 tensor::Data::Tensor(data) => data,
                                 _ => panic!("Expected a tensor, but got one-dimensional data."),
                             };
+
                             for (c, (kernel, gradients)) in
                                 filter.iter_mut().zip(gradients.iter_mut()).enumerate()
                             {
@@ -754,26 +759,19 @@ impl Network {
 
             losses.push(loss);
 
-            let target = target.get_flat();
-            let prediction = prediction.get_flat();
-
             match self.layers.last().unwrap() {
                 Layer::Dense(layer) => match layer.activation {
                     activation::Function::Softmax(_) => {
-                        let predicted = prediction
-                            .iter()
-                            .enumerate()
-                            .max_by(|(_, a), (_, b)| a.total_cmp(b))
-                            .map(|(index, _)| index)
-                            .unwrap() as f32;
-                        let actual = target.iter().position(|&v| v == 1.0).unwrap() as f32;
-                        accuracy.push(if (predicted - actual).abs() < tol {
+                        accuracy.push(if target.onehot() == prediction.onehot() {
                             1.0
                         } else {
                             0.0
                         });
                     }
                     _ => {
+                        let target = target.get_flat();
+                        let prediction = prediction.get_flat();
+
                         if target.len() == 1 {
                             accuracy.push(if (prediction[0] - target[0]).abs() < tol {
                                 1.0
