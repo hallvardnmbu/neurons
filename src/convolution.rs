@@ -535,47 +535,79 @@ mod tests {
         // Test backward function with a simple input, output, and gradient
         // The output should be the same as the input
         let mut conv = Convolution::create(
-            tensor::Shape::Tensor(1, 3, 3),
-            1,
+            tensor::Shape::Tensor(2, 4, 4),
+            3,
             &activation::Activation::Linear,
-            (3, 3),
+            (2, 2),
             (1, 1),
-            (1, 1),
+            (0, 0),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![vec![
-            vec![0.0, 0.0, 0.0],
-            vec![0.0, 1.0, 0.0],
-            vec![0.0, 0.0, 0.0],
-        ]]);
+        conv.kernels[0] = tensor::Tensor::from(vec![
+            vec![vec![1.0, 1.0], vec![2.0, 2.0]],
+            vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+        ]);
+        conv.kernels[1] = tensor::Tensor::from(vec![
+            vec![vec![2.0, 2.0], vec![1.0, 1.0]],
+            vec![vec![2.0, 1.0], vec![2.0, 1.0]],
+        ]);
+        conv.kernels[2] = tensor::Tensor::from(vec![
+            vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+            vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+        ]);
 
-        let input = tensor::Tensor::from(vec![vec![
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0, 6.0],
-            vec![7.0, 8.0, 9.0],
-        ]]);
+        let input = tensor::Tensor::from(vec![
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 2.0, 0.0],
+                vec![0.0, 3.0, 4.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 4.0, 3.0, 0.0],
+                vec![0.0, 2.0, 1.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+        ]);
 
-        let output = tensor::Tensor::from(vec![vec![
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0, 6.0],
-            vec![7.0, 8.0, 9.0],
-        ]]);
+        let output = tensor::Tensor::from(vec![
+            vec![
+                vec![10.0, 16.0, 7.0],
+                vec![19.0, 31.0, 14.0],
+                vec![7.0, 11.0, 5.0],
+            ],
+            vec![
+                vec![5.0, 14.0, 8.0],
+                vec![11.0, 29.0, 16.0],
+                vec![8.0, 19.0, 10.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0],
+                vec![0.0, 0.0, 0.0],
+                vec![0.0, 0.0, 0.0],
+            ],
+        ]);
 
         // Double-check to ensure the forward pass is correct.
         let (pre, post) = conv.forward(&input);
         assert_eq_data!(pre.data, output.data);
         assert_eq_data!(post.data, output.data);
 
-        let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]]);
+        let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
 
         let (input_gradient, kernel_gradient, _) = conv.backward(&gradient, &input, &output);
 
-        let _input_gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]]);
-        let _kernel_gradient = tensor::Tensor::gradient(vec![vec![vec![
-            vec![12.0, 21.0, 16.0],
-            vec![27.0, 45.0, 33.0],
-            vec![24.0, 39.0, 28.0],
-        ]]]);
+        let _input_gradient = tensor::Tensor::from(vec![
+            vec![
+                vec![3.0, 6.0, 6.0, 3.0],
+                vec![6.0, 12.0, 12.0, 6.0],
+                vec![6.0, 12.0, 12.0, 6.0],
+                vec![3.0, 6.0, 6.0, 3.0],
+            ];
+            2
+        ]);
+        let _kernel_gradient = tensor::Tensor::gradient(vec![vec![vec![vec![10.0; 2]; 2]; 2]; 3]);
 
         assert_eq_data!(input_gradient.data, _input_gradient.data);
         assert_eq_data!(kernel_gradient.data, _kernel_gradient.data);
