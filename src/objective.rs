@@ -745,7 +745,7 @@ mod tests {
 
         let (loss, gradient) = ae.loss(&prediction, &target);
 
-        assert_eq!(loss, 1.5999999);
+        assert_relative_eq!(loss, 1.6, epsilon = 1e-6);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
@@ -756,7 +756,7 @@ mod tests {
 
         let (loss, gradient) = mae.loss(&prediction, &target);
 
-        assert_eq!(loss, 0.39999998);
+        assert_relative_eq!(loss, 0.4, epsilon = 1e-6);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
