@@ -1,14 +1,15 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{activation, convolution, dense, objective, optimizer, tensor};
+use crate::{activation, convolution, dense, maxpool, objective, optimizer, tensor};
 
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// Layer types of the network.
 pub enum Layer {
     Dense(dense::Dense),
     Convolution(convolution::Convolution),
+    Maxpool(maxpool::Maxpool),
 }
 
 impl std::fmt::Display for Layer {
@@ -16,6 +17,7 @@ impl std::fmt::Display for Layer {
         match self {
             Layer::Dense(layer) => write!(f, "{}", layer),
             Layer::Convolution(layer) => write!(f, "{}", layer),
+            Layer::Maxpool(layer) => write!(f, "{}", layer),
         }
     }
 }
@@ -26,6 +28,7 @@ impl Layer {
         match self {
             Layer::Dense(layer) => layer.parameters(),
             Layer::Convolution(layer) => layer.parameters(),
+            Layer::Maxpool(_) => 0,
         }
     }
 }
@@ -144,7 +147,15 @@ impl Network {
                 layer.flatten_output = true;
                 match layer.outputs {
                     tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
-                    _ => panic!("Expected Convolution shape"),
+                    _ => panic!("Expected Tensor shape"),
+                }
+            }
+            Layer::Maxpool(layer) => {
+                // Make sure the output of the maxpool layer is flattened.
+                layer.flatten_output = true;
+                match layer.outputs {
+                    tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
+                    _ => panic!("Expected Tensor shape"),
                 }
             }
         };
@@ -199,6 +210,7 @@ impl Network {
                 match self.layers.last().unwrap() {
                     Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
                     Layer::Convolution(layer) => layer.outputs.clone(),
+                    Layer::Maxpool(layer) => layer.outputs.clone(),
                 },
                 filters,
                 &activation,
@@ -207,6 +219,31 @@ impl Network {
                 padding,
                 dropout,
             )));
+    }
+
+    /// Adds a new maxpool layer to the network.
+    ///
+    /// # Arguments
+    ///
+    /// * `shape` - The shape of the filter.
+    /// * `stride` - The stride of the filter.
+    pub fn maxpool(&mut self, shape: (usize, usize), stride: (usize, usize)) {
+        if self.layers.is_empty() {
+            self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
+                self.input.clone(),
+                shape,
+                stride,
+            )));
+            return;
+        }
+        let input = match self.layers.last().unwrap() {
+            Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
+            Layer::Convolution(layer) => layer.outputs.clone(),
+            Layer::Maxpool(layer) => layer.outputs.clone(),
+        };
+        self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
+            input, shape, stride,
+        )));
     }
 
     /// Add a feedback connection between two layers.
@@ -277,6 +314,7 @@ impl Network {
             Layer::Convolution(ref mut layer) => {
                 layer.activation = activation::Function::create(&activation)
             }
+            _ => panic!("Maxpool layers do not use activation functions!"),
         }
     }
 
@@ -307,6 +345,7 @@ impl Network {
                     };
                     vec![vec![vec![vec![0.0; kw]; kh]; ch]; layer.kernels.len()]
                 }
+                Layer::Maxpool(_) => vec![vec![vec![vec![0.0; 0]; 0]; 0]; 0],
             })
             .collect();
 
@@ -415,6 +454,7 @@ impl Network {
         self.layers.iter_mut().for_each(|layer| match layer {
             Layer::Dense(layer) => layer.training = true,
             Layer::Convolution(layer) => layer.training = true,
+            _ => (),
         });
 
         let print = 1; //(epochs / 10).max(1);
@@ -440,11 +480,11 @@ impl Network {
                     let mut bias_gradients: Vec<Option<tensor::Tensor>> = Vec::new();
 
                     for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
-                        let (unactivated, activated) = self.forward(input);
+                        let (unactivated, activated, maxpools) = self.forward(input);
                         let (_loss, gradient) = self.loss(&activated.last().unwrap(), target);
                         loss += _loss;
 
-                        let (wg, bg) = self.backward(gradient, &unactivated, &activated);
+                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
 
                         if i == 0 {
                             weight_gradients = wg;
@@ -506,6 +546,7 @@ impl Network {
             match layer {
                 Layer::Dense(layer) => layer.training = false,
                 Layer::Convolution(layer) => layer.training = false,
+                _ => (),
             }
         }
 
@@ -521,46 +562,61 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A tuple containing the pre-activation and post-activation values of each layer.
-    pub fn forward(&self, input: &tensor::Tensor) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of each layer.
+    pub fn forward(
+        &self,
+        input: &tensor::Tensor,
+    ) -> (
+        Vec<tensor::Tensor>,
+        Vec<tensor::Tensor>,
+        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+    ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
+        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
 
         for i in 1..self.layers.len() + 1 {
-            let (mut pre, mut post) = self._forward(activated.last().unwrap(), i - 1, i);
+            let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i - 1, i);
 
             if self.feedbacks.contains_key(&i) {
-                let (fpre, fpost) = self._forward(post.last().unwrap(), self.feedbacks[&i], i);
+                let (fpre, fpost, fmax) =
+                    self._forward(post.last().unwrap(), self.feedbacks[&i], i);
 
                 // Adding the forward pass (before feedback) to the unactivated and activated vectors.
                 // This is done after calculating the forward pass of the fed-back layers.
                 // Due to said pass needing `post.last()`.
                 unactivated.append(&mut pre);
                 activated.append(&mut post);
+                maxpools.append(&mut max);
 
                 for (idx, j) in (self.feedbacks[&i]..i).enumerate() {
                     // TODO: Handle the case with feedbacks.
+                    // TODO: Handle maxpool indices.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 
                     // // Overwriting.
                     // unactivated[j] = fpre[idx].to_owned();
                     // activated[j + 1] = fpost[idx].to_owned();
+                    // maxpools[j] = fmax[idx].to_owned();
 
                     // Summing.
                     unactivated[j].add_inplace(&fpre[idx]);
                     activated[j + 1].add_inplace(&fpost[idx]);
+                    // maxpools[j].add_inplace(&fmax[idx]);
 
                     // // Multiplying.
                     // unactivated[j].mul_inplace(&fpre[idx]);
                     // activated[j + 1].mul_inplace(&fpost[idx]);
+                    // maxpools[j].mul_inplace(&fmax[idx]);
                 }
             } else {
                 unactivated.append(&mut pre);
                 activated.append(&mut post);
+                maxpools.append(&mut max);
             }
         }
 
-        (unactivated, activated)
+        (unactivated, activated, maxpools)
     }
 
     /// Compute the forward pass for the specified range of layers.
@@ -573,31 +629,47 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A tuple containing the pre-activation and post-activation values of each layer inbetween.
+    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of each layer inbetween.
     fn _forward(
         &self,
         input: &tensor::Tensor,
         from: usize,
         to: usize,
-    ) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+    ) -> (
+        Vec<tensor::Tensor>,
+        Vec<tensor::Tensor>,
+        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+    ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
+        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
 
         for layer in &self.layers[from..to] {
-            let (pre, post): (tensor::Tensor, tensor::Tensor) = match layer {
-                Layer::Dense(layer) => layer.forward(activated.last().unwrap()),
-                Layer::Convolution(layer) => layer.forward(activated.last().unwrap()),
+            match layer {
+                Layer::Dense(layer) => {
+                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    unactivated.push(pre);
+                    activated.push(post);
+                }
+                Layer::Convolution(layer) => {
+                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    unactivated.push(pre);
+                    activated.push(post);
+                }
+                Layer::Maxpool(layer) => {
+                    let (pre, post, max) = layer.forward(activated.last().unwrap());
+                    unactivated.push(pre);
+                    activated.push(post);
+                    maxpools.push_back(max);
+                }
             };
-
-            unactivated.push(pre);
-            activated.push(post);
         }
 
         // Removing the input clone from the activated vector.
         // As this is present in the `forward` function.
         activated.remove(0);
 
-        (unactivated, activated)
+        (unactivated, activated, maxpools)
     }
 
     /// Compute the loss and gradient of the network for the given prediction and target.
@@ -625,11 +697,13 @@ impl Network {
     /// * `gradient` - The gradient of the output.
     /// * `unactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
+    /// * `maxpools` - The maxpool indices of each maxpool-layer.
     pub fn backward(
         &self,
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
+        mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
@@ -640,6 +714,11 @@ impl Network {
             let (input_gradient, wg, bg) = match layer {
                 Layer::Dense(layer) => layer.backward(&gradient, input, output),
                 Layer::Convolution(layer) => layer.backward(&gradient, input, output),
+                Layer::Maxpool(layer) => (
+                    layer.backward(&gradient, &maxpools.pop_front().unwrap()),
+                    tensor::Tensor::from_single(vec![0.0; 0]),
+                    None,
+                ),
             };
 
             weight_gradient.push(wg);
@@ -725,6 +804,7 @@ impl Network {
                             }
                         }
                     }
+                    Layer::Maxpool(_) => {}
                 }
             });
     }
@@ -786,6 +866,9 @@ impl Network {
                     }
                 },
                 Layer::Convolution(_) => {
+                    unimplemented!("Image output (target) not supported.")
+                }
+                Layer::Maxpool(_) => {
                     unimplemented!("Image output (target) not supported.")
                 }
             };
@@ -857,6 +940,9 @@ impl Network {
                 Layer::Convolution(_) => {
                     unimplemented!("Image output (target) not supported.")
                 }
+                Layer::Maxpool(_) => {
+                    unimplemented!("Maxpool output (target) not supported.")
+                }
             };
         }
 
@@ -885,6 +971,10 @@ impl Network {
                 }
                 Layer::Convolution(layer) => {
                     let (_, out) = layer.forward(&output);
+                    output = out;
+                }
+                Layer::Maxpool(layer) => {
+                    let (_, out, _) = layer.forward(&output);
                     output = out;
                 }
             }

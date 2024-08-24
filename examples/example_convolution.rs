@@ -27,7 +27,7 @@ fn main() {
     let x = tensor::Tensor::random(tensor::Shape::Tensor(1, 24, 24), 0.0, 1.0);
     println!("x: {}", &x.shape);
 
-    let (pre, post) = network.forward(&x);
+    let (pre, post, _) = network.forward(&x);
     println!("pre-activation: {}", &pre[pre.len() - 1].shape);
     println!("post-activation: {}", &post[post.len() - 1].shape);
 

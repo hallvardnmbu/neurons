@@ -17,6 +17,7 @@ pub mod optimizer;
 
 pub mod convolution;
 pub mod dense;
+pub mod maxpool;
 pub mod network;
 
 pub mod plot;

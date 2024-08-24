@@ -31,7 +31,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::from(vec![image]).resize(tensor::Shape::Tensor(1, 12, 12)));
+        images.push(tensor::Tensor::from(vec![image]));
     }
 
     Ok(images)
@@ -67,8 +67,9 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 12, 12));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 28, 28));
 
+    network.maxpool((2, 2), (2, 2));
     network.convolution(
         8,
         (3, 3),
@@ -124,7 +125,7 @@ fn main() {
     let y = y_test.get(5).unwrap();
     plot::heatmap(&x, &format!("Target: {}", y.onehot()), "input.png");
 
-    let (pre, post) = network.forward(x);
+    let (pre, post, _) = network.forward(x);
     for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {
         let pre_title = format!("layer_{}_pre", i);
         let post_title = format!("layer_{}_post", i);
