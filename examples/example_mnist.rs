@@ -90,7 +90,7 @@ fn main() {
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
-        learning_rate: 5e-6,
+        learning_rate: 0.001,
         decay: None,
         beta1: 0.9,
         beta2: 0.999,
@@ -100,13 +100,13 @@ fn main() {
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
-        Some((-10f32, 10f32)),              // Gradient clipping
+        Some((-1f32, 1f32)),                // Gradient clipping
     );
 
     println!("{}", network);
 
     // Train the network
-    let epoch_loss = network.learn(&x_train, &y_train, Some(64), 15);
+    let epoch_loss = network.learn(&x_train, &y_train, Some(64), 50);
     plot::loss(&epoch_loss, "Loss per epoch", "loss.png");
 
     // Validate the network

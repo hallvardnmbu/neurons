@@ -147,7 +147,7 @@ impl Network {
                 layer.flatten_output = true;
                 match layer.outputs {
                     tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
-                    _ => panic!("Expected Tensor shape"),
+                    _ => panic!("Expected `tensor::Tensor` shape"),
                 }
             }
             Layer::Maxpool(layer) => {
@@ -155,7 +155,7 @@ impl Network {
                 layer.flatten_output = true;
                 match layer.outputs {
                     tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
-                    _ => panic!("Expected Tensor shape"),
+                    _ => panic!("Expected `tensor::Tensor` shape"),
                 }
             }
         };
@@ -225,13 +225,13 @@ impl Network {
     ///
     /// # Arguments
     ///
-    /// * `shape` - The shape of the filter.
+    /// * `kernel` - The shape of the filter.
     /// * `stride` - The stride of the filter.
-    pub fn maxpool(&mut self, shape: (usize, usize), stride: (usize, usize)) {
+    pub fn maxpool(&mut self, kernel: (usize, usize), stride: (usize, usize)) {
         if self.layers.is_empty() {
             self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
                 self.input.clone(),
-                shape,
+                kernel,
                 stride,
             )));
             return;
@@ -242,7 +242,7 @@ impl Network {
             Layer::Maxpool(layer) => layer.outputs.clone(),
         };
         self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
-            input, shape, stride,
+            input, kernel, stride,
         )));
     }
 
@@ -470,8 +470,6 @@ impl Network {
         let batch = batch as f32;
 
         for epoch in 1..epochs + 1 {
-            let mut _losses = 0.0f32;
-
             let results: Vec<_> = batches
                 .par_iter()
                 .map(|(inputs, targets)| {
@@ -481,7 +479,8 @@ impl Network {
 
                     for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
                         let (unactivated, activated, maxpools) = self.forward(input);
-                        let (_loss, gradient) = self.loss(&activated.last().unwrap(), target);
+                        let (_loss, gradient) =
+                            self.objective.loss(&activated.last().unwrap(), target);
                         loss += _loss;
 
                         let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
@@ -520,16 +519,17 @@ impl Network {
                         });
                     }
 
-                    (loss, weight_gradients, bias_gradients)
+                    (loss / inputs.len() as f32, weight_gradients, bias_gradients)
                 })
                 .collect();
 
+            let mut _losses: Vec<f32> = Vec::new();
             for (loss, weight_gradients, bias_gradients) in results {
                 self.update(epoch, weight_gradients, bias_gradients);
-                _losses += loss;
+                _losses.push(loss);
             }
 
-            losses.push(_losses / batch);
+            losses.push(_losses.iter().sum::<f32>() / _losses.len() as f32);
 
             if epoch % print == 0 && epoch > 0 {
                 println!(
@@ -670,24 +670,6 @@ impl Network {
         activated.remove(0);
 
         (unactivated, activated, maxpools)
-    }
-
-    /// Compute the loss and gradient of the network for the given prediction and target.
-    ///
-    /// # Arguments
-    ///
-    /// * `prediction` - The prediction of the network.
-    /// * `target` - The target of the given input.
-    ///
-    /// # Returns
-    ///
-    /// A tuple containing the loss and gradient of the network for the given prediction and target.
-    pub fn loss(
-        &self,
-        prediction: &tensor::Tensor,
-        target: &tensor::Tensor,
-    ) -> (f32, tensor::Tensor) {
-        self.objective.loss(prediction, target)
     }
 
     /// Compute the backward pass of the network for the given output gradient.
@@ -835,7 +817,7 @@ impl Network {
 
         for (input, target) in inputs.iter().zip(targets.iter()) {
             let prediction = self.predict(input);
-            let (loss, _) = self.loss(&prediction, target);
+            let (loss, _) = self.objective.loss(&prediction, target);
 
             losses.push(loss);
 

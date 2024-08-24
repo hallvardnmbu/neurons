@@ -167,6 +167,7 @@ impl Convolution {
     }
 
     /// Convolves `x` with the given `kernels`.
+    /// Assumes that the input and kernel shapes are valid and correct, for speed.
     ///
     /// # Arguments
     ///
@@ -181,17 +182,12 @@ impl Convolution {
         x: &Vec<Vec<Vec<f32>>>,
         kernels: &Vec<&Vec<Vec<Vec<f32>>>>,
     ) -> Vec<Vec<Vec<f32>>> {
-        let (ic, ih, iw) = (x.len(), x[0].len(), x[0][0].len());
+        let (ih, iw) = (x[0].len(), x[0][0].len());
         let (kf, kc, kh, kw) = (
             kernels.len(),
             kernels[0].len(),
             kernels[0][0].len(),
             kernels[0][0][0].len(),
-        );
-
-        assert_eq!(
-            ic, kc,
-            "The number of input channels should match the kernel channels."
         );
 
         // Defining the output dimensions and vector.
@@ -287,15 +283,21 @@ impl Convolution {
     ///
     /// The pre-activation and post-activation `tensor::Tensor`s of the convolved input wrt. the kernels.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
-        // Extracting the data from the input Tensor.
+        // Extracting the data from the input `tensor::Tensor`.
         let (mut x, ic, ih, iw) = match &x.data {
             tensor::Data::Vector(vector) => {
-                let root = (vector.len() as f32).sqrt() as usize;
+                let (c, h, w) = match &self.inputs {
+                    tensor::Shape::Tensor(c, h, w) => (*c, *h, *w),
+                    _ => panic!("Expected `Tensor` input shape."),
+                };
                 (
-                    vec![vector.chunks(root).map(|v| v.to_vec()).collect()],
-                    1,
-                    root,
-                    root,
+                    vector
+                        .chunks_exact(h * w)
+                        .map(|channel| channel.chunks_exact(w).map(|row| row.to_vec()).collect())
+                        .collect(),
+                    c,
+                    h,
+                    w,
                 )
             }
             tensor::Data::Tensor(tensor) => (

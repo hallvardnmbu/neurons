@@ -4,6 +4,59 @@ use crate::tensor;
 
 use plotters::prelude::*;
 
+/// Plots a simple line plot of the given data.
+///
+/// # Arguments
+///
+/// * `data` - The data to plot.
+/// * `title` - The title of the plot.
+/// * `path` - The path to save the plot.
+pub fn loss(data: &Vec<f32>, title: &str, path: &str) {
+    let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max) + 0.2;
+    let min = data.iter().copied().fold(f32::INFINITY, f32::min) - 0.2;
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(5)
+        .caption(title, ("monospace", 40).into_font().color(&BLACK))
+        .x_label_area_size(50)
+        .y_label_area_size(50)
+        .build_cartesian_2d(0..data.len(), min..max)
+        .unwrap();
+
+    chart
+        .configure_mesh()
+        .x_desc("Index")
+        .y_desc("Value")
+        .axis_desc_style(("monospace", 20).into_font().color(&BLACK))
+        .label_style(("monospace", 15).into_font().color(&BLACK))
+        .light_line_style(&BLACK.mix(0.3))
+        .disable_mesh()
+        .draw()
+        .unwrap();
+
+    chart
+        .draw_series(LineSeries::new(
+            data.iter().enumerate().map(|(i, &value)| (i, value)),
+            &RED,
+        ))
+        .unwrap()
+        .label("Loss")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    chart
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .label_font(("monospace", 20).into_font().color(&BLACK))
+        .draw()
+        .unwrap();
+
+    root.present().unwrap();
+}
+
 /// Plots a heatmap of the given data.
 ///
 /// # Arguments
@@ -26,7 +79,7 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
 
     let mut chart = ChartBuilder::on(&root)
         .margin(20)
-        .caption(title, ("sans-serif", 40))
+        .caption(title, ("monospace", 40))
         .build_cartesian_2d(0..cols, 0..rows)
         .unwrap();
 
@@ -59,38 +112,6 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
                 .unwrap();
         }
     }
-
-    root.present().unwrap();
-}
-
-/// Plots a simple line plot of the given data.
-///
-/// # Arguments
-///
-/// * `data` - The data to plot.
-/// * `title` - The title of the plot.
-/// * `path` - The path to save the plot.
-pub fn loss(data: &Vec<f32>, title: &str, path: &str) {
-    let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
-    root.fill(&WHITE).unwrap();
-
-    let mut chart = ChartBuilder::on(&root)
-        .margin(20)
-        .caption(title, ("sans-serif", 40))
-        .build_cartesian_2d(
-            0..data.len(),
-            0.0..data.iter().copied().fold(f32::NEG_INFINITY, f32::max),
-        )
-        .unwrap();
-
-    chart.configure_mesh().disable_mesh().draw().unwrap();
-
-    chart
-        .draw_series(LineSeries::new(
-            data.iter().enumerate().map(|(i, &value)| (i, value)),
-            &RED,
-        ))
-        .unwrap();
 
     root.present().unwrap();
 }

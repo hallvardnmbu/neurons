@@ -25,6 +25,9 @@ Create modular neural networks in Rust with ease!
       // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
       network.convolution(5, (5, 5), (1, 1), (1, 1), activation::Activation::ReLU, Some(0.1));
 
+      // Maxpool(kernel, stride)
+      network.maxpool((2, 2), (2, 2));
+
       // Dense(output, activation, bias, Some(dropout))
       network.dense(10, activation::Activation::Softmax, false, None);
 
@@ -119,7 +122,7 @@ Create modular neural networks in Rust with ease!
         - [x] Padding
         - [x] Stride
         - [ ] Dilation
-      - [ ] Max pooling
+      - [x] Max pooling
 
   ## Activation functions
     - [x] Linear
