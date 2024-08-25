@@ -23,7 +23,7 @@ Create modular neural networks in Rust with ease!
       network.dense(100, activation::Activation::ReLU, false, None);
 
       // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
-      network.convolution(5, (5, 5), (1, 1), (1, 1), activation::Activation::ReLU, Some(0.1));
+      network.convolution(5, (5, 5), (1, 1), (1, 1), activation::Activation::ReLU, None);
 
       // Maxpool(kernel, stride)
       network.maxpool((2, 2), (2, 2));
@@ -47,16 +47,16 @@ Create modular neural networks in Rust with ease!
           )
       );
       network.set_objective(
-          objective::Objective::MSE,                        // Objective function
-          Some((-1f32, 1f32))                               // Gradient clipping
+          objective::Objective::MSE,                    // Objective function
+          Some((-1f32, 1f32))                           // Gradient clipping
       );
 
       println!("{}", network);
 
-      let (x, y) = {  };                                    // Load data
+      let (x, y) = {  };                                // Load data
       let batch = 32;
       let epochs = 1000;
-      let loss = network.learn(x, y, Some(batch), epochs);  // Train the network
+      let loss = network.learn(x, y, batch, epochs);    // Train the network
   }
   ```
 

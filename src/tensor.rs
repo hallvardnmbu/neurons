@@ -545,7 +545,7 @@ impl Tensor {
     }
 
     /// Get the index of the maximum value in the Tensor.
-    pub fn onehot(&self) -> usize {
+    pub fn argmax(&self) -> usize {
         match &self.data {
             Data::Vector(data) => {
                 data.iter()
@@ -554,7 +554,7 @@ impl Tensor {
                     .unwrap()
                     .0
             }
-            _ => panic!("One-hot-index not implemented for Tensors"),
+            _ => panic!("Argmax not implemented for Tensors"),
         }
     }
 

@@ -27,11 +27,11 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             for _ in 0..num_cols {
                 let mut pixel = [0];
                 reader.read_exact(&mut pixel)?;
-                row.push(pixel[0] as f32);
+                row.push(pixel[0] as f32 / 255.0);
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::from(vec![image]));
+        images.push(tensor::Tensor::from(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
     }
 
     Ok(images)
@@ -67,16 +67,16 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 28, 28));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 14, 14));
 
-    network.maxpool((2, 2), (2, 2));
+    // network.maxpool((2, 2), (2, 2));
     network.convolution(
         8,
         (3, 3),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        Some(0.05),
+        None,
     );
     network.convolution(
         8,
@@ -84,19 +84,19 @@ fn main() {
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        Some(0.05),
+        None,
     );
     network.dense(128, activation::Activation::ReLU, true, Some(0.1));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
-        learning_rate: 0.001,
+    network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
+        learning_rate: 0.01,
         decay: None,
-        beta1: 0.9,
-        beta2: 0.999,
-        epsilon: 1e-8,
-        velocity: vec![],
-        momentum: vec![],
+        // beta1: 0.9,
+        // beta2: 0.999,
+        // epsilon: 1e-8,
+        // velocity: vec![],
+        // momentum: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
@@ -106,7 +106,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let epoch_loss = network.learn(&x_train, &y_train, Some(64), 50);
+    let epoch_loss = network.learn(&x_train, &y_train, 64, 50);
     plot::loss(&epoch_loss, "Loss per epoch", "loss.png");
 
     // Validate the network
@@ -117,13 +117,13 @@ fn main() {
     let prediction = network.predict(x_test.get(0).unwrap());
     println!(
         "2. Target: {}, Output: {}",
-        y_test[0].onehot(),
-        prediction.onehot()
+        y_test[0].argmax(),
+        prediction.argmax()
     );
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.onehot()), "input.png");
+    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "input.png");
 
     let (pre, post, _) = network.forward(x);
     for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {

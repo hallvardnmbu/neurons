@@ -185,6 +185,7 @@ impl SGDM {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer.
     /// * `channel` - The channel of the layer.
     /// * `row` - The row of the layer.
     /// * `values` - The weights of the layer.
@@ -251,6 +252,7 @@ impl Adam {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer.
     /// * `channel` - The channel of the layer.
     /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
@@ -329,6 +331,7 @@ impl AdamW {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer.
     /// * `channel` - The channel of the layer.
     /// * `row` - The row of the layer.
     /// * `stepnr` - The step number of the training process (epoch).
@@ -411,6 +414,7 @@ impl RMSprop {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer.
     /// * `channel` - The channel of the layer.
     /// * `row` - The row of the layer.
     /// * `values` - The weights of the layer.

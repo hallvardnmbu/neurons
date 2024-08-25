@@ -515,7 +515,7 @@ impl CrossEntropy {
         prediction: &tensor::Tensor,
         target: &tensor::Tensor,
     ) -> (f32, tensor::Tensor) {
-        let eps: f32 = 1e-7;
+        let eps: f32 = 1e-6;
         let loss: f32 = -target
             .get_flat()
             .iter()
@@ -594,7 +594,7 @@ impl BinaryCrossEntropy {
         prediction: &tensor::Tensor,
         target: &tensor::Tensor,
     ) -> (f32, tensor::Tensor) {
-        let eps: f32 = 1e-7;
+        let eps: f32 = 1e-6;
         let loss: f32 = -target
             .get_flat()
             .iter()
@@ -679,7 +679,7 @@ impl KLDivergence {
         prediction: &tensor::Tensor,
         target: &tensor::Tensor,
     ) -> (f32, tensor::Tensor) {
-        let eps: f32 = 1e-7;
+        let eps: f32 = 1e-6;
         let loss: f32 = target
             .get_flat()
             .iter()

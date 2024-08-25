@@ -33,7 +33,7 @@ fn main() {
     network.set_objective(objective::Objective::BinaryCrossEntropy, None);
 
     // Train the network
-    let _epoch_loss = network.learn(&inputs, &targets, None, 250);
+    let _epoch_loss = network.learn(&inputs, &targets, 1, 250);
 
     // Validate the network
     let (val_acc, val_loss) = network.validate(&inputs, &targets, 0.1);

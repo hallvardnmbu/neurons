@@ -448,7 +448,7 @@ impl Network {
         &mut self,
         inputs: &Vec<&tensor::Tensor>,
         targets: &Vec<&tensor::Tensor>,
-        batch: Option<usize>,
+        batch: usize,
         epochs: i32,
     ) -> Vec<f32> {
         self.layers.iter_mut().for_each(|layer| match layer {
@@ -460,14 +460,15 @@ impl Network {
         let print = 1; //(epochs / 10).max(1);
         let mut losses = Vec::new();
 
+        let split_at = (0.8 * inputs.len() as f32) as usize; // 80% for training, 20% for validation
+        let (train_inputs, val_inputs) = inputs.split_at(split_at);
+        let (train_targets, val_targets) = targets.split_at(split_at);
+
         // Split the input data into batches.
-        // If no batch size is provided, it defaults to 1.
-        let batch = batch.unwrap_or(1);
-        let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = inputs
+        let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = train_inputs
             .par_chunks(batch)
-            .zip(targets.par_chunks(batch))
+            .zip(train_targets.par_chunks(batch))
             .collect();
-        let batch = batch as f32;
 
         for epoch in 1..epochs + 1 {
             let results: Vec<_> = batches
@@ -508,18 +509,20 @@ impl Network {
                         }
                     }
 
-                    if batch > 1.0 {
+                    let size = inputs.len() as f32;
+
+                    if size > 1.0 {
                         weight_gradients
                             .iter_mut()
-                            .for_each(|gradient| gradient.div_scalar_inplace(batch));
+                            .for_each(|gradient| gradient.div_scalar_inplace(size));
                         bias_gradients.iter_mut().for_each(|gradient| {
                             if let Some(gradient) = gradient {
-                                gradient.div_scalar_inplace(batch);
+                                gradient.div_scalar_inplace(size);
                             }
                         });
                     }
 
-                    (loss / inputs.len() as f32, weight_gradients, bias_gradients)
+                    (loss / size, weight_gradients, bias_gradients)
                 })
                 .collect();
 
@@ -530,6 +533,27 @@ impl Network {
             }
 
             losses.push(_losses.iter().sum::<f32>() / _losses.len() as f32);
+
+            let val_results: Vec<_> = val_inputs
+                .par_iter()
+                .zip(val_targets.par_iter())
+                .map(|(input, target)| {
+                    let (_, activated, _) = self.forward(input);
+                    let (loss, _) = self.objective.loss(&activated.last().unwrap(), target);
+                    let pred = activated.last().unwrap().argmax();
+                    let target = target.argmax();
+                    let acc = if pred == target { 1.0 } else { 0.0 };
+                    (loss, acc)
+                })
+                .collect();
+
+            let val_loss: f32 = val_results.iter().map(|(loss, _)| *loss).sum();
+            let val_acc: f32 = val_results.iter().map(|(_, acc)| *acc).sum();
+            println!(
+                "Validation Loss: {}, Validation Accuracy: {}",
+                val_loss / val_inputs.len() as f32,
+                val_acc / val_inputs.len() as f32
+            );
 
             if epoch % print == 0 && epoch > 0 {
                 println!(
@@ -735,6 +759,7 @@ impl Network {
                             tensor::Data::Tensor(data) => data.clone(),
                             _ => panic!("Expected four-dimensional data."),
                         };
+
                         for (j, (weights, gradients)) in layer
                             .weights
                             .iter_mut()
@@ -824,7 +849,7 @@ impl Network {
             match self.layers.last().unwrap() {
                 Layer::Dense(layer) => match layer.activation {
                     activation::Function::Softmax(_) => {
-                        accuracy.push(if target.onehot() == prediction.onehot() {
+                        accuracy.push(if target.argmax() == prediction.argmax() {
                             1.0
                         } else {
                             0.0
