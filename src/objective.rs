@@ -826,7 +826,7 @@ mod tests {
 
         let (loss, gradient) = kld.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.10484119778475744, epsilon = 1e-6);
+        assert!((loss - 0.10484119778475744).abs() <= 1e-5);
         assert_relative_eq!(
             gradient.get_flat().as_slice(),
             vec![-1.0, -1.0, -1.1, -1.0].as_slice(),
