@@ -375,6 +375,7 @@ impl Convolution {
         input: &tensor::Tensor,
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
+        // println!("{} {}", gradient.shape, self.outputs);
         let gradient = gradient.get_data(&self.outputs);
         let derivative = self.activation.backward(&output).get_data(&self.outputs);
         let delta = algebra::mul3d_scalar(&algebra::mul3d(&gradient, &derivative), self.loops);

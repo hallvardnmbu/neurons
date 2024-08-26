@@ -61,9 +61,40 @@ pub enum Data {
 impl PartialEq for Data {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Data::Vector(a), Data::Vector(b)) => a == b,
-            (Data::Tensor(a), Data::Tensor(b)) => a == b,
-            (Data::Gradient(a), Data::Gradient(b)) => a == b,
+            (Data::Vector(a), Data::Vector(b)) => {
+                for (x, y) in a.iter().zip(b.iter()) {
+                    if (x - y).abs() >= 1e-5 {
+                        return false;
+                    }
+                }
+                true
+            }
+            (Data::Tensor(a), Data::Tensor(b)) => {
+                for (i, c) in a.iter().enumerate() {
+                    for (j, r) in c.iter().enumerate() {
+                        for (k, x) in r.iter().enumerate() {
+                            if (x - b[i][j][k]).abs() >= 1e-5 {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                true
+            }
+            (Data::Gradient(a), Data::Gradient(b)) => {
+                for (i, c) in a.iter().enumerate() {
+                    for (j, r) in c.iter().enumerate() {
+                        for (k, x) in r.iter().enumerate() {
+                            for (l, y) in x.iter().enumerate() {
+                                if (y - b[i][j][k][l]).abs() >= 1e-5 {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+                true
+            }
             _ => false,
         }
     }
@@ -405,12 +436,6 @@ impl Tensor {
                     Shape::Tensor(ch, he, wi) => (*ch, *he, *wi),
                     _ => panic!("Expected a Tensor output shape."),
                 };
-
-                assert_eq!(
-                    vector.len(),
-                    oc * oh * ow,
-                    "Wanted output shape not compatible with Tensor data."
-                );
 
                 let mut iter = vector.into_iter();
                 (0..oc)

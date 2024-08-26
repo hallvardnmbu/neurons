@@ -106,17 +106,13 @@ impl Dense {
     /// The pre-activation and post-activation `tensor::Tensor`s of the layer.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
         let x = x.get_flat();
+        let mut y = self.weights.iter().map(|w| algebra::dot(&w, &x)).collect();
+        if let Some(bias) = &self.bias {
+            algebra::add_inplace(&mut y, &bias);
+        }
 
-        let pre = tensor::Tensor::from_single(
-            self.weights.iter().map(|w| algebra::dot(&w, &x)).collect(),
-        );
-        let mut post = match &self.bias {
-            Some(bias) => self
-                .activation
-                .forward(&pre)
-                .add(&tensor::Tensor::from_single(bias.clone())),
-            None => self.activation.forward(&pre),
-        };
+        let pre = tensor::Tensor::from_single(y);
+        let mut post = self.activation.forward(&pre);
 
         // Apply dropout if the network is training.
         if self.training {

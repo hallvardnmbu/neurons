@@ -31,7 +31,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::from(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
+        images.push(tensor::Tensor::from(vec![image]).resize(tensor::Shape::Tensor(1, 8, 8)));
     }
 
     Ok(images)
@@ -67,17 +67,9 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 14, 14));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 8, 8));
 
     // network.maxpool((2, 2), (2, 2));
-    network.convolution(
-        8,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
     network.convolution(
         8,
         (3, 3),
@@ -86,27 +78,36 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.dense(128, activation::Activation::ReLU, true, Some(0.1));
+    network.maxpool((2, 2), (2, 2));
+    // network.convolution(
+    //     8,
+    //     (3, 3),
+    //     (1, 1),
+    //     (0, 0),
+    //     activation::Activation::ReLU,
+    //     None,
+    // );
+    // network.dense(128, activation::Activation::ReLU, true, Some(0.1));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
-        learning_rate: 0.01,
+    network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
+        learning_rate: 0.001,
         decay: None,
-        // beta1: 0.9,
-        // beta2: 0.999,
-        // epsilon: 1e-8,
-        // velocity: vec![],
-        // momentum: vec![],
+        beta1: 0.9,
+        beta2: 0.999,
+        epsilon: 1e-8,
+        velocity: vec![],
+        momentum: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
-        Some((-1f32, 1f32)),                // Gradient clipping
+        None, // Some((-1f32, 1f32)),                // Gradient clipping
     );
 
     println!("{}", network);
 
     // Train the network
-    let epoch_loss = network.learn(&x_train, &y_train, 64, 50);
+    let epoch_loss = network.learn(&x_train, &y_train, 16, 50);
     plot::loss(&epoch_loss, "Loss per epoch", "loss.png");
 
     // Validate the network

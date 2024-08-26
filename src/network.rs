@@ -480,11 +480,12 @@ impl Network {
 
                     for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
                         let (unactivated, activated, maxpools) = self.forward(input);
-                        let (_loss, gradient) =
+                        let (_loss, mut gradient) =
                             self.objective.loss(&activated.last().unwrap(), target);
                         loss += _loss;
 
-                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
+                        let (wg, bg, _) =
+                            self.backward(gradient, &unactivated, &activated, maxpools);
 
                         if i == 0 {
                             weight_gradients = wg;
@@ -531,6 +532,19 @@ impl Network {
                 self.update(epoch, weight_gradients, bias_gradients);
                 _losses.push(loss);
             }
+
+            // println!("\n----------\n");
+
+            // for (i, layer) in self.layers.iter().enumerate() {
+            //     match layer {
+            //         Layer::Convolution(layer) => {
+            //             for (j, kernel) in layer.kernels.iter().enumerate() {
+            //                 println!("Layer {} kernel {}: {}", i, j, kernel);
+            //             }
+            //         }
+            //         _ => (),
+            //     }
+            // }
 
             losses.push(_losses.iter().sum::<f32>() / _losses.len() as f32);
 
@@ -704,13 +718,21 @@ impl Network {
     /// * `unactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
     /// * `maxpools` - The maxpool indices of each maxpool-layer.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the weight and bias gradients of each layer.
     pub fn backward(
         &self,
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
         mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
-    ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
+    ) -> (
+        Vec<tensor::Tensor>,
+        Vec<Option<tensor::Tensor>>,
+        tensor::Tensor,
+    ) {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
         self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
@@ -732,7 +754,7 @@ impl Network {
 
             gradient = input_gradient;
         });
-        (weight_gradient, bias_gradient)
+        (weight_gradient, bias_gradient, gradient) // TODO: Remove gradient here. For debugging purposes.
     }
 
     /// Update the weights and biases of the network using the given gradients.
@@ -1000,5 +1022,201 @@ impl Network {
     /// The output of the network for each of the given inputs.
     pub fn predict_batch(&self, inputs: &Vec<&tensor::Tensor>) -> Vec<tensor::Tensor> {
         inputs.iter().map(|input| self.predict(input)).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::assert_eq_data;
+
+    #[test]
+    fn test_forward() {
+        let mut network = Network::new(tensor::Shape::Tensor(1, 3, 3));
+
+        network.convolution(
+            1,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            activation::Activation::Linear,
+            None,
+        );
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                conv.kernels[0] = tensor::Tensor::from(vec![vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 1.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                ]]);
+            }
+            _ => (),
+        }
+
+        let input = tensor::Tensor::from(vec![vec![
+            vec![1.0, 2.0, 3.0],
+            vec![4.0, 5.0, 6.0],
+            vec![7.0, 8.0, 9.0],
+        ]]);
+
+        let (pre, post, _) = network.forward(&input);
+
+        assert_eq_data!(pre.last().unwrap().data, input.data);
+        assert_eq_data!(post.last().unwrap().data, input.data);
+    }
+
+    #[test]
+    fn test_backward() {
+        // See Python file `validation/test_network_backward.py` for the reference implementation.
+
+        let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
+
+        network.convolution(
+            3,
+            (2, 2),
+            (1, 1),
+            (0, 0),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.dense(5, activation::Activation::ReLU, true, None);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                conv.kernels[0] = tensor::Tensor::from(vec![
+                    vec![vec![1.0, 1.0], vec![2.0, 2.0]],
+                    vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+                ]);
+                conv.kernels[1] = tensor::Tensor::from(vec![
+                    vec![vec![2.0, 2.0], vec![1.0, 1.0]],
+                    vec![vec![2.0, 1.0], vec![2.0, 1.0]],
+                ]);
+                conv.kernels[2] = tensor::Tensor::from(vec![
+                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                ]);
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                dense.weights = vec![
+                    vec![2.5; dense.inputs],
+                    vec![-1.2; dense.inputs],
+                    vec![0.5; dense.inputs],
+                    vec![3.5; dense.inputs],
+                    vec![5.2; dense.inputs],
+                ];
+                dense.bias = Some(vec![3.0, 4.0, 5.0, 6.0, 7.0]);
+            }
+            _ => (),
+        }
+
+        let input = tensor::Tensor::from(vec![
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 2.0, 0.0],
+                vec![0.0, 3.0, 4.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 4.0, 3.0, 0.0],
+                vec![0.0, 2.0, 1.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+        ]);
+
+        let output = vec![
+            tensor::Tensor::from(vec![
+                vec![
+                    vec![10.0, 16.0, 7.0],
+                    vec![19.0, 31.0, 14.0],
+                    vec![7.0, 11.0, 5.0],
+                ],
+                vec![
+                    vec![5.0, 14.0, 8.0],
+                    vec![11.0, 29.0, 16.0],
+                    vec![8.0, 19.0, 10.0],
+                ],
+                vec![
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                    vec![0.0, 0.0, 0.0],
+                ],
+            ]),
+            tensor::Tensor::from_single(vec![
+                10.0, 16.0, 7.0, 19.0, 31.0, 14.0, 7.0, 11.0, 5.0, 5.0, 14.0, 8.0, 11.0, 29.0,
+                16.0, 8.0, 19.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ]),
+            tensor::Tensor::from_single(vec![603.0, -284.00003, 125.0, 846.0, 1255.0]),
+            tensor::Tensor::from_single(vec![603.0, 0.0, 125.0, 846.0, 1255.0]),
+        ];
+
+        let (pre, post, max) = network.forward(&input);
+
+        assert_eq_data!(pre[0].data, output[0].data);
+        assert_eq_data!(post[1].data, output[1].data);
+
+        assert_eq_data!(pre[1].data, output[2].data);
+        assert_eq_data!(post[2].data, output[3].data);
+
+        // let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
+        let gradient = tensor::Tensor::from_single(vec![1.0; 5]);
+
+        let (weight_gradient, bias_gradient, igradient) =
+            network.backward(gradient, &pre, &post, max);
+
+        let _input_gradient = tensor::Tensor::from(vec![
+            vec![
+                vec![35.1, 70.2, 70.2, 35.1],
+                vec![70.2, 140.4, 140.4, 70.2],
+                vec![70.2, 140.4, 140.4, 70.2],
+                vec![35.1, 70.2, 70.2, 35.1],
+            ];
+            2
+        ]);
+        assert_eq_data!(igradient.data, _input_gradient.data);
+
+        let _weight_gradient = vec![
+            tensor::Tensor::gradient(vec![
+                vec![vec![vec![117., 117.]; 2]; 2],
+                vec![vec![vec![117., 117.]; 2]; 2],
+                vec![vec![vec![0.0, 0.0]; 2]; 2],
+            ]),
+            tensor::Tensor::from(vec![vec![
+                vec![
+                    10., 16., 7., 19., 31., 14., 7., 11., 5., 5., 14., 8., 11., 29., 16., 8., 19.,
+                    10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                ],
+                vec![
+                    0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                    0., 0., 0., 0., 0., 0., 0.,
+                ],
+                vec![
+                    10., 16., 7., 19., 31., 14., 7., 11., 5., 5., 14., 8., 11., 29., 16., 8., 19.,
+                    10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                ],
+                vec![
+                    10., 16., 7., 19., 31., 14., 7., 11., 5., 5., 14., 8., 11., 29., 16., 8., 19.,
+                    10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                ],
+                vec![
+                    10., 16., 7., 19., 31., 14., 7., 11., 5., 5., 14., 8., 11., 29., 16., 8., 19.,
+                    10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                ],
+            ]]),
+            tensor::Tensor::from_single(vec![1., 0., 1., 1., 1.]),
+        ];
+
+        // Kernel gradient(s)
+        assert_eq_data!(weight_gradient[1].data, _weight_gradient[0].data);
+
+        // Fully connected layer gradient
+        assert_eq_data!(weight_gradient[0].data, _weight_gradient[1].data);
+        if let Some(bias) = bias_gradient.last().unwrap() {
+            assert_eq_data!(bias.data, _weight_gradient[2].data);
+        }
     }
 }
