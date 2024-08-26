@@ -177,6 +177,9 @@ Create modular neural networks in Rust with ease!
       - [x] Thorough testing of optimization techniques
       - [ ] Thorough testing of feedback scaling (wrt. gradients)
     - [ ] Integration tests
+      - [x] Network forward pass
+      - [x] Network backward pass
+      - [ ] Network training (i.e., weight updates)
 
   ## Examples
     - [x] XOR

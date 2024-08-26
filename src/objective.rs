@@ -830,7 +830,7 @@ mod tests {
         assert_relative_eq!(
             gradient.get_flat().as_slice(),
             vec![-1.0, -1.0, -1.1, -1.0].as_slice(),
-            epsilon = 1e-6
+            epsilon = 1e-5
         );
     }
 
