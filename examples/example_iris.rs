@@ -47,7 +47,7 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
 
 fn main() {
     // Load the iris dataset
-    let (x, y) = data("./datasets/iris.csv");
+    let (x, y) = data("./examples/datasets/iris.csv");
 
     let split = (x.len() as f32 * 0.8) as usize;
     let x = x.split_at(split);

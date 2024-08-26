@@ -52,10 +52,10 @@ fn load_labels(file_path: &str, numbers: f32) -> Result<Vec<tensor::Tensor>> {
 }
 
 fn main() {
-    let x_train = load_images("./datasets/mnist/train-images-idx3-ubyte").unwrap();
-    let y_train = load_labels("./datasets/mnist/train-labels-idx1-ubyte", 10f32).unwrap();
-    let x_test = load_images("./datasets/mnist/t10k-images-idx3-ubyte").unwrap();
-    let y_test = load_labels("./datasets/mnist/t10k-labels-idx1-ubyte", 10f32).unwrap();
+    let x_train = load_images("./examples/datasets/mnist/train-images-idx3-ubyte").unwrap();
+    let y_train = load_labels("./examples/datasets/mnist/train-labels-idx1-ubyte", 10f32).unwrap();
+    let x_test = load_images("./examples/datasets/mnist/t10k-images-idx3-ubyte").unwrap();
+    let y_test = load_labels("./examples/datasets/mnist/t10k-labels-idx1-ubyte", 10f32).unwrap();
     println!(
         "Train: {} images, Test: {} images",
         x_train.len(),

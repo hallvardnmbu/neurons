@@ -1052,7 +1052,7 @@ mod tests {
 
     #[test]
     fn test_backward() {
-        // See Python file `validation/test_network_backward.py` for the reference implementation.
+        // See Python file `documentation/validation/test_network_backward.py` for the reference implementation.
 
         let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
 
@@ -1194,7 +1194,7 @@ mod tests {
 
     #[test]
     fn test_update() {
-        // See Python file `validation/test_network_update.py` for the reference implementation.
+        // See Python file `documentation/validation/test_network_update.py` for the reference implementation.
 
         let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
 

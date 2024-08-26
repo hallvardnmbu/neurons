@@ -27,4 +27,4 @@ Icon?
 **/*.py
 
 # Datasets.
-datasets/mnist/*
+examples/datasets/mnist/*
