@@ -100,10 +100,10 @@ fn main() {
     );
 
     // Train the network
-    let _epoch_loss = network.learn(&x_train, &y_train, 25, 500);
+    let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, 0.1, 25, 500, Some(50));
 
     // Validate the network
-    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
+    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);
     println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
 
     // Use the network

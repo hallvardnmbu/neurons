@@ -100,17 +100,17 @@ fn main() {
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
-        None,                               // Some((-1f32, 1f32)),       // Gradient clipping
+        None,                               // Gradient clipping
     );
 
     println!("{}", network);
 
     // Train the network
-    let epoch_loss = network.learn(&x_train, &y_train, 128, 50);
-    plot::loss(&epoch_loss, "Loss per epoch", "loss.png");
+    let (train_loss, val_loss) = network.learn(&x_train, &y_train, 0.1, 128, 50, Some(10));
+    plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
 
     // Validate the network
-    let (val_acc, val_loss) = network.validate(&x_test, &y_test, 0.1);
+    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);
     println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
 
     // Use the network

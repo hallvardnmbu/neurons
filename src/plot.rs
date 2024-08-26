@@ -8,28 +8,39 @@ use plotters::prelude::*;
 ///
 /// # Arguments
 ///
-/// * `data` - The data to plot.
+/// * `train` - The training loss.
+/// * `validation` - The validation loss.
 /// * `title` - The title of the plot.
 /// * `path` - The path to save the plot.
-pub fn loss(data: &Vec<f32>, title: &str, path: &str) {
+pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, title: &str, path: &str) {
     let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max) + 0.2;
-    let min = data.iter().copied().fold(f32::INFINITY, f32::min) - 0.2;
+    let max = train
+        .iter()
+        .copied()
+        .fold(f32::NEG_INFINITY, f32::max)
+        .max(validation.iter().copied().fold(f32::NEG_INFINITY, f32::max))
+        + 0.2;
+    let min = train
+        .iter()
+        .copied()
+        .fold(f32::INFINITY, f32::min)
+        .min(validation.iter().copied().fold(f32::INFINITY, f32::min))
+        - 0.2;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(5)
         .caption(title, ("monospace", 40).into_font().color(&BLACK))
         .x_label_area_size(50)
         .y_label_area_size(50)
-        .build_cartesian_2d(0..data.len(), min..max)
+        .build_cartesian_2d(0..train.len() - 1, min..max)
         .unwrap();
 
     chart
         .configure_mesh()
-        .x_desc("Index")
-        .y_desc("Value")
+        .x_desc("Epoch")
+        .y_desc("Loss")
         .axis_desc_style(("monospace", 20).into_font().color(&BLACK))
         .label_style(("monospace", 15).into_font().color(&BLACK))
         .light_line_style(&BLACK.mix(0.3))
@@ -39,11 +50,20 @@ pub fn loss(data: &Vec<f32>, title: &str, path: &str) {
 
     chart
         .draw_series(LineSeries::new(
-            data.iter().enumerate().map(|(i, &value)| (i, value)),
-            &RED,
+            train.iter().enumerate().map(|(i, &value)| (i, value)),
+            ShapeStyle::from(&BLACK).stroke_width(1),
         ))
         .unwrap()
-        .label("Loss")
+        .label("Train")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLACK));
+
+    chart
+        .draw_series(LineSeries::new(
+            validation.iter().enumerate().map(|(i, &value)| (i, value)),
+            ShapeStyle::from(&RED).stroke_width(1),
+        ))
+        .unwrap()
+        .label("Validation")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
 
     chart

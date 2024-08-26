@@ -438,31 +438,49 @@ impl Network {
     ///
     /// * `inputs` - The individual inputs (x) stored in a vector.
     /// * `targets` - The respective individual (y) targets stored in a vector.
+    /// * `validation` - The percentage of the data to use for validation.
     /// * `batch` - The batch size to use when training.
     /// * `epochs` - The number of epochs to train the network for.
+    /// * `print` - The frequency of printing validation metrics to the console.
     ///
     /// # Returns
     ///
-    /// A vector of the average loss of the network per epoch.
+    /// A vector of the train- and validation loss of the network per epoch.
     pub fn learn(
         &mut self,
         inputs: &Vec<&tensor::Tensor>,
         targets: &Vec<&tensor::Tensor>,
+        validation: f32,
         batch: usize,
         epochs: i32,
-    ) -> Vec<f32> {
+        print: Option<i32>,
+    ) -> (Vec<f32>, Vec<f32>) {
+        if let Some(print) = print {
+            if print > epochs as i32 {
+                println!("Note: print frequency is higher than the number of epochs. No printouts will be made.");
+            }
+        }
+
+        // Split the input data into training and validation data.
+        if validation < 0.0 || validation > 1.0 {
+            panic!("Validation must be between 0.0 and 1.0. Set to 0.0 for no validation.");
+        } else if validation == 0.0 {
+            if let Some(_) = print {
+                println!("No validation data used. Printouts will therefore be NaN's.")
+            }
+        }
+        let split = (inputs.len() as f32 * (1.0 - validation)) as usize;
+        let (train_inputs, val_inputs) = inputs.split_at(split);
+        let (train_targets, val_targets) = targets.split_at(split);
+
         self.layers.iter_mut().for_each(|layer| match layer {
             Layer::Dense(layer) => layer.training = true,
             Layer::Convolution(layer) => layer.training = true,
             _ => (),
         });
 
-        let print = 1; //(epochs / 10).max(1);
-        let mut losses = Vec::new();
-
-        let split_at = (0.8 * inputs.len() as f32) as usize; // 80% for training, 20% for validation
-        let (train_inputs, val_inputs) = inputs.split_at(split_at);
-        let (train_targets, val_targets) = targets.split_at(split_at);
+        let mut train_loss = Vec::new();
+        let mut val_loss = Vec::new();
 
         // Split the input data into batches.
         let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = train_inputs
@@ -526,44 +544,27 @@ impl Network {
                 })
                 .collect();
 
-            let mut _losses: Vec<f32> = Vec::new();
+            let mut losses: Vec<f32> = Vec::new();
             for (loss, weight_gradients, bias_gradients) in results {
                 self.update(epoch, weight_gradients, bias_gradients);
-                _losses.push(loss);
+                losses.push(loss);
             }
-            losses.push(_losses.iter().sum::<f32>() / _losses.len() as f32);
+            train_loss.push(losses.iter().sum::<f32>() / losses.len() as f32);
 
-            let val_results: Vec<_> = val_inputs
-                .par_iter()
-                .zip(val_targets.par_iter())
-                .map(|(input, target)| {
-                    let (_, activated, _) = self.forward(input);
-                    let (loss, _) = self.objective.loss(&activated.last().unwrap(), target);
-                    let pred = activated.last().unwrap().argmax();
-                    let target = target.argmax();
-                    let acc = if pred == target { 1.0 } else { 0.0 };
-                    (loss, acc)
-                })
-                .collect();
+            let (_val_loss, val_acc) = self.validate(val_inputs, val_targets, 1e-6);
 
-            let val_loss: f32 = val_results.iter().map(|(loss, _)| *loss).sum();
-            let val_acc: f32 = val_results.iter().map(|(_, acc)| *acc).sum();
-            println!(
-                "Validation Loss: {}, Validation Accuracy: {}",
-                val_loss / val_inputs.len() as f32,
-                val_acc / val_inputs.len() as f32
-            );
-
-            if epoch % print == 0 && epoch > 0 {
-                println!(
-                    "Epoch: {} Loss: {}",
-                    epoch,
-                    losses[(epoch as usize) - (print as usize)..(epoch as usize)]
-                        .iter()
-                        .sum::<f32>()
-                        / print as f32
-                );
+            if let Some(print) = print {
+                if epoch % print == 0 {
+                    println!(
+                        "Epoch {:>5} \t Loss: {:>10.5} \t Accuracy: {:>6.2} %",
+                        epoch,
+                        _val_loss,
+                        val_acc * 100.0
+                    );
+                }
             }
+
+            val_loss.push(_val_loss);
         }
         for layer in &mut self.layers {
             match layer {
@@ -573,7 +574,7 @@ impl Network {
             }
         }
 
-        losses
+        (train_loss, val_loss)
     }
 
     /// Compute the forward pass of the network for the given input, including all intermediate
@@ -834,130 +835,72 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A tuple containing the total accuracy and loss of the network.
+    /// A tuple containing the total loss and accuracy of the network for the given `inputs` and `targets`.
     pub fn validate(
-        &mut self,
-        inputs: &Vec<&tensor::Tensor>,
-        targets: &Vec<&tensor::Tensor>,
+        &self,
+        inputs: &[&tensor::Tensor],
+        targets: &[&tensor::Tensor],
         tol: f32,
     ) -> (f32, f32) {
-        let mut losses = Vec::new();
-        let mut accuracy = Vec::new();
+        let results: Vec<_> = inputs
+            .par_iter()
+            .zip(targets.par_iter())
+            .map(|(input, target)| {
+                let prediction = self.predict(input);
+                let (loss, _) = self.objective.loss(&prediction, target);
 
-        for (input, target) in inputs.iter().zip(targets.iter()) {
-            let prediction = self.predict(input);
-            let (loss, _) = self.objective.loss(&prediction, target);
-
-            losses.push(loss);
-
-            match self.layers.last().unwrap() {
-                Layer::Dense(layer) => match layer.activation {
-                    activation::Function::Softmax(_) => {
-                        accuracy.push(if target.argmax() == prediction.argmax() {
-                            1.0
-                        } else {
-                            0.0
-                        });
-                    }
-                    _ => {
-                        let target = target.get_flat();
-                        let prediction = prediction.get_flat();
-
-                        if target.len() == 1 {
-                            accuracy.push(if (prediction[0] - target[0]).abs() < tol {
+                let acc = match self.layers.last().unwrap() {
+                    Layer::Dense(layer) => match layer.activation {
+                        activation::Function::Softmax(_) => {
+                            if target.argmax() == prediction.argmax() {
                                 1.0
                             } else {
                                 0.0
-                            });
-                        } else {
-                            target.iter().zip(prediction.iter()).for_each(|(t, p)| {
-                                accuracy.push(if (t - p).abs() < tol { 1.0 } else { 0.0 })
-                            });
+                            }
                         }
+                        _ => {
+                            let target = target.get_flat();
+                            let prediction = prediction.get_flat();
+
+                            if target.len() == 1 {
+                                if (prediction[0] - target[0]).abs() < tol {
+                                    1.0
+                                } else {
+                                    0.0
+                                }
+                            } else {
+                                target
+                                    .iter()
+                                    .zip(prediction.iter())
+                                    .map(|(t, p)| if (t - p).abs() < tol { 1.0 } else { 0.0 })
+                                    .sum::<f32>()
+                                    / target.len() as f32
+                            }
+                        }
+                    },
+                    Layer::Convolution(_) => {
+                        unimplemented!("Image output (target) not supported.")
                     }
-                },
-                Layer::Convolution(_) => {
-                    unimplemented!("Image output (target) not supported.")
-                }
-                Layer::Maxpool(_) => {
-                    unimplemented!("Image output (target) not supported.")
-                }
-            };
+                    Layer::Maxpool(_) => {
+                        unimplemented!("Image output (target) not supported.")
+                    }
+                };
+
+                (loss, acc)
+            })
+            .collect();
+
+        let mut loss: Vec<f32> = Vec::new();
+        let mut acc: Vec<f32> = Vec::new();
+        for (_loss, _acc) in results {
+            loss.push(_loss);
+            acc.push(_acc);
         }
 
         (
-            accuracy.iter().sum::<f32>() / accuracy.len() as f32,
-            losses.iter().sum::<f32>() / inputs.len() as f32,
+            loss.iter().sum::<f32>() / loss.len() as f32,
+            acc.iter().sum::<f32>() / acc.len() as f32,
         )
-    }
-
-    /// Compute the accuracy of the network on the given inputs and targets.
-    ///
-    /// The accuracy is computed with respect to the given tolerance. I.e., if the difference
-    /// between the prediction and target is less than the tolerance, it's assumed to be
-    /// correctly predicted.
-    ///
-    /// # Arguments
-    ///
-    /// * `predictions` - The predictions of the network.
-    /// * `targets` - The targets of the given inputs.
-    /// * `tol` - The tolerance for the accuracy, see above.
-    ///
-    /// # Returns
-    ///
-    /// The accuracy of the network on the given inputs and targets.
-    pub fn accuracy(
-        &self,
-        predictions: &Vec<&tensor::Tensor>,
-        targets: &Vec<&tensor::Tensor>,
-        tol: f32,
-    ) -> f32 {
-        let mut accuracy: Vec<f32> = Vec::new();
-
-        let predictions: Vec<Vec<f32>> = predictions.iter().map(|t| t.get_flat()).collect();
-        let targets: Vec<Vec<f32>> = targets.iter().map(|t| t.get_flat()).collect();
-
-        for (prediction, target) in predictions.iter().zip(targets.iter()) {
-            match self.layers.last().unwrap() {
-                Layer::Dense(layer) => match layer.activation {
-                    activation::Function::Softmax(_) => {
-                        let predicted = prediction
-                            .iter()
-                            .enumerate()
-                            .max_by(|(_, a), (_, b)| a.total_cmp(b))
-                            .map(|(index, _)| index)
-                            .unwrap() as f32;
-                        let actual = target.iter().position(|&v| v == 1.0).unwrap() as f32;
-                        accuracy.push(if (predicted - actual).abs() < tol {
-                            1.0
-                        } else {
-                            0.0
-                        });
-                    }
-                    _ => {
-                        if target.len() == 1 {
-                            accuracy.push(if (prediction[0] - target[0]).abs() < tol {
-                                1.0
-                            } else {
-                                0.0
-                            });
-                        } else {
-                            target.iter().zip(prediction.iter()).for_each(|(t, p)| {
-                                accuracy.push(if (t - p).abs() < tol { 1.0 } else { 0.0 })
-                            });
-                        }
-                    }
-                },
-                Layer::Convolution(_) => {
-                    unimplemented!("Image output (target) not supported.")
-                }
-                Layer::Maxpool(_) => {
-                    unimplemented!("Maxpool output (target) not supported.")
-                }
-            };
-        }
-
-        accuracy.iter().sum::<f32>() / accuracy.len() as f32
     }
 
     /// Predict the output of the network for the given input.
@@ -1009,8 +952,6 @@ impl Network {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-
     use super::*;
     use crate::assert_eq_data;
 

@@ -112,7 +112,7 @@ fn main() {
         );
 
         // Train the network
-        let _epoch_loss = network.learn(&x_train, &y_train, 25, 500);
+        let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, 0.0, 25, 500, Some(50));
 
         let duration = start.elapsed();
         times.push(duration);
