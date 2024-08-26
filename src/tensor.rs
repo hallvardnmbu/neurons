@@ -1114,6 +1114,181 @@ mod tests {
     }
 
     #[test]
+    fn test_tensor_add_inplace() {
+        let mut tensor1 = Tensor {
+            shape: Shape::Tensor(2, 3, 3),
+            data: Data::Tensor(vec![
+                vec![
+                    vec![1.0, 2.0, 3.0],
+                    vec![4.0, 5.0, 6.0],
+                    vec![7.0, 8.0, 9.0],
+                ],
+                vec![
+                    vec![9.0, 8.0, 7.0],
+                    vec![6.0, 5.0, 4.0],
+                    vec![3.0, 2.0, 1.0],
+                ],
+            ]),
+        };
+        let tensor2 = Tensor {
+            shape: Shape::Tensor(2, 3, 3),
+            data: Data::Tensor(vec![
+                vec![
+                    vec![2.0, 0.0, 1.0],
+                    vec![1.0, 2.0, 1.0],
+                    vec![0.0, 1.0, 2.0],
+                ],
+                vec![
+                    vec![1.0, 2.0, 1.0],
+                    vec![0.0, 1.0, 2.0],
+                    vec![2.0, 0.0, 1.0],
+                ],
+            ]),
+        };
+        tensor1.add_inplace(&tensor2);
+        assert_eq!(
+            tensor1.data,
+            Data::Tensor(vec![
+                vec![
+                    vec![3.0, 2.0, 4.0],
+                    vec![5.0, 7.0, 7.0],
+                    vec![7.0, 9.0, 11.0],
+                ],
+                vec![
+                    vec![10.0, 10.0, 8.0],
+                    vec![6.0, 6.0, 6.0],
+                    vec![5.0, 2.0, 2.0],
+                ],
+            ])
+        );
+
+        let mut grad1 = Tensor {
+            shape: Shape::Gradient(2, 2, 3, 3),
+            data: Data::Gradient(vec![
+                vec![
+                    vec![
+                        vec![1.0, 2.0, 3.0],
+                        vec![4.0, 5.0, 6.0],
+                        vec![7.0, 8.0, 9.0],
+                    ],
+                    vec![
+                        vec![9.0, 8.0, 7.0],
+                        vec![6.0, 5.0, 4.0],
+                        vec![3.0, 2.0, 1.0],
+                    ],
+                ],
+                vec![
+                    vec![
+                        vec![0.0, 0.0, 0.0],
+                        vec![0.0, 0.0, 0.0],
+                        vec![0.0, 0.0, 0.0],
+                    ],
+                    vec![
+                        vec![0.0, 0.0, 0.0],
+                        vec![0.0, 0.0, 0.0],
+                        vec![0.0, 0.0, 0.0],
+                    ],
+                ],
+            ]),
+        };
+        let grad2 = Tensor {
+            shape: Shape::Gradient(2, 2, 3, 3),
+            data: Data::Gradient(vec![
+                vec![
+                    vec![
+                        vec![2.0, 0.0, 1.0],
+                        vec![1.0, 2.0, 1.0],
+                        vec![0.0, 1.0, 2.0],
+                    ],
+                    vec![
+                        vec![1.0, 2.0, 1.0],
+                        vec![0.0, 1.0, 2.0],
+                        vec![2.0, 0.0, 1.0],
+                    ],
+                ],
+                vec![
+                    vec![
+                        vec![1.0, 2.0, 3.0],
+                        vec![0.0, 0.0, 0.0],
+                        vec![1.0, 2.0, 3.0],
+                    ],
+                    vec![
+                        vec![3.0, 2.0, 1.0],
+                        vec![1.0, 2.0, 3.0],
+                        vec![3.0, 2.0, 1.0],
+                    ],
+                ],
+            ]),
+        };
+        grad1.add_inplace(&grad2);
+        assert_eq!(
+            grad1.data,
+            Data::Gradient(vec![
+                vec![
+                    vec![
+                        vec![3.0, 2.0, 4.0],
+                        vec![5.0, 7.0, 7.0],
+                        vec![7.0, 9.0, 11.0],
+                    ],
+                    vec![
+                        vec![10.0, 10.0, 8.0],
+                        vec![6.0, 6.0, 6.0],
+                        vec![5.0, 2.0, 2.0],
+                    ],
+                ],
+                vec![
+                    vec![
+                        vec![1.0, 2.0, 3.0],
+                        vec![0.0, 0.0, 0.0],
+                        vec![1.0, 2.0, 3.0],
+                    ],
+                    vec![
+                        vec![3.0, 2.0, 1.0],
+                        vec![1.0, 2.0, 3.0],
+                        vec![3.0, 2.0, 1.0],
+                    ],
+                ],
+            ])
+        );
+    }
+
+    #[test]
+    fn test_tensor_div_scalar_inplace() {
+        let mut tensor = Tensor {
+            shape: Shape::Vector(3),
+            data: Data::Vector(vec![1.0, 2.0, 3.0]),
+        };
+        tensor.div_scalar_inplace(2.0);
+        assert_eq!(tensor.data, Data::Vector(vec![0.5, 1.0, 1.5]));
+
+        let mut tensor = Tensor {
+            shape: Shape::Tensor(2, 2, 1),
+            data: Data::Tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]]]),
+        };
+        tensor.div_scalar_inplace(2.0);
+        assert_eq!(
+            tensor.data,
+            Data::Tensor(vec![vec![vec![0.5], vec![1.0]], vec![vec![1.5], vec![2.0]]])
+        );
+
+        let mut gradient = Tensor {
+            shape: Shape::Gradient(2, 2, 1, 1),
+            data: Data::Gradient(vec![
+                vec![vec![vec![1.0]], vec![vec![2.0]]],
+                vec![vec![vec![3.0]], vec![vec![4.0]]],
+            ]),
+        };
+        gradient.div_scalar_inplace(2.0);
+        assert_eq!(
+            gradient.data,
+            Data::Gradient(vec![
+                vec![vec![vec![0.5]], vec![vec![1.0]]],
+                vec![vec![vec![1.5]], vec![vec![2.0]]]
+            ])
+        );
+    }
+
+    #[test]
     fn test_tensor_clamp() {
         let tensor = Tensor {
             shape: Shape::Vector(3),
