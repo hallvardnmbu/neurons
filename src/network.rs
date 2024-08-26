@@ -480,12 +480,11 @@ impl Network {
 
                     for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
                         let (unactivated, activated, maxpools) = self.forward(input);
-                        let (_loss, mut gradient) =
+                        let (_loss, gradient) =
                             self.objective.loss(&activated.last().unwrap(), target);
                         loss += _loss;
 
-                        let (wg, bg, _) =
-                            self.backward(gradient, &unactivated, &activated, maxpools);
+                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
 
                         if i == 0 {
                             weight_gradients = wg;
@@ -532,20 +531,6 @@ impl Network {
                 self.update(epoch, weight_gradients, bias_gradients);
                 _losses.push(loss);
             }
-
-            // println!("\n----------\n");
-
-            // for (i, layer) in self.layers.iter().enumerate() {
-            //     match layer {
-            //         Layer::Convolution(layer) => {
-            //             for (j, kernel) in layer.kernels.iter().enumerate() {
-            //                 println!("Layer {} kernel {}: {}", i, j, kernel);
-            //             }
-            //         }
-            //         _ => (),
-            //     }
-            // }
-
             losses.push(_losses.iter().sum::<f32>() / _losses.len() as f32);
 
             let val_results: Vec<_> = val_inputs
@@ -728,11 +713,7 @@ impl Network {
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
         mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
-    ) -> (
-        Vec<tensor::Tensor>,
-        Vec<Option<tensor::Tensor>>,
-        tensor::Tensor,
-    ) {
+    ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
         self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
@@ -754,7 +735,7 @@ impl Network {
 
             gradient = input_gradient;
         });
-        (weight_gradient, bias_gradient, gradient) // TODO: Remove gradient here. For debugging purposes.
+        (weight_gradient, bias_gradient)
     }
 
     /// Update the weights and biases of the network using the given gradients.
@@ -762,7 +743,8 @@ impl Network {
     /// # Arguments
     ///
     /// * `stepnr` - The current step number (i.e., epoch number).
-    /// * `gradients` - The gradients to perform weight updates with respect to.
+    /// * `weight_gradients` - The weight gradients of each layer.
+    /// * `bias_gradients` - The bias gradients of each layer.
     pub fn update(
         &mut self,
         stepnr: i32,
@@ -1027,6 +1009,8 @@ impl Network {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::assert_eq_data;
 
@@ -1165,19 +1149,7 @@ mod tests {
         // let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
         let gradient = tensor::Tensor::from_single(vec![1.0; 5]);
 
-        let (weight_gradient, bias_gradient, igradient) =
-            network.backward(gradient, &pre, &post, max);
-
-        let _input_gradient = tensor::Tensor::from(vec![
-            vec![
-                vec![35.1, 70.2, 70.2, 35.1],
-                vec![70.2, 140.4, 140.4, 70.2],
-                vec![70.2, 140.4, 140.4, 70.2],
-                vec![35.1, 70.2, 70.2, 35.1],
-            ];
-            2
-        ]);
-        assert_eq_data!(igradient.data, _input_gradient.data);
+        let (weight_gradient, bias_gradient) = network.backward(gradient, &pre, &post, max);
 
         let _weight_gradient = vec![
             tensor::Tensor::gradient(vec![
@@ -1217,6 +1189,154 @@ mod tests {
         assert_eq_data!(weight_gradient[0].data, _weight_gradient[1].data);
         if let Some(bias) = bias_gradient.last().unwrap() {
             assert_eq_data!(bias.data, _weight_gradient[2].data);
+        }
+    }
+
+    #[test]
+    fn test_update() {
+        // See Python file `validation/test_network_update.py` for the reference implementation.
+
+        let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
+
+        network.convolution(
+            3,
+            (2, 2),
+            (1, 1),
+            (0, 0),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.dense(5, activation::Activation::ReLU, true, None);
+
+        network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
+            learning_rate: 0.1,
+            decay: None,
+        }));
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                conv.kernels[0] = tensor::Tensor::from(vec![
+                    vec![vec![1.0, 1.0], vec![2.0, 2.0]],
+                    vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+                ]);
+                conv.kernels[1] = tensor::Tensor::from(vec![
+                    vec![vec![2.0, 2.0], vec![1.0, 1.0]],
+                    vec![vec![2.0, 1.0], vec![2.0, 1.0]],
+                ]);
+                conv.kernels[2] = tensor::Tensor::from(vec![
+                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                ]);
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                dense.weights = vec![
+                    vec![2.5; dense.inputs],
+                    vec![-1.2; dense.inputs],
+                    vec![0.5; dense.inputs],
+                    vec![3.5; dense.inputs],
+                    vec![5.2; dense.inputs],
+                ];
+                dense.bias = Some(vec![3.0, 4.0, 5.0, 6.0, 7.0]);
+            }
+            _ => (),
+        }
+
+        let input = tensor::Tensor::from(vec![
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 2.0, 0.0],
+                vec![0.0, 3.0, 4.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 4.0, 3.0, 0.0],
+                vec![0.0, 2.0, 1.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+        ]);
+
+        let (pre, post, max) = network.forward(&input);
+
+        let gradient = tensor::Tensor::from_single(vec![1.0; 5]);
+
+        let (weight_gradients, bias_gradients) = network.backward(gradient, &pre, &post, max);
+
+        network.update(0, weight_gradients, bias_gradients);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                assert_eq_data!(
+                    conv.kernels[0].data,
+                    tensor::Tensor::from(vec![
+                        vec![vec![-10.7, -10.7], vec![-9.7000, -9.7000]],
+                        vec![vec![-10.7, -9.7000], vec![-10.7, -9.7000]],
+                    ])
+                    .data
+                );
+                assert_eq_data!(
+                    conv.kernels[1].data,
+                    tensor::Tensor::from(vec![
+                        vec![vec![-9.7000, -9.7000], vec![-10.7, -10.7]],
+                        vec![vec![-9.7000, -10.7], vec![-9.7000, -10.7]],
+                    ])
+                    .data
+                );
+                assert_eq_data!(
+                    conv.kernels[2].data,
+                    tensor::Tensor::from(vec![
+                        vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                        vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                    ])
+                    .data
+                );
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                assert_eq_data!(
+                    tensor::Data::Tensor(vec![dense.weights.clone()]),
+                    tensor::Data::Tensor(vec![vec![
+                        vec![
+                            1.5000, 0.9000, 1.8000, 0.6000, -0.6000, 1.1000, 1.8000, 1.4000,
+                            2.0000, 2.0000, 1.1000, 1.7000, 1.4000, -0.4000, 0.9000, 1.7000,
+                            0.6000, 1.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000,
+                            2.5000, 2.5000
+                        ],
+                        vec![
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000
+                        ],
+                        vec![
+                            -0.5000, -1.1000, -0.2000, -1.4000, -2.6000, -0.9000, -0.2000, -0.6000,
+                            0.0000, 0.0000, -0.9000, -0.3000, -0.6000, -2.4000, -1.1000, -0.3000,
+                            -1.4000, -0.5000, 0.5000, 0.5000, 0.5000, 0.5000, 0.5000, 0.5000,
+                            0.5000, 0.5000, 0.5000
+                        ],
+                        vec![
+                            2.5000, 1.9000, 2.8000, 1.6000, 0.4000, 2.1000, 2.8000, 2.4000, 3.0000,
+                            3.0000, 2.1000, 2.7000, 2.4000, 0.6000, 1.9000, 2.7000, 1.6000, 2.5000,
+                            3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000
+                        ],
+                        vec![
+                            4.2000, 3.6000, 4.5000, 3.3000, 2.1000, 3.8000, 4.5000, 4.1000, 4.7000,
+                            4.7000, 3.8000, 4.4000, 4.1000, 2.3000, 3.6000, 4.4000, 3.3000, 4.2000,
+                            5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000
+                        ],
+                    ]])
+                );
+                assert_eq!(
+                    dense.bias,
+                    Some(vec![2.9000, 4.0000, 4.9000, 5.9000, 6.9000])
+                );
+            }
+            _ => (),
         }
     }
 }
