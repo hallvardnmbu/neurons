@@ -53,11 +53,11 @@ Create modular neural networks in Rust with ease!
 
       println!("{}", network);
 
-      let (x, y) = {  };                                // Load data
-      let validation = 0.2;     // 20% of the passed data will be used for validation
-      let batch = 32;           // Batch size
-      let epochs = 1000;        // Number of epochs
-      let print = Some(10);     // Print every 10th epoch
+      let (x, y) = {  };                // Load data
+      let validation = Some((0.2, 5));  // 20% val. early stopping if val. loss increases 5 times
+      let batch = 32;                   // Batch size
+      let epochs = 1000;                // Number of epochs
+      let print = Some(10);             // Print every 10th epoch
       let (train_loss, val_loss) = network.learn(x, y, validation, batch, epochs, print);
   }
   ```

@@ -412,7 +412,7 @@ impl Softmax {
 
         let y = exps.iter().map(|v| v / sum).collect();
 
-        tensor::Tensor::from_single(y).reshape(input.shape.clone())
+        tensor::Tensor::vector(y).reshape(input.shape.clone())
     }
 
     /// Backward pass of the Softmax activation function ([source](https://e2eml.school/softmax)).
@@ -444,7 +444,7 @@ impl Softmax {
             }
         }
 
-        tensor::Tensor::from_single(derivative).reshape(logits.shape.clone())
+        tensor::Tensor::vector(derivative).reshape(logits.shape.clone())
     }
 }
 
@@ -571,7 +571,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     fn create_test_tensor() -> Tensor {
-        Tensor::from_single(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
+        Tensor::vector(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
     }
 
     #[test]

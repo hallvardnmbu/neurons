@@ -35,11 +35,11 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
 
     let x: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::from_single(x[i].clone()))
+        .map(|&i| tensor::Tensor::vector(x[i].clone()))
         .collect();
     let y: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::from_single(y[i].clone()))
+        .map(|&i| tensor::Tensor::vector(y[i].clone()))
         .collect();
 
     (x, y)
@@ -100,10 +100,10 @@ fn main() {
     );
 
     // Train the network
-    let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, 0.1, 25, 500, Some(50));
+    let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, None, 25, 500, Some(50));
 
     // Validate the network
-    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);
+    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.05);
     println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
 
     // Use the network

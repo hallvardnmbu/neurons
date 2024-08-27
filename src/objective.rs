@@ -194,7 +194,7 @@ impl AE {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -210,7 +210,7 @@ impl AE {
                         }
                     })
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -285,7 +285,7 @@ impl MAE {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -301,7 +301,7 @@ impl MAE {
                         }
                     })
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -370,7 +370,7 @@ impl MSE {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -378,7 +378,7 @@ impl MSE {
                     .zip(prd.iter())
                     .map(|(actual, predicted)| -2.0 * (actual - predicted) / length)
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -457,7 +457,7 @@ impl RMSE {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -472,7 +472,7 @@ impl RMSE {
                         }
                     })
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -543,7 +543,7 @@ impl CrossEntropy {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -551,7 +551,7 @@ impl CrossEntropy {
                     .zip(prd.iter())
                     .map(|(actual, predicted)| predicted - actual)
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -625,7 +625,7 @@ impl BinaryCrossEntropy {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -636,7 +636,7 @@ impl BinaryCrossEntropy {
                         (predicted - actual) / (predicted * (1.0 - predicted))
                     })
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -706,7 +706,7 @@ impl KLDivergence {
                             .collect::<Vec<Vec<f32>>>()
                     })
                     .collect::<Vec<Vec<Vec<f32>>>>();
-                tensor::Tensor::from(gradients)
+                tensor::Tensor::tensor(gradients)
             }
             (tensor::Data::Vector(trg), tensor::Data::Vector(prd)) => {
                 let gradients: Vec<f32> = trg
@@ -714,7 +714,7 @@ impl KLDivergence {
                     .zip(prd.iter())
                     .map(|(actual, predicted)| -actual / predicted.clamp(eps, 1.0 - eps))
                     .collect::<Vec<f32>>();
-                tensor::Tensor::from_single(gradients)
+                tensor::Tensor::vector(gradients)
             }
             _ => panic!("Inconsistent data types"),
         };
@@ -733,8 +733,8 @@ mod tests {
     use approx::assert_relative_eq;
 
     fn create_test_tensors() -> (Tensor, Tensor) {
-        let prediction = Tensor::from_single(vec![0.1, 0.2, 0.3, 0.4]);
-        let target = Tensor::from_single(vec![0.0, 0.0, 1.0, 1.0]);
+        let prediction = Tensor::vector(vec![0.1, 0.2, 0.3, 0.4]);
+        let target = Tensor::vector(vec![0.0, 0.0, 1.0, 1.0]);
         (prediction, target)
     }
 
@@ -821,8 +821,8 @@ mod tests {
     #[test]
     fn test_kl_divergence() {
         let kld = Function::create(Objective::KLDivergence, None);
-        let prediction = Tensor::from_single(vec![1.0, 1.0, 1.0, 1.0]);
-        let target = Tensor::from_single(vec![1.0, 1.0, 1.1, 1.0]);
+        let prediction = Tensor::vector(vec![1.0, 1.0, 1.0, 1.0]);
+        let target = Tensor::vector(vec![1.0, 1.0, 1.1, 1.0]);
 
         let (loss, gradient) = kld.loss(&prediction, &target);
 

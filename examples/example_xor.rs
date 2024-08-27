@@ -5,16 +5,16 @@ use neurons::{activation, network, objective, optimizer, tensor};
 fn main() {
     // Create the training data for the binary AND operation
     let x: Vec<tensor::Tensor> = vec![
-        tensor::Tensor::from_single(vec![0.0, 0.0]),
-        tensor::Tensor::from_single(vec![0.0, 1.0]),
-        tensor::Tensor::from_single(vec![1.0, 0.0]),
-        tensor::Tensor::from_single(vec![1.0, 1.0]),
+        tensor::Tensor::vector(vec![0.0, 0.0]),
+        tensor::Tensor::vector(vec![0.0, 1.0]),
+        tensor::Tensor::vector(vec![1.0, 0.0]),
+        tensor::Tensor::vector(vec![1.0, 1.0]),
     ];
     let y: Vec<tensor::Tensor> = vec![
-        tensor::Tensor::from_single(vec![0.0]),
-        tensor::Tensor::from_single(vec![0.0]),
-        tensor::Tensor::from_single(vec![0.0]),
-        tensor::Tensor::from_single(vec![1.0]),
+        tensor::Tensor::vector(vec![0.0]),
+        tensor::Tensor::vector(vec![0.0]),
+        tensor::Tensor::vector(vec![0.0]),
+        tensor::Tensor::vector(vec![1.0]),
     ];
 
     let inputs: Vec<&tensor::Tensor> = x.iter().collect();
@@ -23,7 +23,7 @@ fn main() {
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Vector(2));
 
-    network.dense(10, activation::Activation::Linear, true, None);
+    network.dense(10, activation::Activation::Linear, false, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);
 
     network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
@@ -33,7 +33,7 @@ fn main() {
     network.set_objective(objective::Objective::BinaryCrossEntropy, None);
 
     // Train the network
-    let _epoch_loss = network.learn(&inputs, &targets, 0.0, 1, 250, Some(50));
+    let _epoch_loss = network.learn(&inputs, &targets, None, 4, 500, Some(50));
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&inputs, &targets, 0.1);

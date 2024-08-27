@@ -147,7 +147,7 @@ impl Maxpool {
             }
         }
 
-        let pre = tensor::Tensor::from(y);
+        let pre = tensor::Tensor::tensor(y);
         let mut post = pre.clone();
 
         if self.flatten_output {
@@ -199,7 +199,7 @@ impl Maxpool {
             }
         }
 
-        tensor::Tensor::from(igradient)
+        tensor::Tensor::tensor(igradient)
     }
 }
 
