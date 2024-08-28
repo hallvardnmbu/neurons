@@ -53,11 +53,11 @@ Create modular neural networks in Rust with ease!
 
       println!("{}", network);
 
-      let (x, y) = {  };                                // Load data
-      let validation = 0.2;     // 20% of the passed data will be used for validation
-      let batch = 32;           // Batch size
-      let epochs = 1000;        // Number of epochs
-      let print = Some(10);     // Print every 10th epoch
+      let (x, y) = {  };                // Load data
+      let validation = Some((0.2, 5));  // 20% val. early stopping if val. loss increases 5 times
+      let batch = 32;                   // Batch size
+      let epochs = 1000;                // Number of epochs
+      let print = Some(10);             // Print every 10th epoch
       let (train_loss, val_loss) = network.learn(x, y, validation, batch, epochs, print);
   }
   ```
@@ -70,6 +70,15 @@ Create modular neural networks in Rust with ease!
 
 <details>
   <summary>Releases</summary>
+
+  ## 1.1.0 (Improved optimizer step)
+
+  * Optimizer step more intuitive and easy to read.
+  * Using `tensor::Tensor` instead of manually handing vectors.
+
+  ## 1.0.0 (Fully working integrated network)
+
+  * Network of Convolutional and Dense layers works.
 
   ## 0.3.0 (Batched training; parallelization)
 
@@ -173,7 +182,6 @@ Create modular neural networks in Rust with ease!
 
   ## Testing
     - [x] Unit tests
-      - [x] Thorough testing of algebraic operations
       - [x] Thorough testing of activation functions
       - [x] Thorough testing of objective functions
       - [x] Thorough testing of optimization techniques

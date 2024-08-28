@@ -147,7 +147,7 @@ impl Maxpool {
             }
         }
 
-        let pre = tensor::Tensor::from(y);
+        let pre = tensor::Tensor::tensor(y);
         let mut post = pre.clone();
 
         if self.flatten_output {
@@ -186,7 +186,7 @@ impl Maxpool {
         //     _ => panic!("Expected `Tensor` gradient data."),
         // };
         // println!("{} {}", gradient.shape, self.outputs);
-        let ogradient = gradient.get_data(&self.outputs);
+        let ogradient = gradient.get_tensor(&self.outputs);
         let mut igradient = vec![vec![vec![0.0; iw]; ih]; ic];
 
         let (oh, ow) = (ogradient[0].len(), ogradient[0][0].len());
@@ -199,7 +199,7 @@ impl Maxpool {
             }
         }
 
-        tensor::Tensor::from(igradient)
+        tensor::Tensor::tensor(igradient)
     }
 }
 

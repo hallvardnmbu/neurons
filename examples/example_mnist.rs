@@ -31,7 +31,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::from(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
+        images.push(tensor::Tensor::tensor(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
     }
 
     Ok(images)
@@ -75,18 +75,18 @@ fn main() {
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        None,
+        Some(0.05),
     );
     network.maxpool((2, 2), (2, 2));
-    network.convolution(
-        8,
-        (3, 3),
-        (1, 1),
-        (0, 0),
-        activation::Activation::ReLU,
-        None,
-    );
-    network.dense(128, activation::Activation::ReLU, true, Some(0.25));
+    // network.convolution(
+    //     8,
+    //     (3, 3),
+    //     (1, 1),
+    //     (0, 0),
+    //     activation::Activation::ReLU,
+    //     None,
+    // );
+    network.dense(512, activation::Activation::ReLU, true, Some(0.25));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
@@ -106,7 +106,8 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) = network.learn(&x_train, &y_train, 0.1, 128, 50, Some(10));
+    let (train_loss, val_loss) =
+        network.learn(&x_train, &y_train, Some((0.1, 5)), 128, 50, Some(1));
     plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
 
     // Validate the network

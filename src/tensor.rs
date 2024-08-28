@@ -6,6 +6,7 @@ use crate::random;
 #[derive(Clone, Debug)]
 pub enum Shape {
     Vector(usize),
+    Matrix(usize, usize),
     Tensor(usize, usize, usize),
     Gradient(usize, usize, usize, usize),
 }
@@ -14,6 +15,7 @@ impl std::fmt::Display for Shape {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Shape::Vector(size) => write!(f, "{}", size),
+            Shape::Matrix(rows, cols) => write!(f, "{}x{}", rows, cols),
             Shape::Tensor(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
             Shape::Gradient(ch, fi, he, wi) => write!(f, "{}x{}x{}x{}", ch, fi, he, wi),
         }
@@ -24,6 +26,7 @@ impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Shape::Vector(a), Shape::Vector(b)) => a == b,
+            (Shape::Matrix(ar, ac), Shape::Matrix(br, bc)) => ar == br && ac == bc,
             (Shape::Tensor(ac, ah, aw), Shape::Tensor(bc, bh, bw)) => {
                 ac == bc && ah == bh && aw == bw
             }
@@ -54,6 +57,7 @@ macro_rules! assert_eq_shape {
 #[derive(Clone, Debug)]
 pub enum Data {
     Vector(Vec<f32>),
+    Matrix(Vec<Vec<f32>>),
     Tensor(Vec<Vec<Vec<f32>>>),
     Gradient(Vec<Vec<Vec<Vec<f32>>>>),
 }
@@ -65,6 +69,16 @@ impl PartialEq for Data {
                 for (x, y) in a.iter().zip(b.iter()) {
                     if (x - y).abs() >= 1e-5 {
                         return false;
+                    }
+                }
+                true
+            }
+            (Data::Matrix(a), Data::Matrix(b)) => {
+                for (i, c) in a.iter().enumerate() {
+                    for (j, r) in c.iter().enumerate() {
+                        if (r - b[i][j]).abs() >= 1e-5 {
+                            return false;
+                        }
                     }
                 }
                 true
@@ -121,6 +135,23 @@ impl std::fmt::Display for Data {
             Data::Vector(data) => {
                 for x in data.iter() {
                     write!(f, "{:>8.4} ", x)?;
+                }
+            }
+            Data::Matrix(data) => {
+                for (i, c) in data.iter().enumerate() {
+                    for (j, r) in c.iter().enumerate() {
+                        write!(f, "{:>8.4} ", r)?;
+                        if j == c.len() - 1 && i == data.len() - 1 {
+                            write!(f, "")?;
+                        } else {
+                            write!(f, "\n")?;
+                        }
+                    }
+                    if i == data.len() - 1 {
+                        write!(f, "")?;
+                    } else {
+                        write!(f, "\n")?;
+                    }
                 }
             }
             Data::Tensor(data) => {
@@ -209,6 +240,10 @@ impl Tensor {
                 shape,
                 data: Data::Vector(vec![0.0; size]),
             },
+            Shape::Matrix(rows, columns) => Tensor {
+                shape,
+                data: Data::Matrix((0..rows).map(|_| vec![0.0; columns]).collect()),
+            },
             Shape::Tensor(channels, rows, columns) => Tensor {
                 shape,
                 data: Data::Tensor(
@@ -246,6 +281,10 @@ impl Tensor {
             Shape::Vector(size) => Tensor {
                 shape,
                 data: Data::Vector(vec![1.0; size]),
+            },
+            Shape::Matrix(rows, columns) => Tensor {
+                shape,
+                data: Data::Matrix((0..rows).map(|_| vec![1.0; columns]).collect()),
             },
             Shape::Tensor(channels, rows, columns) => Tensor {
                 shape,
@@ -287,6 +326,14 @@ impl Tensor {
             Shape::Vector(size) => Tensor {
                 shape,
                 data: Data::Vector((0..size).map(|_| generator.generate(min, max)).collect()),
+            },
+            Shape::Matrix(rows, columns) => Tensor {
+                shape,
+                data: Data::Matrix(
+                    (0..rows)
+                        .map(|_| (0..columns).map(|_| generator.generate(min, max)).collect())
+                        .collect(),
+                ),
             },
             Shape::Tensor(channels, rows, columns) => Tensor {
                 shape,
@@ -335,21 +382,29 @@ impl Tensor {
         }
     }
 
+    /// Creates a new Tensor from the given vector.
+    pub fn vector(data: Vec<f32>) -> Self {
+        Self {
+            shape: Shape::Vector(data.len()),
+            data: Data::Vector(data),
+        }
+    }
+
+    /// Creates a new Tensor from the given two-dimensional vector.
+    pub fn matrix(data: Vec<Vec<f32>>) -> Self {
+        let shape = Shape::Matrix(data.len(), data[0].len());
+        Tensor {
+            shape,
+            data: Data::Matrix(data),
+        }
+    }
+
     /// Creates a new Tensor from the given three-dimensional vector.
-    pub fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
+    pub fn tensor(data: Vec<Vec<Vec<f32>>>) -> Self {
         let shape = Shape::Tensor(data.len(), data[0].len(), data[0][0].len());
         Tensor {
             shape,
             data: Data::Tensor(data),
-        }
-    }
-
-    /// Creates a new Tensor from the given vector.
-    pub fn from_single(data: Vec<f32>) -> Self {
-        let shape = Shape::Vector(data.len());
-        Tensor {
-            shape,
-            data: Data::Vector(data),
         }
     }
 
@@ -429,7 +484,7 @@ impl Tensor {
     ///
     /// If the data is a vector, the output shape must be provided.
     /// The reason for this is to reshape the vector into the correct shape.
-    pub fn get_data(&self, outputs: &Shape) -> Vec<Vec<Vec<f32>>> {
+    pub fn get_tensor(&self, outputs: &Shape) -> Vec<Vec<Vec<f32>>> {
         match &self.data {
             Data::Vector(vector) => {
                 let (oc, oh, ow) = match outputs {
@@ -447,7 +502,21 @@ impl Tensor {
                     .collect()
             }
             Data::Tensor(tensor) => tensor.clone(),
-            _ => panic!("4D not yet implemented!"),
+            _ => panic!("4D not implemented!"),
+        }
+    }
+
+    /// Get the data of the (Gradient) Tensor as a vector of Tensors.
+    pub fn gradient_to_tensor_vec(&self) -> Vec<Tensor> {
+        match &self.data {
+            Data::Gradient(gradient) => gradient
+                .iter()
+                .map(|channel| Tensor {
+                    shape: Shape::Tensor(channel.len(), channel[0].len(), channel[0][0].len()),
+                    data: Data::Tensor(channel.clone()),
+                })
+                .collect(),
+            _ => panic!("Expected Gradient data!"),
         }
     }
 
@@ -599,6 +668,28 @@ impl Tensor {
                     data: Data::Vector(data),
                 }
             }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Add requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Add requires the same number of columns"
+                );
+
+                let data = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a + b).collect())
+                    .collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Matrix(data),
+                }
+            }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
                     data1.len(),
@@ -637,36 +728,23 @@ impl Tensor {
 
     /// Add another Tensor to this Tensor inplace.
     pub fn add_inplace(&mut self, other: &Tensor) {
+        assert_eq_shape!(self.shape, other.shape);
+
         match (&mut self.data, &other.data) {
             (Data::Vector(data1), Data::Vector(data2)) => {
-                assert_eq!(
-                    data1.len(),
-                    data2.len(),
-                    "Add requires the same number of elements"
-                );
-
                 data1
                     .iter_mut()
                     .zip(data2.iter())
                     .for_each(|(a, b)| *a += b);
             }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
+                    r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                        *a += b;
+                    });
+                });
+            }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
-                assert_eq!(
-                    data1.len(),
-                    data2.len(),
-                    "Add requires the same number of channels"
-                );
-                assert_eq!(
-                    data1[0].len(),
-                    data2[0].len(),
-                    "Add requires the same number of rows"
-                );
-                assert_eq!(
-                    data1[0][0].len(),
-                    data2[0][0].len(),
-                    "Add requires the same number of columns"
-                );
-
                 data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
                     c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
                         r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
@@ -676,22 +754,6 @@ impl Tensor {
                 });
             }
             (Data::Gradient(data1), Data::Gradient(data2)) => {
-                assert_eq!(
-                    data1.len(),
-                    data2.len(),
-                    "Add requires the same number of channels"
-                );
-                assert_eq!(
-                    data1[0].len(),
-                    data2[0].len(),
-                    "Add requires the same number of rows"
-                );
-                assert_eq!(
-                    data1[0][0].len(),
-                    data2[0][0].len(),
-                    "Add requires the same number of columns"
-                );
-
                 data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
                     f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
                         c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
@@ -703,6 +765,333 @@ impl Tensor {
                 });
             }
             _ => panic!("Invalid add"),
+        }
+    }
+
+    /// Subtract another Tensor with this Tensor inplace.
+    pub fn sub_inplace(&mut self, other: &Tensor) {
+        assert_eq_shape!(self.shape, other.shape);
+
+        match (&mut self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a -= b);
+            }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
+                    r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                        *a -= b;
+                    });
+                });
+            }
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                            *a -= b;
+                        });
+                    });
+                });
+            }
+            (Data::Gradient(data1), Data::Gradient(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
+                    f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                                *a -= b;
+                            });
+                        });
+                    });
+                });
+            }
+            _ => panic!("Invalid subtraction."),
+        }
+    }
+
+    pub fn pow(&self, power: f32) -> Self {
+        let data = match &self.data {
+            Data::Vector(data) => Data::Vector(data.iter().map(|x| x.powf(power)).collect()),
+            Data::Matrix(data) => Data::Matrix(
+                data.iter()
+                    .map(|r| r.iter().map(|a| a.powf(power)).collect())
+                    .collect(),
+            ),
+            Data::Tensor(data) => Data::Tensor(
+                data.iter()
+                    .map(|c| {
+                        c.iter()
+                            .map(|r| r.iter().map(|a| a.powf(power)).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            Data::Gradient(data) => Data::Gradient(
+                data.iter()
+                    .map(|f| {
+                        f.iter()
+                            .map(|c| {
+                                c.iter()
+                                    .map(|r| r.iter().map(|a| a.powf(power)).collect())
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+        };
+        Self {
+            shape: self.shape.clone(),
+            data,
+        }
+    }
+
+    /// Multiply the `i == j` elements of two Tensors of the same shape together, returning the resulting Tensor.
+    pub fn hadamard(&self, other: &Tensor) -> Self {
+        assert_eq_shape!(self.shape, other.shape);
+
+        match (&self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                let data: Vec<f32> = data1.iter().zip(data2.iter()).map(|(a, b)| a * b).collect();
+                Self {
+                    shape: self.shape.clone(),
+                    data: Data::Vector(data),
+                }
+            }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                let data: Vec<Vec<f32>> = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect())
+                    .collect();
+                Self {
+                    shape: self.shape.clone(),
+                    data: Data::Matrix(data),
+                }
+            }
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                let data: Vec<Vec<Vec<f32>>> = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(c1, c2)| {
+                        c1.iter()
+                            .zip(c2.iter())
+                            .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect())
+                            .collect()
+                    })
+                    .collect();
+                Self {
+                    shape: self.shape.clone(),
+                    data: Data::Tensor(data),
+                }
+            }
+            (Data::Gradient(data1), Data::Gradient(data2)) => {
+                let data: Vec<Vec<Vec<Vec<f32>>>> = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(f1, f2)| {
+                        f1.iter()
+                            .zip(f2.iter())
+                            .map(|(c1, c2)| {
+                                c1.iter()
+                                    .zip(c2.iter())
+                                    .map(|(r1, r2)| {
+                                        r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect()
+                                    })
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect();
+                Self {
+                    shape: self.shape.clone(),
+                    data: Data::Gradient(data),
+                }
+            }
+            _ => panic!("Invalid Hadamard product."),
+        }
+    }
+
+    /// Outer product of two Tensors, returning the resulting Tensor.
+    pub fn product(&self, other: &Tensor) -> Self {
+        match (&self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                let data: Vec<Vec<f32>> = data1
+                    .iter()
+                    .map(|a| data2.iter().map(|b| a * b).collect())
+                    .collect();
+                Self {
+                    shape: Shape::Matrix(data.len(), data[0].len()),
+                    data: Data::Matrix(data),
+                }
+            }
+            (Data::Matrix(data1), Data::Vector(data2)) => {
+                let data: Vec<Vec<f32>> = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(row, val)| row.iter().map(|a| a * val).collect())
+                    .collect();
+
+                Self {
+                    shape: Shape::Matrix(data.len(), data[0].len()),
+                    data: Data::Matrix(data),
+                }
+            }
+            (Data::Vector(data1), Data::Matrix(data2)) => {
+                let data: Vec<f32> = (0..data2[0].len())
+                    .map(|i: usize| {
+                        data1
+                            .iter()
+                            .zip(data2.iter())
+                            .map(|(d, w)| d * w[i])
+                            .sum::<f32>()
+                    })
+                    .collect();
+
+                Self {
+                    shape: Shape::Vector(data.len()),
+                    data: Data::Vector(data),
+                }
+            }
+            _ => unimplemented!("The product between these types is not implemented."),
+        }
+    }
+
+    /// Expand the dimension of a Tensor by one factor.
+    pub fn upscale(&self) -> Self {
+        match &self.data {
+            Data::Vector(data) => Self {
+                shape: Shape::Matrix(1, data.len()),
+                data: Data::Matrix(vec![data.clone()]),
+            },
+            Data::Matrix(data) => Self {
+                shape: Shape::Tensor(1, data.len(), data[0].len()),
+                data: Data::Tensor(vec![data.clone()]),
+            },
+            Data::Tensor(data) => Self {
+                shape: Shape::Gradient(1, data.len(), data[0].len(), data[0][0].len()),
+                data: Data::Gradient(vec![data.clone()]),
+            },
+            _ => panic!("Invalid projection"),
+        }
+    }
+
+    /// Divide two Tensors together returning a new Tensor.
+    pub fn div(&self, other: &Tensor) -> Self {
+        match (&self.data, &other.data) {
+            (Data::Vector(data1), Data::Vector(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Div requires the same number of elements"
+                );
+
+                let data = data1.iter().zip(data2.iter()).map(|(a, b)| a / b).collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Vector(data),
+                }
+            }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Div requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Div requires the same number of columns"
+                );
+
+                let data = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a / b).collect())
+                    .collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Matrix(data),
+                }
+            }
+            (Data::Tensor(data1), Data::Tensor(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Div requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Div requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Div requires the same number of columns"
+                );
+
+                let data = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(c1, c2)| {
+                        c1.iter()
+                            .zip(c2.iter())
+                            .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a / b).collect())
+                            .collect()
+                    })
+                    .collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Tensor(data),
+                }
+            }
+            (Data::Gradient(data1), Data::Gradient(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Div requires the same number of channels"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Div requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0][0].len(),
+                    data2[0][0].len(),
+                    "Div requires the same number of columns"
+                );
+                assert_eq!(
+                    data1[0][0][0].len(),
+                    data2[0][0][0].len(),
+                    "Div requires the same number of elements"
+                );
+
+                let data = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(f1, f2)| {
+                        f1.iter()
+                            .zip(f2.iter())
+                            .map(|(c1, c2)| {
+                                c1.iter()
+                                    .zip(c2.iter())
+                                    .map(|(r1, r2)| {
+                                        r1.iter().zip(r2.iter()).map(|(a, b)| a / b).collect()
+                                    })
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect();
+                Tensor {
+                    shape: self.shape.clone(),
+                    data: Data::Gradient(data),
+                }
+            }
+            _ => panic!("Invalid div"),
         }
     }
 
@@ -720,6 +1109,22 @@ impl Tensor {
                     .iter_mut()
                     .zip(data2.iter())
                     .for_each(|(a, b)| *a *= b);
+            }
+            (Data::Matrix(data1), Data::Matrix(data2)) => {
+                assert_eq!(
+                    data1.len(),
+                    data2.len(),
+                    "Multiply requires the same number of rows"
+                );
+                assert_eq!(
+                    data1[0].len(),
+                    data2[0].len(),
+                    "Multiply requires the same number of columns"
+                );
+
+                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
+                    r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| *a *= b);
+                });
             }
             (Data::Tensor(data1), Data::Tensor(data2)) => {
                 assert_eq!(
@@ -756,6 +1161,11 @@ impl Tensor {
             Data::Vector(data) => {
                 data.iter_mut().for_each(|x| *x /= scalar);
             }
+            Data::Matrix(data) => {
+                data.iter_mut().for_each(|r| {
+                    r.iter_mut().for_each(|x| *x /= scalar);
+                });
+            }
             Data::Tensor(data) => {
                 data.iter_mut().for_each(|c| {
                     c.iter_mut().for_each(|r| {
@@ -775,6 +1185,131 @@ impl Tensor {
         }
     }
 
+    /// Add the data of this Tensor by a scalar, returning a new Tensor.
+    pub fn add_scalar(&self, scalar: f32) -> Self {
+        let data = match &self.data {
+            Data::Vector(data) => Data::Vector(data.iter().map(|x| x + scalar).collect()),
+            Data::Matrix(data) => Data::Matrix(
+                data.iter()
+                    .map(|r| r.iter().map(|x| x + scalar).collect())
+                    .collect(),
+            ),
+            Data::Tensor(data) => Data::Tensor(
+                data.iter()
+                    .map(|c| {
+                        c.iter()
+                            .map(|r| r.iter().map(|x| x + scalar).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            Data::Gradient(data) => Data::Gradient(
+                data.iter()
+                    .map(|f| {
+                        f.iter()
+                            .map(|c| {
+                                c.iter()
+                                    .map(|r| r.iter().map(|x| x + scalar).collect())
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+        };
+        Self {
+            shape: self.shape.clone(),
+            data,
+        }
+    }
+
+    pub fn dot(&self, other: &Tensor) -> Self {
+        match &self.data {
+            Data::Matrix(ref data1) => match &other.data {
+                Data::Vector(ref data2) => {
+                    let data: Vec<f32> = data1
+                        .iter()
+                        .map(|row| row.iter().zip(data2.iter()).map(|(a, b)| a * b).sum())
+                        .collect();
+                    Self {
+                        shape: Shape::Vector(data.len()),
+                        data: Data::Vector(data),
+                    }
+                }
+                _ => panic!("Invalid dot"),
+            },
+            _ => panic!("Invalid dot"),
+        }
+    }
+
+    /// Multiply the data of this Tensor by a scalar, returning a new Tensor.
+    pub fn mul_scalar(&self, scalar: f32) -> Self {
+        let data = match &self.data {
+            Data::Vector(data) => Data::Vector(data.iter().map(|x| x * scalar).collect()),
+            Data::Matrix(data) => Data::Matrix(
+                data.iter()
+                    .map(|r| r.iter().map(|x| x * scalar).collect())
+                    .collect(),
+            ),
+            Data::Tensor(data) => Data::Tensor(
+                data.iter()
+                    .map(|c| {
+                        c.iter()
+                            .map(|r| r.iter().map(|x| x * scalar).collect())
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            Data::Gradient(data) => Data::Gradient(
+                data.iter()
+                    .map(|f| {
+                        f.iter()
+                            .map(|c| {
+                                c.iter()
+                                    .map(|r| r.iter().map(|x| x * scalar).collect())
+                                    .collect()
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+        };
+        Self {
+            shape: self.shape.clone(),
+            data,
+        }
+    }
+
+    /// Multiply the data of this Tensor by a scalar.
+    pub fn mul_scalar_inplace(&mut self, scalar: f32) {
+        match &mut self.data {
+            Data::Vector(data) => {
+                data.iter_mut().for_each(|x| *x *= scalar);
+            }
+            Data::Matrix(data) => {
+                data.iter_mut().for_each(|r| {
+                    r.iter_mut().for_each(|x| *x *= scalar);
+                });
+            }
+            Data::Tensor(data) => {
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut().for_each(|r| {
+                        r.iter_mut().for_each(|x| *x *= scalar);
+                    });
+                });
+            }
+            Data::Gradient(data) => {
+                data.iter_mut().for_each(|f| {
+                    f.iter_mut().for_each(|c| {
+                        c.iter_mut().for_each(|r| {
+                            r.iter_mut().for_each(|x| *x *= scalar);
+                        });
+                    });
+                });
+            }
+        }
+    }
+
     /// Randomly set elements of the Tensor to zero with a given probability.
     pub fn dropout(&mut self, dropout: f32) {
         let mut generator = random::Generator::create(12345);
@@ -783,6 +1318,15 @@ impl Tensor {
                 for x in data.iter_mut() {
                     if generator.generate(0.0, 1.0) < dropout {
                         *x = 0.0;
+                    }
+                }
+            }
+            Data::Matrix(data) => {
+                for r in data.iter_mut() {
+                    for x in r.iter_mut() {
+                        if generator.generate(0.0, 1.0) < dropout {
+                            *x = 0.0;
+                        }
                     }
                 }
             }
@@ -807,6 +1351,11 @@ impl Tensor {
             Data::Vector(ref mut data) => {
                 data.iter_mut().for_each(|x| *x = x.clamp(min, max));
             }
+            Data::Matrix(ref mut data) => {
+                data.iter_mut().for_each(|r| {
+                    r.iter_mut().for_each(|x| *x = x.clamp(min, max));
+                });
+            }
             Data::Tensor(ref mut data) => {
                 data.iter_mut().for_each(|c| {
                     c.iter_mut().for_each(|r| {
@@ -826,6 +1375,129 @@ impl Tensor {
         }
         self
     }
+
+    /// Horizontal stack.
+    pub fn stack(&mut self, other: &Tensor) {
+        match (&mut self.data, &other.data) {
+            (Data::Vector(ref mut data), Data::Vector(ref other_data)) => {
+                data.extend(other_data.iter().cloned());
+                self.shape = Shape::Vector(data.len());
+            }
+            (Data::Matrix(ref mut data), Data::Matrix(ref other_data)) => {
+                // Stack the other matrix to the right of the current matrix.
+                assert_eq!(data.len(), other_data.len());
+
+                for (r, other_r) in data.iter_mut().zip(other_data.iter()) {
+                    r.extend(other_r.iter().cloned());
+                }
+                self.shape = Shape::Matrix(data.len(), data[0].len());
+            }
+            (Data::Matrix(ref mut data), Data::Vector(ref other_data)) => {
+                // Stack the other vector to the right of the current matrix.
+                assert_eq!(data.len(), other_data.len());
+
+                data.iter_mut()
+                    .zip(other_data.iter())
+                    .for_each(|(r, x)| r.push(*x));
+                self.shape = Shape::Matrix(data.len(), data[0].len());
+            }
+            (Data::Tensor(ref mut data), Data::Tensor(ref other_data)) => {
+                // Stack the other tensor to the right of the current tensor.
+                assert_eq!(data.len(), other_data.len());
+
+                for (c, other_c) in data.iter_mut().zip(other_data.iter()) {
+                    c.extend(other_c.iter().cloned());
+                }
+                self.shape = Shape::Tensor(data.len(), data[0].len(), data[0][0].len());
+            }
+            (Data::Tensor(ref mut data), Data::Matrix(ref other_data)) => {
+                // Stack the other matrix to the right of the current tensor.
+                assert_eq!(data.len(), other_data.len());
+
+                for (c, other_r) in data.iter_mut().zip(other_data.iter()) {
+                    c.push(other_r.clone());
+                }
+                self.shape = Shape::Tensor(data.len(), data[0].len(), data[0][0].len());
+            }
+            _ => unimplemented!("Stack not implemented for different shapes"),
+        }
+    }
+
+    /// Transpose the Tensor returning the result.
+    pub fn transpose(&self) -> Self {
+        match self.data {
+            Data::Matrix(ref data) => {
+                let mut transposed = vec![vec![0.0; data.len()]; data[0].len()];
+                for (i, row) in data.iter().enumerate() {
+                    for (j, &x) in row.iter().enumerate() {
+                        transposed[j][i] = x;
+                    }
+                }
+                Self {
+                    shape: Shape::Matrix(transposed.len(), transposed[0].len()),
+                    data: Data::Matrix(transposed),
+                }
+            }
+            _ => unimplemented!("Transpose not implemented for this shape."),
+        }
+    }
+}
+
+/// Element-wise multiplication of two tensors.
+/// For performance reasons, this function does not validate the length of the tensors.
+/// It is assumed that the tensors have the same length.
+///
+/// # Arguments
+///
+/// * `ten1` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `ten2` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
+pub fn hadamard3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    ten1.iter()
+        .zip(ten2.iter())
+        .map(|(a, b)| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e * f).collect())
+                .collect()
+        })
+        .collect()
+}
+
+/// Element-wise multiplication of a tensor and scalar.
+///
+/// # Arguments
+///
+/// * `tensor` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `scalar` - A scalar of `f32`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `tensor` and `scalar`.
+///
+/// # Examples
+///
+/// ```
+/// use neurons::algebra::mul3d_scalar;
+///
+/// let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
+/// let scalar = 2.0;
+/// let result = mul3d_scalar(&tensor, scalar);
+///
+/// assert_eq!(result, vec![vec![vec![2.0, 4.0], vec![6.0, 8.0]], vec![vec![10.0, 12.0], vec![14.0, 16.0]]]);
+/// ```
+pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
+    tensor
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|col| col.iter().map(|a| a * scalar).collect())
+                .collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -876,11 +1548,11 @@ mod tests {
 
     #[test]
     fn test_tensor_from() {
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0, 3.0]]]);
         assert_eq!(tensor.shape, Shape::Tensor(1, 1, 3));
         assert_eq!(tensor.data, Data::Tensor(vec![vec![vec![1.0, 2.0, 3.0]]]));
 
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         assert_eq!(tensor.shape, Shape::Tensor(1, 2, 2));
         assert_eq!(
             tensor.data,
@@ -890,11 +1562,11 @@ mod tests {
 
     #[test]
     fn test_tensor_from_single() {
-        let tensor = Tensor::from_single(vec![1.0, 2.0, 3.0]);
+        let tensor = Tensor::vector(vec![1.0, 2.0, 3.0]);
         assert_eq!(tensor.shape, Shape::Vector(3));
         assert_eq!(tensor.data, Data::Vector(vec![1.0, 2.0, 3.0]));
 
-        let tensor = Tensor::from_single(vec![]);
+        let tensor = Tensor::vector(vec![]);
         assert_eq!(tensor.shape, Shape::Vector(0));
         assert_eq!(tensor.data, Data::Vector(vec![]));
     }
@@ -918,10 +1590,10 @@ mod tests {
 
     #[test]
     fn test_tensor_as_tensor() {
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0, 3.0]]]);
         assert_eq!(tensor.as_tensor(), &vec![vec![vec![1.0, 2.0, 3.0]]]);
 
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         assert_eq!(
             tensor.as_tensor(),
             &vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]
@@ -930,20 +1602,20 @@ mod tests {
 
     #[test]
     fn test_tensor_get_flat() {
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0, 3.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0, 3.0]]]);
         assert_eq!(tensor.get_flat(), vec![1.0, 2.0, 3.0]);
 
-        let tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        let tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         assert_eq!(tensor.get_flat(), vec![1.0, 2.0, 3.0, 4.0]);
     }
 
     #[test]
     fn test_tensor_dropout() {
-        let mut tensor = Tensor::from_single(vec![1.0, 2.0, 3.0]);
+        let mut tensor = Tensor::vector(vec![1.0, 2.0, 3.0]);
         tensor.dropout(1.0);
         assert_eq!(tensor.data, Data::Vector(vec![0.0, 0.0, 0.0]));
 
-        let mut tensor = Tensor::from(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
+        let mut tensor = Tensor::tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]);
         tensor.dropout(0.0);
         assert_eq!(
             tensor.data,
@@ -1340,5 +2012,93 @@ mod tests {
             data: Data::Vector(vec![1.0, 2.0, 3.0]),
         };
         tensor.reshape(Shape::Tensor(2, 2, 1));
+    }
+
+    #[test]
+    fn test_tensor_stack() {
+        // Vector & Vector
+        let mut vector = Tensor::vector(vec![1.0, 2.0, 3.0]);
+        let other = Tensor::vector(vec![4.0, 5.0, 6.0]);
+        vector.stack(&other);
+        assert_eq_data!(
+            vector.data,
+            Data::Vector(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        );
+
+        // Matrix & Matrix
+        let mut matrix = Tensor::matrix(vec![vec![1.0, 2.0], vec![3.0, 4.0]]);
+        let other = Tensor::matrix(vec![vec![5.0, 6.0], vec![7.0, 8.0]]);
+        matrix.stack(&other);
+        assert_eq_data!(
+            matrix.data,
+            Data::Matrix(vec![vec![1.0, 2.0, 5.0, 6.0], vec![3.0, 4.0, 7.0, 8.0],])
+        );
+
+        // Tensor & Tensor
+        let mut tensor =
+            Tensor::tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]]]);
+        let other = Tensor::tensor(vec![vec![vec![5.0], vec![6.0]], vec![vec![7.0], vec![8.0]]]);
+        tensor.stack(&other);
+        assert_eq_data!(
+            tensor.data,
+            Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0], vec![5.0], vec![6.0]],
+                vec![vec![3.0], vec![4.0], vec![7.0], vec![8.0]],
+            ])
+        );
+
+        // Matrix & Vector
+        let mut matrix = Tensor::matrix(vec![vec![1.0, 2.0], vec![3.0, 4.0]]);
+        let other = Tensor::vector(vec![5.0, 6.0]);
+        matrix.stack(&other);
+        assert_eq_data!(
+            matrix.data,
+            Data::Matrix(vec![vec![1.0, 2.0, 5.0], vec![3.0, 4.0, 6.0]])
+        );
+
+        // Tensor & Matrix
+        let mut tensor =
+            Tensor::tensor(vec![vec![vec![1.0], vec![2.0]], vec![vec![3.0], vec![4.0]]]);
+        let other = Tensor::matrix(vec![vec![5.0, 6.0], vec![7.0, 8.0]]);
+        tensor.stack(&other);
+        assert_eq_data!(
+            tensor.data,
+            Data::Tensor(vec![
+                vec![vec![1.0], vec![2.0], vec![5.0, 6.0]],
+                vec![vec![3.0], vec![4.0], vec![7.0, 8.0]],
+            ])
+        );
+    }
+
+    #[test]
+    fn test_mul3d_scalar() {
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let scalar = 2.0;
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![2.0, 4.0], vec![6.0, 8.0]],
+                vec![vec![10.0, 12.0], vec![14.0, 16.0]]
+            ]
+        );
+
+        // Test with negative scalar
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let scalar = -2.0;
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![-2.0, -4.0], vec![-6.0, -8.0]],
+                vec![vec![-10.0, -12.0], vec![-14.0, -16.0]]
+            ]
+        );
     }
 }

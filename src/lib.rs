@@ -8,7 +8,6 @@
 
 pub mod random;
 
-pub mod algebra;
 pub mod tensor;
 
 pub mod activation;

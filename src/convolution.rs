@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{activation, algebra, random, tensor};
+use crate::{activation, random, tensor};
 
 /// A convolutional layer.
 ///
@@ -129,7 +129,7 @@ impl Convolution {
                 };
                 (0..filters)
                     .map(|_| {
-                        tensor::Tensor::from(
+                        tensor::Tensor::tensor(
                             (0..in_channels)
                                 .map(|_| {
                                     (0..kernel.0)
@@ -272,6 +272,48 @@ impl Convolution {
         y
     }
 
+    /// Pad a three-dimensional tensor with zeros to match the desired shape.
+    /// If the desired shape is smaller, the tensor will be cropped from the end.
+    ///
+    /// # Arguments
+    ///
+    /// * `tensor` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+    /// * `reshaped` - A tuple of two `usize` values representing the desired shape.
+    ///
+    /// # Returns
+    ///
+    /// A tensor of `Vec<Vec<Vec<f32>>>` containing the padded tensor.
+    fn pad3d(&self, tensor: &Vec<Vec<Vec<f32>>>, reshaped: (usize, usize)) -> Vec<Vec<Vec<f32>>> {
+        let dh = if reshaped.0 > tensor[0].len() {
+            (reshaped.0 - tensor[0].len()) / 2
+        } else {
+            0
+        };
+        let dw = if reshaped.1 > tensor[0][0].len() {
+            (reshaped.1 - tensor[0][0].len()) / 2
+        } else {
+            0
+        };
+
+        let mut padded = vec![vec![vec![0.0; reshaped.1]; reshaped.0]; tensor.len()];
+
+        for (c, channel) in tensor.iter().enumerate() {
+            for (h, height) in channel.iter().enumerate() {
+                if h >= reshaped.0 {
+                    break;
+                }
+                for (w, val) in height.iter().enumerate() {
+                    if w >= reshaped.1 {
+                        break;
+                    }
+                    padded[c][h + dh][w + dw] = *val;
+                }
+            }
+        }
+
+        padded
+    }
+
     /// Applies the forward pass (convolution) to the input `tensor::Tensor`.
     /// Assumes `x` to match `self.inputs`, and for performance reasons does not check.
     ///
@@ -335,7 +377,7 @@ impl Convolution {
         // Convolving the input with the kernels.
         let y = self.convolve(&x, &kernels);
 
-        let pre = tensor::Tensor::from(y);
+        let pre = tensor::Tensor::tensor(y);
         let mut post = self.activation.forward(&pre);
 
         // Apply dropout if the network is training.
@@ -376,9 +418,9 @@ impl Convolution {
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         // println!("{} {}", gradient.shape, self.outputs);
-        let gradient = gradient.get_data(&self.outputs);
-        let derivative = self.activation.backward(&output).get_data(&self.outputs);
-        let delta = algebra::mul3d_scalar(&algebra::mul3d(&gradient, &derivative), self.loops);
+        let gradient = gradient.get_tensor(&self.outputs);
+        let derivative = self.activation.backward(&output).get_tensor(&self.outputs);
+        let delta = tensor::mul3d_scalar(&tensor::hadamard3d(&gradient, &derivative), self.loops);
 
         // Extracting the kernel dimensions.
         let (kh, kw) = match self.kernels[0].shape {
@@ -387,7 +429,7 @@ impl Convolution {
         };
 
         // Extracting the input and its dimensions.
-        let input = input.get_data(&self.inputs);
+        let input = input.get_tensor(&self.inputs);
         let (ih, iw) = (input[0].len(), input[0][0].len());
 
         // Pad the input tensor to provide the kernel gradient when convolving the delta.
@@ -395,7 +437,7 @@ impl Convolution {
         // `o = (i - k) / s + 1 => i = o + k * s - s`
         let ph = delta[0].len() + kh * self.stride.0 - self.stride.0;
         let pw = delta[0][0].len() + kw * self.stride.1 - self.stride.1;
-        let input = algebra::pad3d(&input, (ph, pw));
+        let input = self.pad3d(&input, (ph, pw));
 
         // dL/dF = Conv(X, dL/dY)
         let kgradient = self.convolve_gradients(&input, &delta);
@@ -418,13 +460,13 @@ impl Convolution {
         // `o = (i - k + 2 * p) / s + 1 => i = o * s + k - s - 2 * p`
         let ph = ih * self.stride.0 + kh - self.stride.0;
         let pw = iw * self.stride.1 + kw - self.stride.1;
-        let delta = algebra::pad3d(&delta, (ph, pw));
+        let delta = self.pad3d(&delta, (ph, pw));
 
         // dL/dX = FullConv(dL/dY, flip(F))
         let igradient = self.convolve(&delta, &kernels.iter().map(|k| k.as_ref()).collect());
 
         (
-            tensor::Tensor::from(igradient),
+            tensor::Tensor::tensor(igradient),
             tensor::Tensor::gradient(kgradient),
             None,
         )
@@ -517,13 +559,13 @@ mod tests {
             (1, 1),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![vec![
+        conv.kernels[0] = tensor::Tensor::tensor(vec![vec![
             vec![0.0, 0.0, 0.0],
             vec![0.0, 1.0, 0.0],
             vec![0.0, 0.0, 0.0],
         ]]);
 
-        let input = tensor::Tensor::from(vec![vec![
+        let input = tensor::Tensor::tensor(vec![vec![
             vec![1.0, 2.0, 3.0],
             vec![4.0, 5.0, 6.0],
             vec![7.0, 8.0, 9.0],
@@ -546,20 +588,20 @@ mod tests {
             (0, 0),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![
+        conv.kernels[0] = tensor::Tensor::tensor(vec![
             vec![vec![1.0, 1.0], vec![2.0, 2.0]],
             vec![vec![1.0, 2.0], vec![1.0, 2.0]],
         ]);
-        conv.kernels[1] = tensor::Tensor::from(vec![
+        conv.kernels[1] = tensor::Tensor::tensor(vec![
             vec![vec![2.0, 2.0], vec![1.0, 1.0]],
             vec![vec![2.0, 1.0], vec![2.0, 1.0]],
         ]);
-        conv.kernels[2] = tensor::Tensor::from(vec![
+        conv.kernels[2] = tensor::Tensor::tensor(vec![
             vec![vec![0.0, 0.0], vec![0.0, 0.0]],
             vec![vec![0.0, 0.0], vec![0.0, 0.0]],
         ]);
 
-        let input = tensor::Tensor::from(vec![
+        let input = tensor::Tensor::tensor(vec![
             vec![
                 vec![0.0, 0.0, 0.0, 0.0],
                 vec![0.0, 1.0, 2.0, 0.0],
@@ -574,7 +616,7 @@ mod tests {
             ],
         ]);
 
-        let output = tensor::Tensor::from(vec![
+        let output = tensor::Tensor::tensor(vec![
             vec![
                 vec![10.0, 16.0, 7.0],
                 vec![19.0, 31.0, 14.0],
@@ -597,11 +639,11 @@ mod tests {
         assert_eq_data!(pre.data, output.data);
         assert_eq_data!(post.data, output.data);
 
-        let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
+        let gradient = tensor::Tensor::tensor(vec![vec![vec![1.0; 3]; 3]; 3]);
 
         let (input_gradient, kernel_gradient, _) = conv.backward(&gradient, &input, &output);
 
-        let _input_gradient = tensor::Tensor::from(vec![
+        let _input_gradient = tensor::Tensor::tensor(vec![
             vec![
                 vec![3.0, 6.0, 6.0, 3.0],
                 vec![6.0, 12.0, 12.0, 6.0],
@@ -670,13 +712,13 @@ mod tests {
             (1, 1),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![vec![
+        conv.kernels[0] = tensor::Tensor::tensor(vec![vec![
             vec![0.0, 0.0, 0.0],
             vec![0.0, 1.0, 0.0],
             vec![0.0, 0.0, 0.0],
         ]]);
 
-        let input = tensor::Tensor::from(vec![vec![
+        let input = tensor::Tensor::tensor(vec![vec![
             vec![1.0, 2.0, 3.0],
             vec![4.0, 5.0, 6.0],
             vec![7.0, 8.0, 9.0],
@@ -697,13 +739,13 @@ mod tests {
             (0, 0),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![vec![
+        conv.kernels[0] = tensor::Tensor::tensor(vec![vec![
             vec![-1.0, -1.0, -1.0],
             vec![-1.0, 8.0, -1.0],
             vec![-1.0, -1.0, -1.0],
         ]]);
 
-        let input = tensor::Tensor::from(vec![vec![
+        let input = tensor::Tensor::tensor(vec![vec![
             vec![1.0, 1.0, 1.0, 1.0, 1.0],
             vec![1.0, 2.0, 2.0, 2.0, 1.0],
             vec![1.0, 2.0, 3.0, 2.0, 1.0],
@@ -738,13 +780,13 @@ mod tests {
             (1, 1),
             None,
         );
-        conv.kernels[0] = tensor::Tensor::from(vec![vec![
+        conv.kernels[0] = tensor::Tensor::tensor(vec![vec![
             vec![1.0, 1.0, 1.0],
             vec![1.0, 1.0, 1.0],
             vec![1.0, 1.0, 1.0],
         ]]);
 
-        let input = tensor::Tensor::from(vec![vec![
+        let input = tensor::Tensor::tensor(vec![vec![
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
             vec![6.0, 7.0, 8.0, 9.0, 10.0],
             vec![1.0, 2.0, 3.0, 4.0, 5.0],

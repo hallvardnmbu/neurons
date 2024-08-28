@@ -36,11 +36,11 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
 
     let x: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::from_single(x[i].clone()))
+        .map(|&i| tensor::Tensor::vector(x[i].clone()))
         .collect();
     let y: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::from_single(y[i].clone()))
+        .map(|&i| tensor::Tensor::vector(y[i].clone()))
         .collect();
 
     (x, y)
@@ -112,7 +112,7 @@ fn main() {
         );
 
         // Train the network
-        let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, 0.0, 25, 500, Some(50));
+        let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, None, 25, 500, Some(50));
 
         let duration = start.elapsed();
         times.push(duration);

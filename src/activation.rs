@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{algebra::dot, tensor};
+use crate::tensor;
 
 /// Activation functions for neural networks.
 pub enum Activation {
@@ -412,7 +412,7 @@ impl Softmax {
 
         let y = exps.iter().map(|v| v / sum).collect();
 
-        tensor::Tensor::from_single(y).reshape(input.shape.clone())
+        tensor::Tensor::vector(y).reshape(input.shape.clone())
     }
 
     /// Backward pass of the Softmax activation function ([source](https://e2eml.school/softmax)).
@@ -430,7 +430,11 @@ impl Softmax {
     /// * A vector of the derivatives.
     pub fn backward(&self, logits: &tensor::Tensor) -> tensor::Tensor {
         let probability = self.forward(logits).get_flat();
-        let scalar = dot(&probability, &probability);
+        let scalar: f32 = probability
+            .iter()
+            .zip(probability.iter())
+            .map(|(a, b)| a * b)
+            .sum();
 
         let mut derivative = vec![0.0f32; probability.len()];
 
@@ -444,7 +448,7 @@ impl Softmax {
             }
         }
 
-        tensor::Tensor::from_single(derivative).reshape(logits.shape.clone())
+        tensor::Tensor::vector(derivative).reshape(logits.shape.clone())
     }
 }
 
@@ -571,7 +575,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     fn create_test_tensor() -> Tensor {
-        Tensor::from_single(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
+        Tensor::vector(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
     }
 
     #[test]
