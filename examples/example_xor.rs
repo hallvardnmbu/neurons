@@ -23,7 +23,7 @@ fn main() {
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Vector(2));
 
-    network.dense(10, activation::Activation::Linear, false, None);
+    network.dense(10, activation::Activation::ReLU, true, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);
 
     network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
