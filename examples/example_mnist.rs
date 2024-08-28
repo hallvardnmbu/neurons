@@ -31,7 +31,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::tensor(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
+        images.push(tensor::Tensor::tensor(vec![image]).resize(tensor::Shape::Tensor(1, 10, 10)));
     }
 
     Ok(images)
@@ -67,7 +67,7 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 14, 14));
+    let mut network = network::Network::new(tensor::Shape::Tensor(1, 10, 10));
 
     network.convolution(
         8,
@@ -78,15 +78,6 @@ fn main() {
         Some(0.05),
     );
     network.maxpool((2, 2), (2, 2));
-    // network.convolution(
-    //     8,
-    //     (3, 3),
-    //     (1, 1),
-    //     (0, 0),
-    //     activation::Activation::ReLU,
-    //     None,
-    // );
-    network.dense(512, activation::Activation::ReLU, true, Some(0.25));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
@@ -106,13 +97,12 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) =
-        network.learn(&x_train, &y_train, Some((0.1, 5)), 128, 50, Some(1));
+    let (train_loss, val_loss) = network.learn(&x_train, &y_train, Some((0.1, 5)), 128, 5, Some(1));
     plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
 
     // Validate the network
-    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);
-    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
+    let (test_loss, test_acc) = network.validate(&x_test, &y_test, 0.1);
+    println!("1. Test acc: {}, loss: {}", test_acc, test_loss);
 
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());

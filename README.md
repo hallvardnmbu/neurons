@@ -71,6 +71,18 @@ Create modular neural networks in Rust with ease!
 <details>
   <summary>Releases</summary>
 
+  ## 2.0.0 (Fix batched weight updates)
+
+  * Weight updates are now batched correctly.
+    - See `network::Network::learn` for details.
+
+  ### Benchmarking examples/example_benchmark.rs (mnist version)
+
+  ```raw
+  batched (128): 17.268632412s (4.82x speedup)
+  unbatched (1): 83.347593292s
+  ```
+
   ## 1.1.0 (Improved optimizer step)
 
   * Optimizer step more intuitive and easy to read.
@@ -85,7 +97,7 @@ Create modular neural networks in Rust with ease!
   * Batched training (`network::Network::learn`)
   * Parallelization of batches (`rayon`)
 
-  ### Benchmarking example/example_benchmark.rs
+  ### Benchmarking examples/example_benchmark.rs (iris version)
 
   ```raw
   v0.3.0: 0.318811179s (6.95x speedup)
@@ -164,6 +176,7 @@ Create modular neural networks in Rust with ease!
     - [x] Feedforward (dubbed `Network`)
     - [x] Convolutional
     - [ ] Recurrent
+    - [ ] Skip connections
     - [ ] Feedback connections
       - [x] Dense to Dense
       - [ ] Dense to Convolutional
@@ -173,7 +186,7 @@ Create modular neural networks in Rust with ease!
   ## Regularization
     - [x] Dropout
     - [ ] Batch normalization
-    - [ ] Early stopping
+    - [x] Early stopping
 
   ## Parallelization
     - [x] Parallelization of batches
@@ -186,10 +199,10 @@ Create modular neural networks in Rust with ease!
       - [x] Thorough testing of objective functions
       - [x] Thorough testing of optimization techniques
       - [ ] Thorough testing of feedback scaling (wrt. gradients)
-    - [ ] Integration tests
+    - [x] Integration tests
       - [x] Network forward pass
       - [x] Network backward pass
-      - [ ] Network training (i.e., weight updates)
+      - [x] Network training (i.e., weight updates)
 
   ## Examples
     - [x] XOR
@@ -220,7 +233,6 @@ Create modular neural networks in Rust with ease!
       - [ ] General data loading functionality
     - [x] Custom icon/image for documentation
     - [x] Custom stylesheet for documentation
-    - [ ] Type conversion (e.g. f32, f64)
     - [ ] Network type specification (e.g. f32, f64)
     - [ ] Saving and loading
       - [ ] Single layer weights
@@ -242,9 +254,9 @@ Create modular neural networks in Rust with ease!
   * [Adam](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
   * [AdamW](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
   * [RMSprop](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
-  * [backpropagation convolution 1](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
-  * [backpropagation convolution 2](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
-  * [backpropagation convolution 3](https://sites.cc.gatech.edu/classes/AY2021/cs7643_spring/assets/L11_CNNs.pdf)
+  * [convolution 1](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
+  * [convolution 2](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
+  * [convolution 3](https://sites.cc.gatech.edu/classes/AY2021/cs7643_spring/assets/L11_CNNs.pdf)
 
   ### Tools used
 

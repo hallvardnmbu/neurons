@@ -515,71 +515,74 @@ impl Network {
             .collect();
 
         for epoch in 1..epochs + 1 {
-            let results: Vec<_> = batches
-                .par_iter()
-                .map(|(inputs, targets)| {
-                    let mut loss = 0.0f32;
-                    let mut weight_gradients: Vec<tensor::Tensor> = Vec::new();
-                    let mut bias_gradients: Vec<Option<tensor::Tensor>> = Vec::new();
-
-                    for (i, (input, target)) in inputs.iter().zip(targets.iter()).enumerate() {
+            let mut loss_epoch = 0.0;
+            for batch in batches.iter() {
+                // Parallel iteration over the batch.
+                // I.e., parallell forward and backward pass for each sample in the batch.
+                let results: Vec<_> = batch
+                    .into_par_iter()
+                    .map(|(input, target)| {
                         let (unactivated, activated, maxpools) = self.forward(input);
-                        let (_loss, gradient) =
+                        let (loss, gradient) =
                             self.objective.loss(&activated.last().unwrap(), target);
-                        loss += _loss;
 
                         let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
 
-                        if i == 0 {
-                            weight_gradients = wg;
-                            bias_gradients = bg;
-                        } else {
-                            for (gradient, new) in weight_gradients.iter_mut().zip(wg.iter()) {
-                                gradient.add_inplace(new)
-                            }
+                        (wg, bg, loss)
+                    })
+                    .collect();
 
-                            for (gradient, new) in bias_gradients.iter_mut().zip(bg.iter()) {
-                                match gradient {
-                                    Some(gradient) => match new {
-                                        Some(new) => gradient.add_inplace(new),
-                                        None => panic!("Expected Some, got None."),
-                                    },
-                                    None => match new {
-                                        Some(_) => panic!("Expected None, got Some."),
-                                        None => (),
-                                    },
-                                }
+                let mut weight_gradients: Vec<tensor::Tensor> = Vec::new();
+                let mut bias_gradients: Vec<Option<tensor::Tensor>> = Vec::new();
+                let mut losses: Vec<f32> = Vec::new();
+
+                // Collect the results from the parallel iteration, and sum the gradients and loss.
+                for (wg, wb, loss) in results {
+                    if loss.is_nan() {
+                        panic!("ERROR: Loss is NaN.");
+                    }
+                    losses.push(loss);
+
+                    if weight_gradients.is_empty() {
+                        weight_gradients = wg;
+                        bias_gradients = wb;
+                    } else {
+                        for (gradient, new) in weight_gradients.iter_mut().zip(wg.iter()) {
+                            gradient.add_inplace(new)
+                        }
+
+                        for (gradient, new) in bias_gradients.iter_mut().zip(wb.iter()) {
+                            match gradient {
+                                Some(gradient) => match new {
+                                    Some(new) => gradient.add_inplace(new),
+                                    None => panic!("Expected Some, got None."),
+                                },
+                                None => match new {
+                                    Some(_) => panic!("Expected None, got Some."),
+                                    None => (),
+                                },
                             }
                         }
                     }
-
-                    let size = inputs.len() as f32;
-
-                    if size > 1.0 {
-                        weight_gradients
-                            .iter_mut()
-                            .for_each(|gradient| gradient.div_scalar_inplace(size));
-                        bias_gradients.iter_mut().for_each(|gradient| {
-                            if let Some(gradient) = gradient {
-                                gradient.div_scalar_inplace(size);
-                            }
-                        });
-                    }
-
-                    (loss / size, weight_gradients, bias_gradients)
-                })
-                .collect();
-
-            let mut losses: Vec<f32> = Vec::new();
-            for (loss, weight_gradients, bias_gradients) in results {
-                if loss.is_nan() {
-                    panic!("ERROR: Loss is NaN.");
                 }
 
+                // // Average the gradients wrt. batch size.
+                // weight_gradients.iter_mut().for_each(|gradient| {
+                //     gradient.div_scalar_inplace(batch.0.len() as f32);
+                // });
+                // bias_gradients
+                //     .iter_mut()
+                //     .for_each(|gradient| match gradient {
+                //         Some(gradient) => gradient.div_scalar_inplace(batch.0.len() as f32),
+                //         None => (),
+                //     });
+
+                loss_epoch += losses.iter().sum::<f32>() / losses.len() as f32;
+
+                // Perform the update step wrt. the summed gradients for the batch.
                 self.update(epoch, weight_gradients, bias_gradients);
-                losses.push(loss);
             }
-            train_loss.push(losses.iter().sum::<f32>() / losses.len() as f32);
+            train_loss.push(loss_epoch / batches.len() as f32);
 
             let (_val_loss, val_acc) = self.validate(val_inputs, val_targets, 1e-6);
             val_loss.push(_val_loss);
