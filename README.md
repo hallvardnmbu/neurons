@@ -71,6 +71,15 @@ Create modular neural networks in Rust with ease!
 <details>
   <summary>Releases</summary>
 
+  ## 1.1.0 (Improved optimizer step)
+
+  * Optimizer step more intuitive and easy to read.
+  * Using `tensor::Tensor` instead of manually handing vectors.
+
+  ## 1.0.0 (Fully working integrated network)
+
+  * Network of Convolutional and Dense layers works.
+
   ## 0.3.0 (Batched training; parallelization)
 
   * Batched training (`network::Network::learn`)
@@ -173,7 +182,6 @@ Create modular neural networks in Rust with ease!
 
   ## Testing
     - [x] Unit tests
-      - [x] Thorough testing of algebraic operations
       - [x] Thorough testing of activation functions
       - [x] Thorough testing of objective functions
       - [x] Thorough testing of optimization techniques

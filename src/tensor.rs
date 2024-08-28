@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{algebra, random};
+use crate::random;
 
 /// The different `Tensor` shapes.
 #[derive(Clone, Debug)]
@@ -484,7 +484,7 @@ impl Tensor {
     ///
     /// If the data is a vector, the output shape must be provided.
     /// The reason for this is to reshape the vector into the correct shape.
-    pub fn get_data(&self, outputs: &Shape) -> Vec<Vec<Vec<f32>>> {
+    pub fn get_tensor(&self, outputs: &Shape) -> Vec<Vec<Vec<f32>>> {
         match &self.data {
             Data::Vector(vector) => {
                 let (oc, oh, ow) = match outputs {
@@ -502,7 +502,21 @@ impl Tensor {
                     .collect()
             }
             Data::Tensor(tensor) => tensor.clone(),
-            _ => panic!("4D not yet implemented!"),
+            _ => panic!("4D not implemented!"),
+        }
+    }
+
+    /// Get the data of the (Gradient) Tensor as a vector of Tensors.
+    pub fn gradient_to_tensor_vec(&self) -> Vec<Tensor> {
+        match &self.data {
+            Data::Gradient(gradient) => gradient
+                .iter()
+                .map(|channel| Tensor {
+                    shape: Shape::Tensor(channel.len(), channel[0].len(), channel[0][0].len()),
+                    data: Data::Tensor(channel.clone()),
+                })
+                .collect(),
+            _ => panic!("Expected Gradient data!"),
         }
     }
 
@@ -1213,8 +1227,10 @@ impl Tensor {
         match &self.data {
             Data::Matrix(ref data1) => match &other.data {
                 Data::Vector(ref data2) => {
-                    let data: Vec<f32> =
-                        data1.iter().map(|row| algebra::dot(&row, &data2)).collect();
+                    let data: Vec<f32> = data1
+                        .iter()
+                        .map(|row| row.iter().zip(data2.iter()).map(|(a, b)| a * b).sum())
+                        .collect();
                     Self {
                         shape: Shape::Vector(data.len()),
                         data: Data::Vector(data),
@@ -1425,6 +1441,63 @@ impl Tensor {
             _ => unimplemented!("Transpose not implemented for this shape."),
         }
     }
+}
+
+/// Element-wise multiplication of two tensors.
+/// For performance reasons, this function does not validate the length of the tensors.
+/// It is assumed that the tensors have the same length.
+///
+/// # Arguments
+///
+/// * `ten1` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `ten2` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
+pub fn hadamard3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    ten1.iter()
+        .zip(ten2.iter())
+        .map(|(a, b)| {
+            a.iter()
+                .zip(b.iter())
+                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e * f).collect())
+                .collect()
+        })
+        .collect()
+}
+
+/// Element-wise multiplication of a tensor and scalar.
+///
+/// # Arguments
+///
+/// * `tensor` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `scalar` - A scalar of `f32`.
+///
+/// # Returns
+///
+/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `tensor` and `scalar`.
+///
+/// # Examples
+///
+/// ```
+/// use neurons::algebra::mul3d_scalar;
+///
+/// let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
+/// let scalar = 2.0;
+/// let result = mul3d_scalar(&tensor, scalar);
+///
+/// assert_eq!(result, vec![vec![vec![2.0, 4.0], vec![6.0, 8.0]], vec![vec![10.0, 12.0], vec![14.0, 16.0]]]);
+/// ```
+pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
+    tensor
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|col| col.iter().map(|a| a * scalar).collect())
+                .collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -1994,6 +2067,38 @@ mod tests {
                 vec![vec![1.0], vec![2.0], vec![5.0, 6.0]],
                 vec![vec![3.0], vec![4.0], vec![7.0, 8.0]],
             ])
+        );
+    }
+
+    #[test]
+    fn test_mul3d_scalar() {
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let scalar = 2.0;
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![2.0, 4.0], vec![6.0, 8.0]],
+                vec![vec![10.0, 12.0], vec![14.0, 16.0]]
+            ]
+        );
+
+        // Test with negative scalar
+        let tensor = vec![
+            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
+            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
+        ];
+        let scalar = -2.0;
+        let result = mul3d_scalar(&tensor, scalar);
+        assert_eq!(
+            result,
+            vec![
+                vec![vec![-2.0, -4.0], vec![-6.0, -8.0]],
+                vec![vec![-10.0, -12.0], vec![-14.0, -16.0]]
+            ]
         );
     }
 }

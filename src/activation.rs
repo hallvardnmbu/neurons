@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{algebra::dot, tensor};
+use crate::tensor;
 
 /// Activation functions for neural networks.
 pub enum Activation {
@@ -430,7 +430,11 @@ impl Softmax {
     /// * A vector of the derivatives.
     pub fn backward(&self, logits: &tensor::Tensor) -> tensor::Tensor {
         let probability = self.forward(logits).get_flat();
-        let scalar = dot(&probability, &probability);
+        let scalar: f32 = probability
+            .iter()
+            .zip(probability.iter())
+            .map(|(a, b)| a * b)
+            .sum();
 
         let mut derivative = vec![0.0f32; probability.len()];
 

@@ -95,6 +95,7 @@ impl Optimizer {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer. Always 0 if the layer is not a convolutional layer.
     /// * `bias` - If the current values are the bias.
     /// * `stepnr` - The step number of the training process (epoch).
     /// * `values` - The weights of the layer (with optional bias stacked vertically).
@@ -102,6 +103,7 @@ impl Optimizer {
     pub fn update(
         &mut self,
         layer: usize,
+        filter: usize,
         bias: bool,
         stepnr: i32,
         values: &mut tensor::Tensor,
@@ -109,10 +111,10 @@ impl Optimizer {
     ) {
         match self {
             Optimizer::SGD(sgd) => sgd.update(values, gradients),
-            Optimizer::SGDM(sgdm) => sgdm.update(layer, bias, stepnr, values, gradients),
-            Optimizer::Adam(adam) => adam.update(layer, bias, stepnr, values, gradients),
-            Optimizer::AdamW(adamw) => adamw.update(layer, bias, stepnr, values, gradients),
-            Optimizer::RMSprop(rmsprop) => rmsprop.update(layer, bias, values, gradients),
+            Optimizer::SGDM(sgdm) => sgdm.update(layer, filter, bias, stepnr, values, gradients),
+            Optimizer::Adam(adam) => adam.update(layer, filter, bias, stepnr, values, gradients),
+            Optimizer::AdamW(adamw) => adamw.update(layer, filter, bias, stepnr, values, gradients),
+            Optimizer::RMSprop(rmsprop) => rmsprop.update(layer, filter, bias, values, gradients),
         }
     }
 }
@@ -163,7 +165,7 @@ pub struct SGDM {
     pub dampening: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<tensor::Tensor>>,
+    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl SGDM {
@@ -180,6 +182,7 @@ impl SGDM {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer. Always 0 if the layer is not a convolutional layer.
     /// * `bias` - If the current values are the bias.
     /// * `stepnr` - The step number of the training process (epoch).
     /// * `values` - The weights of the layer.
@@ -187,6 +190,7 @@ impl SGDM {
     pub fn update(
         &mut self,
         layer: usize,
+        filter: usize,
         bias: bool,
         stepnr: i32,
         values: &mut tensor::Tensor,
@@ -196,19 +200,17 @@ impl SGDM {
             gradients.add_inplace(&values.mul_scalar(decay));
         }
 
-        // * If `stepsize > 1`: `velocity = momentum * velocity + (1 - dampening) * gradients`
-        // * Else: `velocity = gradients`
-        // * `gradients = velocity`
-        // * `weights (values) -= learning_rate * gradients`
-
         if stepnr > 1 && self.momentum != 0.0 {
-            self.velocity[layer][bias as usize].mul_scalar_inplace(self.momentum);
-            self.velocity[layer][bias as usize]
+            self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.momentum);
+            self.velocity[layer][filter][bias as usize]
                 .add_inplace(&gradients.mul_scalar(1.0 - self.dampening));
         } else {
-            self.velocity[layer][bias as usize] = gradients.clone();
+            self.velocity[layer][filter][bias as usize] = gradients.clone();
         }
-        values.sub_inplace(&self.velocity[layer][bias as usize].mul_scalar(self.learning_rate));
+
+        values.sub_inplace(
+            &self.velocity[layer][filter][bias as usize].mul_scalar(self.learning_rate),
+        );
     }
 }
 
@@ -230,8 +232,8 @@ pub struct Adam {
     pub epsilon: f32,
     pub decay: Option<f32>,
 
-    pub velocity: Vec<Vec<tensor::Tensor>>,
-    pub momentum: Vec<Vec<tensor::Tensor>>,
+    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    pub momentum: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl Adam {
@@ -249,6 +251,7 @@ impl Adam {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer. Always 0 if the layer is not a convolutional layer.
     /// * `bias` - If the current values are the bias.
     /// * `stepnr` - The step number of the optimizer.
     /// * `values` - The weights of the layer.
@@ -256,6 +259,7 @@ impl Adam {
     pub fn update(
         &mut self,
         layer: usize,
+        filter: usize,
         bias: bool,
         stepnr: i32,
         values: &mut tensor::Tensor,
@@ -265,17 +269,18 @@ impl Adam {
             gradients.add_inplace(&values.mul_scalar(decay));
         }
 
-        self.momentum[layer][bias as usize].mul_scalar_inplace(self.beta1);
-        self.momentum[layer][bias as usize].add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
+        self.momentum[layer][filter][bias as usize].mul_scalar_inplace(self.beta1);
+        self.momentum[layer][filter][bias as usize]
+            .add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
 
-        self.velocity[layer][bias as usize].mul_scalar_inplace(self.beta2);
-        self.velocity[layer][bias as usize]
+        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.beta2);
+        self.velocity[layer][filter][bias as usize]
             .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.beta2));
 
-        let m =
-            self.momentum[layer][bias as usize].mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
-        let v =
-            self.velocity[layer][bias as usize].mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
+        let m = self.momentum[layer][filter][bias as usize]
+            .mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
+        let v = self.velocity[layer][filter][bias as usize]
+            .mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
 
         values.sub_inplace(
             &m.mul_scalar(self.learning_rate)
@@ -293,8 +298,8 @@ impl Adam {
 /// * `beta2` - The beta2 of the optimizer.
 /// * `epsilon` - The epsilon of the optimizer.
 /// * `decay` - The decay of the optimizer.
-/// * `velocity` - The velocity of the optimizer. (layer, filter, channel, row, column)
-/// * `momentum` - The momentum of the optimizer. (layer, filter, channel, row, column)
+/// * `velocity` - The velocity of the optimizer.
+/// * `momentum` - The momentum of the optimizer.
 pub struct AdamW {
     pub learning_rate: f32,
     pub beta1: f32,
@@ -302,8 +307,8 @@ pub struct AdamW {
     pub epsilon: f32,
     pub decay: f32,
 
-    pub velocity: Vec<Vec<tensor::Tensor>>,
-    pub momentum: Vec<Vec<tensor::Tensor>>,
+    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    pub momentum: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl AdamW {
@@ -321,6 +326,7 @@ impl AdamW {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer. Always 0 if the layer is not a convolutional layer.
     /// * `bias` - The bias of the layer.
     /// * `stepnr` - The step number of the optimizer.
     /// * `values` - The weights of the layer.
@@ -328,6 +334,7 @@ impl AdamW {
     pub fn update(
         &mut self,
         layer: usize,
+        filter: usize,
         bias: bool,
         stepnr: i32,
         values: &mut tensor::Tensor,
@@ -335,17 +342,18 @@ impl AdamW {
     ) {
         values.sub_inplace(&values.mul_scalar(self.learning_rate * self.decay));
 
-        self.momentum[layer][bias as usize].mul_scalar_inplace(self.beta1);
-        self.momentum[layer][bias as usize].add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
+        self.momentum[layer][filter][bias as usize].mul_scalar_inplace(self.beta1);
+        self.momentum[layer][filter][bias as usize]
+            .add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
 
-        self.velocity[layer][bias as usize].mul_scalar_inplace(self.beta2);
-        self.velocity[layer][bias as usize]
+        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.beta2);
+        self.velocity[layer][filter][bias as usize]
             .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.beta2));
 
-        let m =
-            self.momentum[layer][bias as usize].mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
-        let v =
-            self.velocity[layer][bias as usize].mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
+        let m = self.momentum[layer][filter][bias as usize]
+            .mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
+        let v = self.velocity[layer][filter][bias as usize]
+            .mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
 
         values.sub_inplace(
             &m.mul_scalar(self.learning_rate)
@@ -375,9 +383,9 @@ pub struct RMSprop {
     pub momentum: Option<f32>,
     pub centered: Option<bool>,
 
-    pub velocity: Vec<Vec<tensor::Tensor>>,
-    pub gradient: Vec<Vec<tensor::Tensor>>,
-    pub buffer: Vec<Vec<tensor::Tensor>>,
+    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    pub gradient: Vec<Vec<Vec<tensor::Tensor>>>,
+    pub buffer: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl RMSprop {
@@ -397,6 +405,7 @@ impl RMSprop {
     /// # Arguments
     ///
     /// * `layer` - The layer of the network.
+    /// * `filter` - The filter of the layer. Always 0 if the layer is not a convolutional layer.
     /// * `bias` - The bias of the layer.
     /// * `stepnr` - The step number of the optimizer.
     /// * `values` - The weights of the layer.
@@ -404,6 +413,7 @@ impl RMSprop {
     pub fn update(
         &mut self,
         layer: usize,
+        filter: usize,
         bias: bool,
         values: &mut tensor::Tensor,
         gradients: &mut tensor::Tensor,
@@ -412,26 +422,28 @@ impl RMSprop {
             gradients.add_inplace(&values.mul_scalar(decay));
         }
 
-        self.velocity[layer][bias as usize].mul_scalar_inplace(self.alpha);
-        self.velocity[layer][bias as usize]
+        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.alpha);
+        self.velocity[layer][filter][bias as usize]
             .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.alpha));
-        let mut v = self.velocity[layer][bias as usize].clone();
+        let mut v = self.velocity[layer][filter][bias as usize].clone();
 
         if let Some(_) = self.centered {
-            self.gradient[layer][bias as usize].mul_scalar_inplace(self.alpha);
-            self.gradient[layer][bias as usize]
+            self.gradient[layer][filter][bias as usize].mul_scalar_inplace(self.alpha);
+            self.gradient[layer][filter][bias as usize]
                 .add_inplace(&gradients.mul_scalar(1.0 - self.alpha));
 
-            v.sub_inplace(&self.gradient[layer][bias as usize].pow(2.0));
+            v.sub_inplace(&self.gradient[layer][filter][bias as usize].pow(2.0));
         }
 
         let momentum = self.momentum.unwrap_or(0.0);
         if momentum > 0.0 {
-            self.buffer[layer][bias as usize].mul_scalar_inplace(momentum);
-            self.buffer[layer][bias as usize]
+            self.buffer[layer][filter][bias as usize].mul_scalar_inplace(momentum);
+            self.buffer[layer][filter][bias as usize]
                 .add_inplace(&gradients.div(&v.pow(0.5).add_scalar(self.epsilon)));
 
-            values.sub_inplace(&self.buffer[layer][bias as usize].mul_scalar(self.learning_rate));
+            values.sub_inplace(
+                &self.buffer[layer][filter][bias as usize].mul_scalar(self.learning_rate),
+            );
         } else {
             values.sub_inplace(
                 &gradients
@@ -476,12 +488,12 @@ mod tests {
             momentum: 0.9,
             dampening: 0.0,
             decay: Some(0.01),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.539, 1.948]);
+        let expected = tensor::Tensor::vector(vec![0.989, 1.948]);
 
-        sgdm.update(0, false, 1, &mut values, &mut gradients);
+        sgdm.update(0, 0, false, 1, &mut values, &mut gradients);
 
         assert_eq_data!(values.data, expected.data);
     }
@@ -494,13 +506,13 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]],
-            momentum: vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = tensor::Tensor::vector(vec![0.999915, 1.997269]);
 
-        adam.update(0, false, 1, &mut values, &mut gradients);
+        adam.update(0, 0, false, 1, &mut values, &mut gradients);
 
         assert_eq_data!(values.data, expected.data);
     }
@@ -513,13 +525,13 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]],
-            momentum: vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = tensor::Tensor::vector(vec![0.999905, 1.99718]);
 
-        adamw.update(0, false, 1, &mut values, &mut gradients);
+        adamw.update(0, 0, false, 1, &mut values, &mut gradients);
 
         assert_eq_data!(values.data, expected.data);
     }
@@ -533,14 +545,14 @@ mod tests {
             decay: Some(0.01),
             momentum: Some(0.9),
             centered: Some(true),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.5, 0.01])]],
-            gradient: vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]],
-            buffer: vec![vec![tensor::Tensor::vector(vec![0.9, 0.01])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.01])]]],
+            gradient: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
+            buffer: vec![vec![vec![tensor::Tensor::vector(vec![0.9, 0.01])]]],
         };
         let (mut values, mut gradients) = create_test_case();
         let expected = tensor::Tensor::vector(vec![0.9902701, 1.875477]);
 
-        rmsprop.update(0, false, &mut values, &mut gradients);
+        rmsprop.update(0, 0, false, &mut values, &mut gradients);
 
         assert_eq_data!(values.data, expected.data);
     }
@@ -554,7 +566,7 @@ mod tests {
         let (mut values, mut gradients) = create_test_case();
         let expected = tensor::Tensor::vector(vec![0.989, 1.948]);
 
-        optimizer.update(0, false, 1, &mut values, &mut gradients);
+        optimizer.update(0, 0, false, 1, &mut values, &mut gradients);
 
         assert_eq_data!(values.data, expected.data);
     }
@@ -570,8 +582,9 @@ mod tests {
         let sgdm = Optimizer::SGDM(SGDM {
             learning_rate: 0.1,
             momentum: 0.9,
+            dampening: 0.0,
             decay: Some(0.01),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.0])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
         });
         assert!(format!("{}", sgdm).contains("SGDM"));
 
@@ -581,8 +594,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.0])]],
-            momentum: vec![vec![tensor::Tensor::vector(vec![0.0])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
         });
         assert!(format!("{}", adam).contains("Adam"));
 
@@ -592,8 +605,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.0])]],
-            momentum: vec![vec![tensor::Tensor::vector(vec![0.0])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
         });
         assert!(format!("{}", adamw).contains("AdamW"));
 
@@ -604,9 +617,9 @@ mod tests {
             decay: Some(0.01),
             momentum: Some(0.9),
             centered: Some(true),
-            velocity: vec![vec![tensor::Tensor::vector(vec![0.0])]],
-            gradient: vec![vec![tensor::Tensor::vector(vec![0.0])]],
-            buffer: vec![vec![tensor::Tensor::vector(vec![0.0])]],
+            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            gradient: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            buffer: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
         });
         assert!(format!("{}", rmsprop).contains("RMSprop"));
     }

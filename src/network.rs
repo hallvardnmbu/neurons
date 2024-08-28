@@ -326,18 +326,18 @@ impl Network {
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
         // Create the placeholder vector used for various optimizer functions.
         // See the `match optimizer` below.
-        let mut vectors: Vec<Vec<tensor::Tensor>> = Vec::new();
+        let mut vectors: Vec<Vec<Vec<tensor::Tensor>>> = Vec::new();
         for layer in self.layers.iter().rev() {
             match layer {
                 Layer::Dense(layer) => {
-                    vectors.push(vec![
+                    vectors.push(vec![vec![
                         tensor::Tensor::matrix(vec![vec![0.0; layer.inputs]; layer.outputs]),
                         if layer.bias.is_some() {
                             tensor::Tensor::vector(vec![0.0; layer.outputs])
                         } else {
                             tensor::Tensor::vector(vec![])
                         },
-                    ]);
+                    ]]);
                 }
                 Layer::Convolution(layer) => {
                     let (ch, kh, kw) = match layer.kernels[0].shape {
@@ -345,18 +345,14 @@ impl Network {
                         _ => panic!("Expected Convolution shape"),
                     };
                     vectors.push(vec![
-                        tensor::Tensor::gradient(vec![
-                            vec![vec![vec![0.0; kw]; kh]; ch];
-                            layer.kernels.len()
-                        ]),
-                        // if layer.bias.is_some() {
-                        //     tensor::Tensor::vector(vec![0.0; layer.kernels.len()])
-                        // } else {
-                        //     tensor::Tensor::vector(vec![])
-                        // },
+                        vec![
+                            tensor::Tensor::tensor(vec![vec![vec![0.0; kw]; kh]; ch]),
+                            // TODO: Add bias term here.
+                        ];
+                        layer.kernels.len()
                     ]);
                 }
-                Layer::Maxpool(_) => vectors.push(vec![tensor::Tensor::vector(vec![0.0; 0])]),
+                Layer::Maxpool(_) => vectors.push(vec![vec![tensor::Tensor::vector(vec![0.0; 0])]]),
             }
         }
 
@@ -809,58 +805,40 @@ impl Network {
             .iter_mut()
             .rev()
             .enumerate()
-            .for_each(|(i, layer)| {
-                match layer {
-                    Layer::Dense(layer) => {
-                        if let Some(bias) = &mut layer.bias {
-                            self.optimizer.update(
-                                i,
-                                true,
-                                stepnr,
-                                bias,
-                                &mut bias_gradients[i].as_mut().unwrap(),
-                            )
-                        }
+            .for_each(|(i, layer)| match layer {
+                Layer::Dense(layer) => {
+                    self.optimizer.update(
+                        i,
+                        0,
+                        false,
+                        stepnr,
+                        &mut layer.weights,
+                        &mut weight_gradients[i],
+                    );
 
+                    if let Some(bias) = &mut layer.bias {
                         self.optimizer.update(
                             i,
-                            false,
+                            0,
+                            true,
                             stepnr,
-                            &mut layer.weights,
-                            &mut weight_gradients[i],
-                        );
+                            bias,
+                            &mut bias_gradients[i].as_mut().unwrap(),
+                        )
                     }
-                    Layer::Convolution(layer) => {
-                        unimplemented!("Not yet done.");
-                        let mut weight_gradient = match &weight_gradients[i].data {
-                            tensor::Data::Gradient(data) => data.clone(),
-                            _ => panic!("Expected four-dimensional data."),
-                        };
-                        for (f, (filter, gradients)) in layer
-                            .kernels
-                            .iter_mut()
-                            .zip(weight_gradient.iter_mut())
-                            .enumerate()
-                        {
-                            let filter = match &mut filter.data {
-                                tensor::Data::Tensor(data) => data,
-                                _ => panic!("Expected a tensor, but got one-dimensional data."),
-                            };
-
-                            for (c, (kernel, gradients)) in
-                                filter.iter_mut().zip(gradients.iter_mut()).enumerate()
-                            {
-                                for (r, (weight, gradient)) in
-                                    kernel.iter_mut().zip(gradients.iter_mut()).enumerate()
-                                {
-                                    // self.optimizer
-                                    //     .update(i, f, c, r, stepnr, weight, gradient, false);
-                                }
-                            }
-                        }
-                    }
-                    Layer::Maxpool(_) => {}
                 }
+                Layer::Convolution(layer) => {
+                    for (f, (filter, gradient)) in layer
+                        .kernels
+                        .iter_mut()
+                        .zip(weight_gradients[i].gradient_to_tensor_vec().iter_mut())
+                        .enumerate()
+                    {
+                        self.optimizer.update(i, f, false, stepnr, filter, gradient);
+                        // TODO: Add bias term here.
+                    }
+                }
+                Layer::Maxpool(_) => {}
             });
     }
 

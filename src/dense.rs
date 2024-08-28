@@ -74,16 +74,12 @@ impl Dense {
             outputs,
             loops: 1.0,
             weights: tensor::Tensor::random(tensor::Shape::Matrix(outputs, inputs), -1.0, 1.0),
-            // weights: (0..outputs)
-            //     .map(|_| (0..inputs).map(|_| generator.generate(-1.0, 1.0)).collect())
-            //     .collect(),
             bias: match bias {
-                true => Some(
-                    tensor::Tensor::random(tensor::Shape::Vector(outputs), -1.0, 1.0),
-                    // (0..outputs)
-                    //     .map(|_| generator.generate(-1.0, 1.0))
-                    //     .collect(),
-                ),
+                true => Some(tensor::Tensor::random(
+                    tensor::Shape::Vector(outputs),
+                    -1.0,
+                    1.0,
+                )),
                 false => None,
             },
             activation: activation::Function::create(&activation),
@@ -107,17 +103,11 @@ impl Dense {
     ///
     /// The pre-activation and post-activation `tensor::Tensor`s of the layer.
     pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor) {
-        // let x = x.get_flat();
-        // let mut y = self.weights.iter().map(|w| algebra::dot(&w, &x)).collect();
-        // if let Some(bias) = &self.bias {
-        //     algebra::add_inplace(&mut y, &bias);
-        // }
         let mut pre = self.weights.dot(x);
         if let Some(bias) = &self.bias {
             pre.add_inplace(bias);
         }
 
-        // let pre = tensor::Tensor::vector(y);
         let mut post = self.activation.forward(&pre);
 
         // Apply dropout if the network is training.

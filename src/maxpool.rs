@@ -186,7 +186,7 @@ impl Maxpool {
         //     _ => panic!("Expected `Tensor` gradient data."),
         // };
         // println!("{} {}", gradient.shape, self.outputs);
-        let ogradient = gradient.get_data(&self.outputs);
+        let ogradient = gradient.get_tensor(&self.outputs);
         let mut igradient = vec![vec![vec![0.0; iw]; ih]; ic];
 
         let (oh, ow) = (ogradient[0].len(), ogradient[0][0].len());

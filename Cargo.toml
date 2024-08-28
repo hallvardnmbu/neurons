@@ -1,8 +1,8 @@
 [package]
 name = "neurons"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
-description = "Modular neural networks in Rust."
+description = "Neural networks from scratch, in Rust."
 authors = ["Hallvard Høyland Lavik"]
 homepage = "https://github.com/hallvardnmbu/neurons"
 readme = "README.md"
