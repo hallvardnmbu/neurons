@@ -121,7 +121,7 @@ impl ReLU {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -158,7 +158,7 @@ impl ReLU {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -210,7 +210,7 @@ impl LeakyReLU {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -251,7 +251,7 @@ impl LeakyReLU {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -291,7 +291,7 @@ impl Sigmoid {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -338,7 +338,7 @@ impl Sigmoid {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -444,7 +444,7 @@ impl Tanh {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),
@@ -479,7 +479,7 @@ impl Tanh {
                     })
                     .collect(),
             ),
-            _ => panic!("Invalid data type"),
+            _ => panic!("Invalid data type."),
         };
         tensor::Tensor {
             shape: input.shape.clone(),

@@ -26,7 +26,7 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
             &"Iris-setosa" => 0,
             &"Iris-versicolor" => 1,
             &"Iris-virginica" => 2,
-            _ => panic!("Unknown class"),
+            _ => panic!("> Unknown class."),
         });
     }
 
@@ -101,7 +101,8 @@ fn main() {
     );
 
     // Train the network
-    let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, None, 25, 500, Some(50));
+    let (_train_loss, _val_loss) =
+        network.learn(&x_train, &y_train, Some((0.1, 5)), 25, 5, Some(1));
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.05);

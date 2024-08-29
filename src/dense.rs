@@ -68,7 +68,6 @@ impl Dense {
         bias: bool,
         dropout: Option<f32>,
     ) -> Self {
-        // let mut generator = random::Generator::create(12345);
         Dense {
             inputs,
             outputs,
@@ -137,6 +136,11 @@ impl Dense {
         input: &tensor::Tensor,
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
+        let gradient = match &gradient.shape {
+            tensor::Shape::Single(_) => gradient,
+            tensor::Shape::Triple(_, _, _) => &gradient.flatten(),
+            _ => panic!("Invalid gradient shape."),
+        };
         let derivative = self.activation.backward(output);
         let delta = derivative.hadamard(gradient).mul_scalar(self.loops);
 

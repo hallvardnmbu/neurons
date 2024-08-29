@@ -64,6 +64,13 @@ impl std::fmt::Display for Network {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
         write!(f, "\t)\n")?;
+        if !self.feedbacks.is_empty() {
+            write!(f, "\tfeedback connections: (\n")?;
+            for (i, j) in self.feedbacks.iter() {
+                write!(f, "\t\t{} -> {}\n", i, j)?;
+            }
+            write!(f, "\t)\n")?;
+        }
         write!(f, "\tparameters: {}\n)", self.parameters())?;
         Ok(())
     }
@@ -128,7 +135,7 @@ impl Network {
             let inputs = match self.input {
                 tensor::Shape::Single(inputs) => inputs,
                 _ => panic!(
-                    "Network is configured for image inputs; the first layer must be Convolutional"
+                    "Network is configured for image inputs; the first layer cannot be dense. Modify the input shape to `tensor::Shape::Single` or add a convolutional layer first."
                 ),
             };
             self.layers.push(Layer::Dense(dense::Dense::create(
@@ -142,20 +149,21 @@ impl Network {
         }
         let inputs = match &mut self.layers.last_mut().unwrap() {
             Layer::Dense(layer) => layer.outputs,
+            // If the previous layer is convolutional or maxpool:
+            // * Compute the flattened shape of the output.
+            // * Set the `flatten` flag to `true`.
             Layer::Convolution(layer) => {
-                // Make sure the output of the convolutional layer is flattened.
-                layer.flatten_output = true;
+                layer.flatten = true;
                 match layer.outputs {
                     tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
-                    _ => panic!("Expected `tensor::Tensor` shape"),
+                    _ => panic!("Expected `tensor::Tensor` shape."),
                 }
             }
             Layer::Maxpool(layer) => {
-                // Make sure the output of the maxpool layer is flattened.
-                layer.flatten_output = true;
+                layer.flatten = true;
                 match layer.outputs {
                     tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
-                    _ => panic!("Expected `tensor::Tensor` shape"),
+                    _ => panic!("Expected `tensor::Tensor` shape."),
                 }
             }
         };
@@ -193,6 +201,12 @@ impl Network {
         dropout: Option<f32>,
     ) {
         if self.layers.is_empty() {
+            match self.input {
+                tensor::Shape::Triple(_, _, _) => (),
+                _ => panic!(
+                    "Network is configured for dense inputs; the first layer cannot be convolutional. Modify the input shape to `tensor::Shape::Triple` or add a dense layer first."
+                ),
+            };
             self.layers
                 .push(Layer::Convolution(convolution::Convolution::create(
                     self.input.clone(),
@@ -229,6 +243,12 @@ impl Network {
     /// * `stride` - The stride of the filter.
     pub fn maxpool(&mut self, kernel: (usize, usize), stride: (usize, usize)) {
         if self.layers.is_empty() {
+            match self.input {
+                tensor::Shape::Triple(_, _, _) => (),
+                _ => panic!(
+                    "Network is configured for dense inputs; the first layer cannot be maxpool. Modify the input shape to `tensor::Shape::Triple` or add a dense layer first."
+                ),
+            };
             self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
                 self.input.clone(),
                 kernel,
@@ -236,13 +256,14 @@ impl Network {
             )));
             return;
         }
-        let input = match self.layers.last().unwrap() {
-            Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
-            Layer::Convolution(layer) => layer.outputs.clone(),
-            Layer::Maxpool(layer) => layer.outputs.clone(),
-        };
         self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
-            input, kernel, stride,
+            match self.layers.last().unwrap() {
+                Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
+                Layer::Convolution(layer) => layer.outputs.clone(),
+                Layer::Maxpool(layer) => layer.outputs.clone(),
+            },
+            kernel,
+            stride,
         )));
     }
 

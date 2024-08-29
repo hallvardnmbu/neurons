@@ -26,7 +26,7 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
             &"Iris-setosa" => 0,
             &"Iris-versicolor" => 1,
             &"Iris-virginica" => 2,
-            _ => panic!("Unknown class"),
+            _ => panic!("> Unknown class."),
         });
     }
 
@@ -81,7 +81,7 @@ fn main() {
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));
     network.dense(3, activation::Activation::Softmax, false, Some(0.1));
 
-    network.feedback(2, 1);
+    network.feedback(1, 0);
 
     network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
         learning_rate: 0.001,
@@ -102,9 +102,11 @@ fn main() {
         Some((-1f32, 1f32)),                // Gradient clipping
     );
 
+    println!("{}", network);
+
     // Train the network
     let (_train_loss, _val_loss) =
-        network.learn(&x_train, &y_train, Some((0.1, 500)), 25, 500, Some(50));
+        network.learn(&x_train, &y_train, Some((0.1, 5)), 25, 5, Some(1));
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);

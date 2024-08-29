@@ -1,34 +1,95 @@
-<body style="font-family:monospace;">
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg", alt="neurons">
+  <br>
+</h1>
 
-# Modular neural networks in Rust.
+<div align="center">
+  <a href="https://crates.io/crates/neurons">
+    <img src="https://img.shields.io/crates/v/neurons" alt="crates.io/crates/neurons"/>
+  </a>
+  <a href="https://docs.rs/neurons">
+    <img src="https://docs.rs/neurons/badge.svg" alt="docs.rs/neurons"/>
+  </a>
+</div>
 
-Create modular neural networks in Rust with ease!
+<b>neurons</b> is a neural network library written from scratch in Rust. It provides a flexible and efficient way to build, train, and evaluate neural networks. The library is designed to be modular, allowing for easy customization of network architectures, activation functions, objective functions, and optimization techniques.
 
-<img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg">
+## Features
+
+- Modular design
+  - Ready-to-use dense and convolutional layers.
+  - Inferred input shapes when adding layers.
+  - Easily specify activation functions, biases, and dropout.
+  - Customizable objective functions and optimization techniques.
+- Fast
+  Leveraging Rust's performance and parallelization capabilities.
+- <i>Everything</i> built from scratch
+  Only dependencies are `rayon` and `plotters`.
+- Various examples showcasing the library's capabilities.
+  Examples can be found in the `examples` directory.
+
+<details>
+  <summary>The package</summary>
+
+  The package is divided into separate modules, each containing different parts of the library, everything being connected through the `network` module.
+
+  ### Core
+
+  - `tensor`
+    Describes the custom tensor struct and its operations.
+    A tensor is here divided into four different types:
+    - `Single`: One-dimensional data (`Vec<_>`).
+    - `Double`: Two-dimensional data (`Vec<Vec<_>>`).
+    - `Triple`: Three-dimensional data (`Vec<Vec<Vec<_>>>`).
+    - `Quadruple`: Four-dimensional data (`Vec<Vec<Vec<Vec<_>>>>`).
+    Each shape following the same pattern of operations, but with increasing dimensions.
+    Thus, every tensor contains information about its shape and data.
+    The reason for wrapping the data in this way is to easily allow for dynamic shapes and types in the network.
+  - `random`
+    Functionality for random number generation.
+
+  ### Layers
+
+  - `dense`
+    Describes the dense layer and its operations.
+  - `convolution`
+    Describes the convolutional layer and its operations.
+    If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
+  - `maxpool`
+    Describes the maxpool layer and its operations.
+    If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
+
+  ### Functions
+
+  - `activation`
+    Contains all the possible activation functions to be used.
+  - `objective`
+    Contains all the possible objective functions to be used.
+  - `optimizer`
+    Contains all the possible optimization techniques to be used.
+</details>
 
 <details>
   <summary>Quickstart</summary>
-
-  ## Create a network
 
   ```rust
   use neurons::{activation, network, objective, optimizer, tensor};
 
   fn main() {
 
-      // New feedforward network with four inputs
-      let mut network = network::Network::new(tensor::Shape::Dense(4));
-
-      // Dense(output, activation, bias, Some(dropout))
-      network.dense(100, activation::Activation::ReLU, false, None);
+      // New feedforward network with input shape (1, 28, 28)
+      let mut network = network::Network::new(tensor::Shape::Triple(1, 28, 28));
 
       // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
-      network.convolution(5, (5, 5), (1, 1), (1, 1), activation::Activation::ReLU, None);
+      network.convolution(5, (3, 3), (1, 1), (1, 1), activation::Activation::ReLU, None);
 
       // Maxpool(kernel, stride)
       network.maxpool((2, 2), (2, 2));
 
-      // Dense(output, activation, bias, Some(dropout))
+      // Dense(outputs, activation, bias, Some(dropout))
+      network.dense(100, activation::Activation::ReLU, false, None);
+
+      // Dense(outputs, activation, bias, Some(dropout))
       network.dense(10, activation::Activation::Softmax, false, None);
 
       network.set_optimizer(
@@ -47,29 +108,32 @@ Create modular neural networks in Rust with ease!
           )
       );
       network.set_objective(
-          objective::Objective::MSE,                    // Objective function
-          Some((-1f32, 1f32))                           // Gradient clipping
+          objective::Objective::MSE,    // Objective function
+          Some((-1f32, 1f32))           // Gradient clipping
       );
 
-      println!("{}", network);
+      println!("{}", network);          // Display the network
 
-      let (x, y) = {  };                // Load data
-      let validation = Some((0.2, 5));  // 20% val. early stopping if val. loss increases 5 times
-      let batch = 32;                   // Batch size
-      let epochs = 1000;                // Number of epochs
+      let (x, y) = {  };                // Add your data here
+      let validation = Some((0.2, 5));  // 20% val. & early stopping if val. loss increases 5 times
+      let batch = 32;                   // Minibatch size
+      let epochs = 100;                 // Number of epochs
       let print = Some(10);             // Print every 10th epoch
       let (train_loss, val_loss) = network.learn(x, y, validation, batch, epochs, print);
   }
   ```
-
-  ## Examples
-
-  Examples can be found in the `examples` directory.
-
 </details>
 
 <details>
   <summary>Releases</summary>
+
+  ## 2.0.2 (Improved compatability of differing layers)
+
+  Layers now automatically reshape input tensors to the correct shape.
+  I.e., your network could be conv->dense->conv etc.
+  Earlier versions only allowed conv/maxpool->dense connections.
+
+  Note: While this is now possible, some testing proved this to be sub-optimal in terms of performance.
 
   ## 2.0.1 (Optimized optimizer step)
 
@@ -286,5 +350,3 @@ Create modular neural networks in Rust with ease!
   * [rust-simple-nn](https://github.com/danhper/rust-simple-nn/tree/master)
 
 </details>
-
-</body>

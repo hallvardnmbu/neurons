@@ -4,7 +4,7 @@
     html_logo_url = "https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons.svg",
     html_favicon_url = "https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons.svg"
 )]
-//! ![Neurons](https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg)
+//! ![neurons](https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg)
 
 pub mod random;
 

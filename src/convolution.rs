@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{activation, random, tensor};
+use crate::{activation, tensor};
 
 /// A convolutional layer.
 ///
@@ -14,7 +14,7 @@ use crate::{activation, random, tensor};
 /// * `padding` - The padding applied to the input before convolving.
 /// * `activation` - The `activation::Function` of the layer.
 /// * `dropout` - The dropout rate of the layer (when training).
-/// * `flatten_output` - Whether the output should be flattened.
+/// * `flatten` - Whether the output should be flattened.
 /// * `training` - Whether the layer is training.
 pub struct Convolution {
     pub(crate) inputs: tensor::Shape,
@@ -28,7 +28,7 @@ pub struct Convolution {
     pub(crate) activation: activation::Function,
 
     dropout: Option<f32>,
-    pub flatten_output: bool,
+    pub flatten: bool,
     pub training: bool,
 }
 
@@ -76,8 +76,8 @@ impl Convolution {
         padding: &(usize, usize),
     ) -> tensor::Shape {
         let input: &(usize, usize, usize) = match input {
-            tensor::Shape::Single(shape) => {
-                let root = (*shape as f32).sqrt() as usize;
+            tensor::Shape::Single(size) => {
+                let root = (*size as f32).sqrt() as usize;
                 &(1, root, root)
             }
             tensor::Shape::Triple(ch, he, wi) => &(*ch, *he, *wi),
@@ -106,7 +106,7 @@ impl Convolution {
     ///
     /// A new layer with random weights with the given dimensions.
     pub fn create(
-        input: tensor::Shape,
+        inputs: tensor::Shape,
         filters: usize,
         activation: &activation::Activation,
         kernel: (usize, usize),
@@ -114,43 +114,34 @@ impl Convolution {
         padding: (usize, usize),
         dropout: Option<f32>,
     ) -> Self {
-        let mut generator = random::Generator::create(12345);
+        let (inputs, ic) = match &inputs {
+            tensor::Shape::Single(size) => {
+                let root = (*size as f32).sqrt() as usize;
+                if size % root == 0 {
+                    (tensor::Shape::Triple(1, root, root), 1)
+                } else {
+                    panic!("> When adding a convolutional layer after a dense layer, the dense layer must have a square output.\n> Currently, the layer has {} outputs, which cannot cannot be reshaped to a (1, root[{}], root[{}]) tensor.\n> Try using {} or {} outputs for the preceding dense layer.", size, size, size, root*root, (root+1)*(root+1));
+                }
+            }
+            tensor::Shape::Triple(ic, _, _) => (inputs.clone(), *ic),
+            _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
+        };
+        let outputs =
+            Convolution::calculate_output_size(&inputs, &filters, &kernel, &stride, &padding);
         Convolution {
-            inputs: input.clone(),
-            outputs: Convolution::calculate_output_size(
-                &input, &filters, &kernel, &stride, &padding,
-            ),
-
-            kernels: {
-                let in_channels = match input {
-                    tensor::Shape::Single(size) => size,
-                    tensor::Shape::Triple(ch, _, _) => ch,
-                    _ => unimplemented!("Expected a dense or convolutional input shape."),
-                };
-                (0..filters)
-                    .map(|_| {
-                        tensor::Tensor::triple(
-                            (0..in_channels)
-                                .map(|_| {
-                                    (0..kernel.0)
-                                        .map(|_| {
-                                            (0..kernel.1)
-                                                .map(|_| generator.generate(-1.0, 1.0))
-                                                .collect()
-                                        })
-                                        .collect()
-                                })
-                                .collect(),
-                        )
-                    })
-                    .collect()
-            },
+            inputs,
+            outputs,
+            kernels: (0..filters)
+                .map(|_| {
+                    tensor::Tensor::random(tensor::Shape::Triple(ic, kernel.0, kernel.1), -1.0, 1.0)
+                })
+                .collect(),
             activation: activation::Function::create(&activation),
             dropout,
             stride,
             padding,
             training: false,
-            flatten_output: false,
+            flatten: false,
             loops: 1.0,
         }
     }
@@ -314,7 +305,7 @@ impl Convolution {
             .iter()
             .map(|ref k| match k.data {
                 tensor::Data::Triple(ref kernel) => kernel,
-                _ => panic!("Expected `Tensor` kernel data."),
+                _ => panic!("Expected `tensor::Shape::Triple` kernel shape."),
             })
             .collect();
 
@@ -331,7 +322,7 @@ impl Convolution {
             }
         }
 
-        if self.flatten_output {
+        if self.flatten {
             post = post.flatten();
         }
 
@@ -339,8 +330,6 @@ impl Convolution {
     }
 
     /// Applies the backward pass of the layer to the gradient `tensor::Tensor`.
-    /// Assumes `input` to match `self.inputs`, and for performance reasons does not check.
-    /// Assumes `output` to match `self.outputs`, and for performance reasons does not check.
     ///
     /// # Arguments
     ///
@@ -361,7 +350,6 @@ impl Convolution {
         input: &tensor::Tensor,
         output: &tensor::Tensor,
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
-        // println!("{} {}", gradient.shape, self.outputs);
         let gradient = gradient.get_triple(&self.outputs);
         let derivative = self.activation.backward(&output).get_triple(&self.outputs);
         let delta = tensor::mul3d_scalar(&tensor::hadamard3d(&gradient, &derivative), self.loops);
@@ -487,7 +475,7 @@ mod tests {
         assert_eq!(conv.stride, (1, 1));
         assert_eq!(conv.padding, (0, 0));
         assert_eq!(conv.training, false);
-        assert_eq!(conv.flatten_output, false);
+        assert_eq!(conv.flatten, false);
     }
 
     #[test]

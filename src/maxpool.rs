@@ -11,7 +11,7 @@ use crate::tensor;
 /// * `loops` - The number of loops to run the layer.
 /// * `kernel` - The shape of the filter.
 /// * `stride` - The stride of the filter.
-/// * `flatten_output` - Whether the output should be flattened.
+/// * `flatten` - Whether the output should be flattened.
 pub struct Maxpool {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
@@ -20,7 +20,7 @@ pub struct Maxpool {
     kernel: (usize, usize),
     stride: (usize, usize),
 
-    pub flatten_output: bool,
+    pub flatten: bool,
 }
 
 impl std::fmt::Display for Maxpool {
@@ -51,6 +51,10 @@ impl Maxpool {
         stride: &(usize, usize),
     ) -> tensor::Shape {
         let input: &(usize, usize, usize) = match input {
+            tensor::Shape::Single(size) => {
+                let root = (*size as f32).sqrt() as usize;
+                &(1, root, root)
+            }
             tensor::Shape::Triple(ch, he, wi) => &(*ch, *he, *wi),
             _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
         };
@@ -72,13 +76,26 @@ impl Maxpool {
     /// # Returns
     ///
     /// The new maxpool layer.
-    pub fn create(input: tensor::Shape, kernel: (usize, usize), stride: (usize, usize)) -> Self {
+    pub fn create(inputs: tensor::Shape, kernel: (usize, usize), stride: (usize, usize)) -> Self {
+        let inputs = match &inputs {
+            tensor::Shape::Single(size) => {
+                let root = (*size as f32).sqrt() as usize;
+                if size % root == 0 {
+                    tensor::Shape::Triple(1, root, root)
+                } else {
+                    panic!("> When adding a maxpool layer after a dense layer, the dense layer must have a square output.\n> Currently, the layer has {} outputs, which cannot cannot be reshaped to a (1, root[{}], root[{}]) tensor.\n> Try using {} or {} outputs for the preceding dense layer.", size, size, size, root*root, (root+1)*(root+1));
+                }
+            }
+            tensor::Shape::Triple(_, _, _) => inputs,
+            _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
+        };
+        let outputs = Maxpool::calculate_output_size(&inputs, &kernel, &stride);
         Maxpool {
-            inputs: input.clone(),
-            outputs: Maxpool::calculate_output_size(&input, &kernel, &stride),
+            inputs,
+            outputs,
             kernel,
             stride,
-            flatten_output: false,
+            flatten: false,
             loops: 1.0,
         }
     }
@@ -104,19 +121,25 @@ impl Maxpool {
         // Extracting the data from the input `tensor::Tensor`.
         let (x, ih, iw) = match &x.data {
             tensor::Data::Single(vector) => {
-                let root = (vector.len() as f32).sqrt() as usize;
+                let (h, w) = match &self.inputs {
+                    tensor::Shape::Triple(_, h, w) => (*h, *w),
+                    _ => panic!("Maxpool layers should have `tensor::Shape::Triple` input."),
+                };
                 (
-                    vec![vector.chunks(root).map(|v| v.to_vec()).collect()],
-                    root,
-                    root,
+                    vector
+                        .chunks_exact(h * w)
+                        .map(|channel| channel.chunks_exact(w).map(|row| row.to_vec()).collect())
+                        .collect(),
+                    h,
+                    w,
                 )
             }
             tensor::Data::Triple(tensor) => (tensor.clone(), tensor[0].len(), tensor[0][0].len()),
-            _ => panic!("Expected `Vector` or `Tensor` input data."),
+            _ => panic!("Unexpected input data type."),
         };
         let (oc, oh, ow) = match &self.outputs {
-            tensor::Shape::Triple(channels, height, width) => (*channels, *height, *width),
-            _ => panic!("Expected `Tensor` output shape."),
+            tensor::Shape::Triple(oc, oh, ow) => (*oc, *oh, *ow),
+            _ => panic!("Expected `tensor::Shape::Triple` output shape."),
         };
 
         let mut y = vec![vec![vec![0.0; ow]; oh]; oc];
@@ -150,7 +173,7 @@ impl Maxpool {
         let pre = tensor::Tensor::triple(y);
         let mut post = pre.clone();
 
-        if self.flatten_output {
+        if self.flatten {
             post = post.flatten();
         }
 
@@ -162,7 +185,7 @@ impl Maxpool {
     /// # Arguments
     ///
     /// * `gradient` - The gradient `tensor::Tensor` to the layer.
-    /// * `max` - The indices of the max values in the forward pass.
+    /// * `max` - The indices of the max values from the forward pass.
     ///
     /// # Returns
     ///
@@ -177,18 +200,12 @@ impl Maxpool {
         max: &Vec<Vec<Vec<(usize, usize)>>>,
     ) -> tensor::Tensor {
         let (ic, ih, iw) = match &self.inputs {
-            tensor::Shape::Triple(channels, height, width) => (*channels, *height, *width),
-            _ => panic!("Expected `Tensor` input shape."),
+            tensor::Shape::Triple(ic, ih, iw) => (*ic, *ih, *iw),
+            _ => panic!("Expected `tensor::Shape::Triple` input shape."),
         };
 
-        // let ogradient = match &gradient.data {
-        //     tensor::Data::Tensor(tensor) => tensor.clone(),
-        //     _ => panic!("Expected `Tensor` gradient data."),
-        // };
-        // println!("{} {}", gradient.shape, self.outputs);
         let ogradient = gradient.get_triple(&self.outputs);
         let mut igradient = vec![vec![vec![0.0; iw]; ih]; ic];
-
         let (oh, ow) = (ogradient[0].len(), ogradient[0][0].len());
         for c in 0..ic {
             for h in 0..oh {
@@ -232,7 +249,7 @@ mod tests {
         assert_eq_shape!(maxpool.outputs, tensor::Shape::Triple(1, 2, 2));
         assert_eq!(maxpool.kernel, kernel);
         assert_eq!(maxpool.stride, stride);
-        assert_eq!(maxpool.flatten_output, false);
+        assert_eq!(maxpool.flatten, false);
         assert_eq!(maxpool.loops, 1.0);
     }
 
