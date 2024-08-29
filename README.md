@@ -71,6 +71,17 @@ Create modular neural networks in Rust with ease!
 <details>
   <summary>Releases</summary>
 
+  ## 2.0.1 (Optimized optimizer step)
+
+  Combines operations to single-loop instead of repeadedly iterating over the `tensor::Tensor`'s.
+
+  ### Benchmarking examples/example_benchmark.rs (mnist version)
+
+  ```raw
+  v2.0.1: 16.504570304s (1.05x speedup)
+  v2.0.0: 17.268632412s
+  ```
+
   ## 2.0.0 (Fix batched weight updates)
 
   * Weight updates are now batched correctly.
@@ -239,7 +250,7 @@ Create modular neural networks in Rust with ease!
     - [x] Custom stylesheet for documentation
     - [x] Add number of parameters when displaying `Network`
     - [ ] Network type specification (e.g. f32, f64)
-    - [ ] Saving and loading
+    - [ ] Serialisation (saving and loading)
       - [ ] Single layer weights
       - [ ] Entire network weights
       - [ ] Custom (binary) file format, with header explaining contents

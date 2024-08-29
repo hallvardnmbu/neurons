@@ -49,35 +49,7 @@ impl Function {
         }
     }
 
-    /// Unique identifier for each activation function.
-    /// Used for serialization.
-    pub fn to_identifier(&self) -> [u8; 4] {
-        match self {
-            Function::ReLU(_) => [0, 0, 0, 0],
-            Function::LeakyReLU(_) => [0, 0, 0, 1],
-            Function::Sigmoid(_) => [0, 0, 0, 2],
-            Function::Softmax(_) => [0, 0, 0, 3],
-            Function::Tanh(_) => [0, 0, 0, 4],
-            Function::Linear(_) => [0, 0, 0, 5],
-        }
-    }
-
-    /// Creates an activation function based on the provided identifier.
-    /// Used for deserialization.
-    pub fn from_identifier(id: [u8; 4]) -> Self {
-        match id {
-            [0, 0, 0, 0] => Function::ReLU(ReLU {}),
-            [0, 0, 0, 1] => Function::LeakyReLU(LeakyReLU { alpha: 0.01 }),
-            [0, 0, 0, 2] => Function::Sigmoid(Sigmoid {}),
-            [0, 0, 0, 3] => Function::Softmax(Softmax {}),
-            [0, 0, 0, 4] => Function::Tanh(Tanh {}),
-            [0, 0, 0, 5] => Function::Linear(Linear {}),
-            _ => panic!("Unknown activation function identifier: {:?}", id),
-        }
-    }
-
-    /// Applies the activation function to the input vector in the forward direction using the
-    /// respective formula.
+    /// Applies the activation function to the input `tensor::Tensor` in the forward direction using the respective formula.
     ///
     /// # Arguments
     ///
@@ -97,8 +69,7 @@ impl Function {
         }
     }
 
-    /// Applies the derivative of the activation function to the input vector in the backward
-    /// direction using the derivative of the respective forward function.
+    /// Applies the derivative of the activation function to the input `tensor::Tensor` in the backward direction using the derivative of the respective forward function.
     ///
     /// # Arguments
     ///
@@ -131,19 +102,18 @@ impl ReLU {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| v.max(0.0)).collect())
+            tensor::Data::Single(data) => {
+                tensor::Data::Single(data.iter().map(|&v| v.max(0.0)).collect())
             }
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| v.max(0.0)).collect())
@@ -167,22 +137,20 @@ impl ReLU {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => tensor::Data::Vector(
-                vector
-                    .iter()
+            tensor::Data::Single(data) => tensor::Data::Single(
+                data.iter()
                     .map(|&v| if v > 0.0 { 1.0 } else { 0.0 })
                     .collect(),
             ),
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
@@ -217,22 +185,20 @@ impl LeakyReLU {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => tensor::Data::Vector(
-                vector
-                    .iter()
+            tensor::Data::Single(data) => tensor::Data::Single(
+                data.iter()
                     .map(|&v| if v > 0.0 { v } else { self.alpha * v })
                     .collect(),
             ),
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -260,22 +226,20 @@ impl LeakyReLU {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => tensor::Data::Vector(
-                vector
-                    .iter()
+            tensor::Data::Single(data) => tensor::Data::Single(
+                data.iter()
                     .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
                     .collect(),
             ),
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -308,19 +272,18 @@ impl Sigmoid {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
+            tensor::Data::Single(data) => {
+                tensor::Data::Single(data.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
             }
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
@@ -344,25 +307,23 @@ impl Sigmoid {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => tensor::Data::Vector(
-                vector
-                    .iter()
+            tensor::Data::Single(data) => tensor::Data::Single(
+                data.iter()
                     .map(|&v| {
                         let y = 1.0 / (1.0 + f32::exp(-v));
                         y * (1.0 - y)
                     })
                     .collect(),
             ),
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| {
@@ -398,11 +359,11 @@ impl Softmax {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let x = input.get_flat();
 
@@ -412,7 +373,7 @@ impl Softmax {
 
         let y = exps.iter().map(|v| v / sum).collect();
 
-        tensor::Tensor::vector(y).reshape(input.shape.clone())
+        tensor::Tensor::single(y).reshape(input.shape.clone())
     }
 
     /// Backward pass of the Softmax activation function ([source](https://e2eml.school/softmax)).
@@ -423,11 +384,11 @@ impl Softmax {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, logits: &tensor::Tensor) -> tensor::Tensor {
         let probability = self.forward(logits).get_flat();
         let scalar: f32 = probability
@@ -448,7 +409,7 @@ impl Softmax {
             }
         }
 
-        tensor::Tensor::vector(derivative).reshape(logits.shape.clone())
+        tensor::Tensor::single(derivative).reshape(logits.shape.clone())
     }
 }
 
@@ -464,19 +425,18 @@ impl Tanh {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| v.tanh()).collect())
+            tensor::Data::Single(data) => {
+                tensor::Data::Single(data.iter().map(|&v| v.tanh()).collect())
             }
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| v.tanh()).collect())
@@ -500,19 +460,18 @@ impl Tanh {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let data = match &input.data {
-            tensor::Data::Vector(vector) => {
-                tensor::Data::Vector(vector.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
+            tensor::Data::Single(data) => {
+                tensor::Data::Single(data.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
             }
-            tensor::Data::Tensor(vector) => tensor::Data::Tensor(
-                vector
-                    .iter()
+            tensor::Data::Triple(data) => tensor::Data::Triple(
+                data.iter()
                     .map(|i| {
                         i.iter()
                             .map(|j| j.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
@@ -541,11 +500,11 @@ impl Linear {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of output values.
+    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         input.clone()
     }
@@ -558,11 +517,11 @@ impl Linear {
     ///
     /// # Arguments
     ///
-    /// * `input` - A vector of input values.
+    /// * `input` - A `tensor::Tensor` of input values.
     ///
     /// # Returns
     ///
-    /// * A vector of the derivatives.
+    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         tensor::Tensor::ones(input.shape.clone())
     }
@@ -575,7 +534,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     fn create_test_tensor() -> Tensor {
-        Tensor::vector(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
+        Tensor::single(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
     }
 
     #[test]

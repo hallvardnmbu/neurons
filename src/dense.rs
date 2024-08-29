@@ -73,10 +73,10 @@ impl Dense {
             inputs,
             outputs,
             loops: 1.0,
-            weights: tensor::Tensor::random(tensor::Shape::Matrix(outputs, inputs), -1.0, 1.0),
+            weights: tensor::Tensor::random(tensor::Shape::Double(outputs, inputs), -1.0, 1.0),
             bias: match bias {
                 true => Some(tensor::Tensor::random(
-                    tensor::Shape::Vector(outputs),
+                    tensor::Shape::Single(outputs),
                     -1.0,
                     1.0,
                 )),
@@ -162,9 +162,9 @@ mod tests {
     fn test_create() {
         let dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
 
-        assert_eq_shape!(dense.weights.shape, tensor::Shape::Matrix(2, 3));
+        assert_eq_shape!(dense.weights.shape, tensor::Shape::Double(2, 3));
         if let Some(bias) = &dense.bias {
-            assert_eq_shape!(bias.shape, tensor::Shape::Vector(2));
+            assert_eq_shape!(bias.shape, tensor::Shape::Single(2));
         }
         assert_eq!(dense.dropout, Some(0.5));
     }
@@ -172,39 +172,39 @@ mod tests {
     #[test]
     fn test_forward() {
         let mut dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
-        dense.weights = tensor::Tensor::matrix(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
-        dense.bias = Some(tensor::Tensor::vector(vec![0.0, 0.0]));
+        dense.weights = tensor::Tensor::double(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
+        dense.bias = Some(tensor::Tensor::single(vec![0.0, 0.0]));
 
-        let input = tensor::Tensor::vector(vec![1.0, 2.0, 3.0]);
+        let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
         let (pre, post) = dense.forward(&input);
 
-        assert_eq_data!(pre.data, tensor::Data::Vector(vec![3.0, 3.0]));
-        assert_eq_data!(post.data, tensor::Data::Vector(vec![3.0, 3.0]));
+        assert_eq_data!(pre.data, tensor::Data::Single(vec![3.0, 3.0]));
+        assert_eq_data!(post.data, tensor::Data::Single(vec![3.0, 3.0]));
     }
 
     #[test]
     fn test_backward() {
         let mut dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
-        dense.weights = tensor::Tensor::matrix(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
-        dense.bias = Some(tensor::Tensor::vector(vec![0.0, 0.0]));
+        dense.weights = tensor::Tensor::double(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
+        dense.bias = Some(tensor::Tensor::single(vec![0.0, 0.0]));
 
-        let input = tensor::Tensor::vector(vec![1.0, 2.0, 3.0]);
+        let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
         let (_, post) = dense.forward(&input);
-        let gradient = tensor::Tensor::vector(vec![1.0, 1.0]);
+        let gradient = tensor::Tensor::single(vec![1.0, 1.0]);
 
         let (input_gradient, weight_gradient, bias_gradient) =
             dense.backward(&gradient, &input, &post);
 
         assert_eq_data!(
             input_gradient.data,
-            tensor::Data::Vector(vec![1.0, 1.0, 1.0])
+            tensor::Data::Single(vec![1.0, 1.0, 1.0])
         );
         assert_eq_data!(
             weight_gradient.data,
-            tensor::Data::Matrix(vec![vec![1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0]])
+            tensor::Data::Double(vec![vec![1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0]])
         );
         if let Some(bias_gradient) = bias_gradient {
-            assert_eq_data!(bias_gradient.data, tensor::Data::Vector(vec![1.0, 1.0]));
+            assert_eq_data!(bias_gradient.data, tensor::Data::Single(vec![1.0, 1.0]));
         }
     }
 }

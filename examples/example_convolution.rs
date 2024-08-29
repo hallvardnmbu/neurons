@@ -3,7 +3,7 @@
 use neurons::{activation, network, plot, tensor};
 
 fn main() {
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 24, 24));
+    let mut network = network::Network::new(tensor::Shape::Triple(1, 24, 24));
 
     network.convolution(
         5,
@@ -24,7 +24,7 @@ fn main() {
 
     println!("{}", network);
 
-    let x = tensor::Tensor::random(tensor::Shape::Tensor(1, 24, 24), 0.0, 1.0);
+    let x = tensor::Tensor::random(tensor::Shape::Triple(1, 24, 24), 0.0, 1.0);
     println!("x: {}", &x.shape);
 
     let (pre, post, _) = network.forward(&x);

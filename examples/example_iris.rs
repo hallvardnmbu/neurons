@@ -35,11 +35,11 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
 
     let x: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::vector(x[i].clone()))
+        .map(|&i| tensor::Tensor::single(x[i].clone()))
         .collect();
     let y: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::vector(y[i].clone()))
+        .map(|&i| tensor::Tensor::single(y[i].clone()))
         .collect();
 
     (x, y)
@@ -74,7 +74,7 @@ fn main() {
     );
 
     // Create the network
-    let mut network = network::Network::new(tensor::Shape::Vector(4));
+    let mut network = network::Network::new(tensor::Shape::Single(4));
 
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));
     network.dense(50, activation::Activation::ReLU, false, Some(0.1));
@@ -87,7 +87,7 @@ fn main() {
 
         decay: Some(0.01),
         momentum: Some(0.01),
-        centered: Some(true),
+        centered: true,
 
         // To be filled by the network:
         velocity: vec![],

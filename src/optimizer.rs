@@ -78,11 +78,7 @@ impl std::fmt::Display for Optimizer {
                 write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t\tmomentum: {}\n", structure.momentum.unwrap_or(0.0))?;
-                write!(
-                    f,
-                    "\t\t\tcentered: {}\n",
-                    structure.centered.unwrap_or(false)
-                )?;
+                write!(f, "\t\t\tcentered: {}\n", structure.centered)?;
                 write!(f, "\t\t)")
             }
         }
@@ -143,10 +139,36 @@ impl SGD {
     /// * `values` - The weights of the layer (with optional bias stacked vertically).
     /// * `gradients` - The gradients of the layer (with optional bias stacked vertically).
     pub fn update(&mut self, values: &mut tensor::Tensor, gradients: &mut tensor::Tensor) {
-        if let Some(decay) = self.decay {
-            gradients.add_inplace(&values.mul_scalar(decay));
-        }
-        values.sub_inplace(&gradients.mul_scalar(self.learning_rate));
+        match (&mut values.data, &mut gradients.data) {
+            (tensor::Data::Single(weights), tensor::Data::Single(gradients)) => (0..weights.len())
+                .for_each(|i| {
+                    if let Some(decay) = self.decay {
+                        gradients[i] += decay * weights[i];
+                    }
+                    weights[i] -= self.learning_rate * gradients[i];
+                }),
+            (tensor::Data::Double(weights), tensor::Data::Double(gradients)) => (0..weights.len())
+                .for_each(|i| {
+                    for j in 0..weights[i].len() {
+                        if let Some(decay) = self.decay {
+                            gradients[i][j] += decay * weights[i][j];
+                        }
+                        weights[i][j] -= self.learning_rate * gradients[i][j];
+                    }
+                }),
+            (tensor::Data::Triple(weights), tensor::Data::Triple(gradients)) => (0..weights.len())
+                .for_each(|i| {
+                    for j in 0..weights[i].len() {
+                        for k in 0..weights[i][j].len() {
+                            if let Some(decay) = self.decay {
+                                gradients[i][j][k] += decay * weights[i][j][k];
+                            }
+                            weights[i][j][k] -= self.learning_rate * gradients[i][j][k];
+                        }
+                    }
+                }),
+            _ => panic!("Inconsistent shapes!"),
+        };
     }
 }
 
@@ -196,21 +218,70 @@ impl SGDM {
         values: &mut tensor::Tensor,
         gradients: &mut tensor::Tensor,
     ) {
-        if let Some(decay) = self.decay {
-            gradients.add_inplace(&values.mul_scalar(decay));
-        }
-
-        if stepnr > 1 && self.momentum != 0.0 {
-            self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.momentum);
-            self.velocity[layer][filter][bias as usize]
-                .add_inplace(&gradients.mul_scalar(1.0 - self.dampening));
-        } else {
-            self.velocity[layer][filter][bias as usize] = gradients.clone();
-        }
-
-        values.sub_inplace(
-            &self.velocity[layer][filter][bias as usize].mul_scalar(self.learning_rate),
-        );
+        match (
+            &mut values.data,
+            &mut gradients.data,
+            &mut self.velocity[layer][filter][bias as usize].data,
+        ) {
+            (
+                tensor::Data::Single(weights),
+                tensor::Data::Single(gradients),
+                tensor::Data::Single(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                if let Some(decay) = self.decay {
+                    gradients[i] += decay * weights[i];
+                }
+                if stepnr > 1 && self.momentum != 0.0 {
+                    velocity[i] =
+                        velocity[i] * self.momentum + (1.0 - self.dampening) * gradients[i];
+                    gradients[i] = velocity[i];
+                } else {
+                    velocity[i] = gradients[i];
+                }
+                weights[i] -= self.learning_rate * gradients[i];
+            }),
+            (
+                tensor::Data::Double(weights),
+                tensor::Data::Double(gradients),
+                tensor::Data::Double(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    if let Some(decay) = self.decay {
+                        gradients[i][j] += decay * weights[i][j];
+                    }
+                    if stepnr > 1 && self.momentum != 0.0 {
+                        velocity[i][j] = velocity[i][j] * self.momentum
+                            + (1.0 - self.dampening) * gradients[i][j];
+                        gradients[i][j] = velocity[i][j];
+                    } else {
+                        velocity[i][j] = gradients[i][j];
+                    }
+                    weights[i][j] -= self.learning_rate * gradients[i][j];
+                }
+            }),
+            (
+                tensor::Data::Triple(weights),
+                tensor::Data::Triple(gradients),
+                tensor::Data::Triple(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    for k in 0..weights[i][j].len() {
+                        if let Some(decay) = self.decay {
+                            gradients[i][j][k] += decay * weights[i][j][k];
+                        }
+                        if stepnr > 1 && self.momentum != 0.0 {
+                            velocity[i][j][k] = velocity[i][j][k] * self.momentum
+                                + (1.0 - self.dampening) * gradients[i][j][k];
+                            gradients[i][j][k] = velocity[i][j][k];
+                        } else {
+                            velocity[i][j][k] = gradients[i][j][k];
+                        }
+                        weights[i][j][k] -= self.learning_rate * gradients[i][j][k];
+                    }
+                }
+            }),
+            _ => panic!("Inconsistent shapes!"),
+        };
     }
 }
 
@@ -265,27 +336,69 @@ impl Adam {
         values: &mut tensor::Tensor,
         gradients: &mut tensor::Tensor,
     ) {
-        if let Some(decay) = self.decay {
-            gradients.add_inplace(&values.mul_scalar(decay));
-        }
-
-        self.momentum[layer][filter][bias as usize].mul_scalar_inplace(self.beta1);
-        self.momentum[layer][filter][bias as usize]
-            .add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
-
-        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.beta2);
-        self.velocity[layer][filter][bias as usize]
-            .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.beta2));
-
-        let m = self.momentum[layer][filter][bias as usize]
-            .mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
-        let v = self.velocity[layer][filter][bias as usize]
-            .mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
-
-        values.sub_inplace(
-            &m.mul_scalar(self.learning_rate)
-                .div(&v.pow(0.5).add_scalar(self.epsilon)),
-        );
+        match (
+            &mut values.data,
+            &mut gradients.data,
+            &mut self.momentum[layer][filter][bias as usize].data,
+            &mut self.velocity[layer][filter][bias as usize].data,
+        ) {
+            (
+                tensor::Data::Single(weights),
+                tensor::Data::Single(gradients),
+                tensor::Data::Single(momentum),
+                tensor::Data::Single(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                if let Some(decay) = self.decay {
+                    gradients[i] += decay * weights[i];
+                }
+                momentum[i] = momentum[i] * self.beta1 + gradients[i] * (1.0 - self.beta1);
+                velocity[i] = velocity[i] * self.beta2 + momentum[i].powf(2.0) * (1.0 - self.beta2);
+                let m = momentum[i] / (1.0 - self.beta1.powi(stepnr));
+                let v = velocity[i] / (1.0 - self.beta2.powi(stepnr));
+                weights[i] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+            }),
+            (
+                tensor::Data::Double(weights),
+                tensor::Data::Double(gradients),
+                tensor::Data::Double(momentum),
+                tensor::Data::Double(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    if let Some(decay) = self.decay {
+                        gradients[i][j] += decay * weights[i][j];
+                    }
+                    momentum[i][j] =
+                        momentum[i][j] * self.beta1 + gradients[i][j] * (1.0 - self.beta1);
+                    velocity[i][j] =
+                        velocity[i][j] * self.beta2 + momentum[i][j].powf(2.0) * (1.0 - self.beta2);
+                    let m = momentum[i][j] / (1.0 - self.beta1.powi(stepnr));
+                    let v = velocity[i][j] / (1.0 - self.beta2.powi(stepnr));
+                    weights[i][j] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+                }
+            }),
+            (
+                tensor::Data::Triple(weights),
+                tensor::Data::Triple(gradients),
+                tensor::Data::Triple(momentum),
+                tensor::Data::Triple(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    for k in 0..weights[i][j].len() {
+                        if let Some(decay) = self.decay {
+                            gradients[i][j][k] += decay * weights[i][j][k];
+                        }
+                        momentum[i][j][k] = momentum[i][j][k] * self.beta1
+                            + gradients[i][j][k] * (1.0 - self.beta1);
+                        velocity[i][j][k] = velocity[i][j][k] * self.beta2
+                            + momentum[i][j][k].powf(2.0) * (1.0 - self.beta2);
+                        let m = momentum[i][j][k] / (1.0 - self.beta1.powi(stepnr));
+                        let v = velocity[i][j][k] / (1.0 - self.beta2.powi(stepnr));
+                        weights[i][j][k] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+                    }
+                }
+            }),
+            _ => panic!("Inconsistent shapes!"),
+        };
     }
 }
 
@@ -340,25 +453,63 @@ impl AdamW {
         values: &mut tensor::Tensor,
         gradients: &mut tensor::Tensor,
     ) {
-        values.sub_inplace(&values.mul_scalar(self.learning_rate * self.decay));
-
-        self.momentum[layer][filter][bias as usize].mul_scalar_inplace(self.beta1);
-        self.momentum[layer][filter][bias as usize]
-            .add_inplace(&gradients.mul_scalar(1.0 - self.beta1));
-
-        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.beta2);
-        self.velocity[layer][filter][bias as usize]
-            .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.beta2));
-
-        let m = self.momentum[layer][filter][bias as usize]
-            .mul_scalar(1.0 / (1.0 - self.beta1.powi(stepnr)));
-        let v = self.velocity[layer][filter][bias as usize]
-            .mul_scalar(1.0 / (1.0 - self.beta2.powi(stepnr)));
-
-        values.sub_inplace(
-            &m.mul_scalar(self.learning_rate)
-                .div(&v.pow(0.5).add_scalar(self.epsilon)),
-        );
+        match (
+            &mut values.data,
+            &mut gradients.data,
+            &mut self.momentum[layer][filter][bias as usize].data,
+            &mut self.velocity[layer][filter][bias as usize].data,
+        ) {
+            (
+                tensor::Data::Single(weights),
+                tensor::Data::Single(gradients),
+                tensor::Data::Single(momentum),
+                tensor::Data::Single(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                weights[i] -= self.learning_rate * self.decay * weights[i];
+                momentum[i] = momentum[i] * self.beta1 + gradients[i] * (1.0 - self.beta1);
+                velocity[i] = velocity[i] * self.beta2 + momentum[i].powf(2.0) * (1.0 - self.beta2);
+                let m = momentum[i] / (1.0 - self.beta1.powi(stepnr));
+                let v = velocity[i] / (1.0 - self.beta2.powi(stepnr));
+                weights[i] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+            }),
+            (
+                tensor::Data::Double(weights),
+                tensor::Data::Double(gradients),
+                tensor::Data::Double(momentum),
+                tensor::Data::Double(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    weights[i][j] -= self.learning_rate * self.decay * weights[i][j];
+                    momentum[i][j] =
+                        momentum[i][j] * self.beta1 + gradients[i][j] * (1.0 - self.beta1);
+                    velocity[i][j] =
+                        velocity[i][j] * self.beta2 + momentum[i][j].powf(2.0) * (1.0 - self.beta2);
+                    let m = momentum[i][j] / (1.0 - self.beta1.powi(stepnr));
+                    let v = velocity[i][j] / (1.0 - self.beta2.powi(stepnr));
+                    weights[i][j] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+                }
+            }),
+            (
+                tensor::Data::Triple(weights),
+                tensor::Data::Triple(gradients),
+                tensor::Data::Triple(momentum),
+                tensor::Data::Triple(velocity),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    for k in 0..weights[i][j].len() {
+                        weights[i][j][k] -= self.learning_rate * self.decay * weights[i][j][k];
+                        momentum[i][j][k] = momentum[i][j][k] * self.beta1
+                            + gradients[i][j][k] * (1.0 - self.beta1);
+                        velocity[i][j][k] = velocity[i][j][k] * self.beta2
+                            + momentum[i][j][k].powf(2.0) * (1.0 - self.beta2);
+                        let m = momentum[i][j][k] / (1.0 - self.beta1.powi(stepnr));
+                        let v = velocity[i][j][k] / (1.0 - self.beta2.powi(stepnr));
+                        weights[i][j][k] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
+                    }
+                }
+            }),
+            _ => panic!("Inconsistent shapes!"),
+        };
     }
 }
 
@@ -381,7 +532,7 @@ pub struct RMSprop {
     pub epsilon: f32,
     pub decay: Option<f32>,
     pub momentum: Option<f32>,
-    pub centered: Option<bool>,
+    pub centered: bool,
 
     pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
     pub gradient: Vec<Vec<Vec<tensor::Tensor>>>,
@@ -418,39 +569,99 @@ impl RMSprop {
         values: &mut tensor::Tensor,
         gradients: &mut tensor::Tensor,
     ) {
-        if let Some(decay) = self.decay {
-            gradients.add_inplace(&values.mul_scalar(decay));
-        }
-
-        self.velocity[layer][filter][bias as usize].mul_scalar_inplace(self.alpha);
-        self.velocity[layer][filter][bias as usize]
-            .add_inplace(&gradients.pow(2.0).mul_scalar(1.0 - self.alpha));
-        let mut v = self.velocity[layer][filter][bias as usize].clone();
-
-        if let Some(_) = self.centered {
-            self.gradient[layer][filter][bias as usize].mul_scalar_inplace(self.alpha);
-            self.gradient[layer][filter][bias as usize]
-                .add_inplace(&gradients.mul_scalar(1.0 - self.alpha));
-
-            v.sub_inplace(&self.gradient[layer][filter][bias as usize].pow(2.0));
-        }
-
-        let momentum = self.momentum.unwrap_or(0.0);
-        if momentum > 0.0 {
-            self.buffer[layer][filter][bias as usize].mul_scalar_inplace(momentum);
-            self.buffer[layer][filter][bias as usize]
-                .add_inplace(&gradients.div(&v.pow(0.5).add_scalar(self.epsilon)));
-
-            values.sub_inplace(
-                &self.buffer[layer][filter][bias as usize].mul_scalar(self.learning_rate),
-            );
-        } else {
-            values.sub_inplace(
-                &gradients
-                    .div(&v.pow(0.5).add_scalar(self.epsilon))
-                    .mul_scalar(self.learning_rate),
-            );
-        }
+        match (
+            &mut values.data,
+            &mut gradients.data,
+            &mut self.velocity[layer][filter][bias as usize].data,
+            &mut self.gradient[layer][filter][bias as usize].data,
+            &mut self.buffer[layer][filter][bias as usize].data,
+        ) {
+            (
+                tensor::Data::Single(weights),
+                tensor::Data::Single(gradients),
+                tensor::Data::Single(velocity),
+                tensor::Data::Single(gradient),
+                tensor::Data::Single(buffer),
+            ) => (0..weights.len()).for_each(|i| {
+                if let Some(decay) = self.decay {
+                    gradients[i] += decay * weights[i];
+                }
+                velocity[i] =
+                    self.alpha * velocity[i] + (1.0 - self.alpha) * gradients[i].powf(2.0);
+                let mut v = velocity[i];
+                if self.centered {
+                    gradient[i] = self.alpha * gradient[i] + (1.0 - self.alpha) * gradients[i];
+                    v -= gradient[i].powf(2.0);
+                }
+                if let Some(momentum) = self.momentum {
+                    buffer[i] = momentum * buffer[i] + gradients[i] / (v.sqrt() + self.epsilon);
+                    weights[i] -= self.learning_rate * buffer[i];
+                } else {
+                    weights[i] -= self.learning_rate * gradients[i] / (v.sqrt() + self.epsilon);
+                }
+            }),
+            (
+                tensor::Data::Double(weights),
+                tensor::Data::Double(gradients),
+                tensor::Data::Double(velocity),
+                tensor::Data::Double(gradient),
+                tensor::Data::Double(buffer),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    if let Some(decay) = self.decay {
+                        gradients[i][j] += decay * weights[i][j];
+                    }
+                    velocity[i][j] = self.alpha * velocity[i][j]
+                        + (1.0 - self.alpha) * gradients[i][j].powf(2.0);
+                    let mut v = velocity[i][j];
+                    if self.centered {
+                        gradient[i][j] =
+                            self.alpha * gradient[i][j] + (1.0 - self.alpha) * gradients[i][j];
+                        v -= gradient[i][j].powf(2.0);
+                    }
+                    if let Some(momentum) = self.momentum {
+                        buffer[i][j] =
+                            momentum * buffer[i][j] + gradients[i][j] / (v.sqrt() + self.epsilon);
+                        weights[i][j] -= self.learning_rate * buffer[i][j];
+                    } else {
+                        weights[i][j] -=
+                            self.learning_rate * gradients[i][j] / (v.sqrt() + self.epsilon);
+                    }
+                }
+            }),
+            (
+                tensor::Data::Triple(weights),
+                tensor::Data::Triple(gradients),
+                tensor::Data::Triple(velocity),
+                tensor::Data::Triple(gradient),
+                tensor::Data::Triple(buffer),
+            ) => (0..weights.len()).for_each(|i| {
+                for j in 0..weights[i].len() {
+                    for k in 0..weights[i][j].len() {
+                        if let Some(decay) = self.decay {
+                            gradients[i][j][k] += decay * weights[i][j][k];
+                        }
+                        velocity[i][j][k] = self.alpha * velocity[i][j][k]
+                            + (1.0 - self.alpha) * gradients[i][j][k].powf(2.0);
+                        let mut v = velocity[i][j][k];
+                        if self.centered {
+                            gradient[i][j][k] = self.alpha * gradient[i][j][k]
+                                + (1.0 - self.alpha) * gradients[i][j][k];
+                            v -= gradient[i][j][k].powf(2.0);
+                        }
+                        if let Some(momentum) = self.momentum {
+                            buffer[i][j][k] = momentum * buffer[i][j][k]
+                                + gradients[i][j][k] / (v.sqrt() + self.epsilon);
+                            weights[i][j][k] -= self.learning_rate * buffer[i][j][k];
+                        } else {
+                            weights[i][j][k] -=
+                                self.learning_rate * gradients[i][j][k] / (v.sqrt() + self.epsilon);
+                        }
+                    }
+                }
+            }),
+            _ => panic!("Inconsistent shapes!"),
+        };
     }
 }
 
@@ -462,8 +673,8 @@ mod tests {
     // Helper function to create a simple test case
     fn create_test_case() -> (tensor::Tensor, tensor::Tensor) {
         (
-            tensor::Tensor::vector(vec![1.0, 2.0]),
-            tensor::Tensor::vector(vec![0.1, 0.5]),
+            tensor::Tensor::single(vec![1.0, 2.0]),
+            tensor::Tensor::single(vec![0.1, 0.5]),
         )
     }
 
@@ -474,7 +685,7 @@ mod tests {
             decay: Some(0.01),
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.989, 1.948]);
+        let expected = tensor::Tensor::single(vec![0.989, 1.948]);
 
         sgd.update(&mut values, &mut gradients);
 
@@ -488,10 +699,10 @@ mod tests {
             momentum: 0.9,
             dampening: 0.0,
             decay: Some(0.01),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.5, 0.0])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.989, 1.948]);
+        let expected = tensor::Tensor::single(vec![0.989, 1.948]);
 
         sgdm.update(0, 0, false, 1, &mut values, &mut gradients);
 
@@ -506,11 +717,11 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
-            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.5, 0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::single(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.999915, 1.997269]);
+        let expected = tensor::Tensor::single(vec![0.9999145, 1.99]);
 
         adam.update(0, 0, false, 1, &mut values, &mut gradients);
 
@@ -525,11 +736,11 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.0])]]],
-            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.5, 0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::single(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.999905, 1.99718]);
+        let expected = tensor::Tensor::single(vec![0.999905, 1.98998]);
 
         adamw.update(0, 0, false, 1, &mut values, &mut gradients);
 
@@ -544,13 +755,13 @@ mod tests {
             epsilon: 1e-8,
             decay: Some(0.01),
             momentum: Some(0.9),
-            centered: Some(true),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.5, 0.01])]]],
-            gradient: vec![vec![vec![tensor::Tensor::vector(vec![0.2, 0.1])]]],
-            buffer: vec![vec![vec![tensor::Tensor::vector(vec![0.9, 0.01])]]],
+            centered: true,
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.5, 0.01])]]],
+            gradient: vec![vec![vec![tensor::Tensor::single(vec![0.2, 0.1])]]],
+            buffer: vec![vec![vec![tensor::Tensor::single(vec![0.9, 0.01])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.9902701, 1.875477]);
+        let expected = tensor::Tensor::single(vec![0.9902701, 1.875477]);
 
         rmsprop.update(0, 0, false, &mut values, &mut gradients);
 
@@ -564,7 +775,7 @@ mod tests {
             decay: Some(0.01),
         });
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::vector(vec![0.989, 1.948]);
+        let expected = tensor::Tensor::single(vec![0.989, 1.948]);
 
         optimizer.update(0, 0, false, 1, &mut values, &mut gradients);
 
@@ -584,7 +795,7 @@ mod tests {
             momentum: 0.9,
             dampening: 0.0,
             decay: Some(0.01),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
         });
         assert!(format!("{}", sgdm).contains("SGDM"));
 
@@ -594,8 +805,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: Some(0.01),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
-            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
         });
         assert!(format!("{}", adam).contains("Adam"));
 
@@ -605,8 +816,8 @@ mod tests {
             beta2: 0.999,
             epsilon: 1e-8,
             decay: 0.01,
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
-            momentum: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
+            momentum: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
         });
         assert!(format!("{}", adamw).contains("AdamW"));
 
@@ -616,10 +827,10 @@ mod tests {
             epsilon: 1e-8,
             decay: Some(0.01),
             momentum: Some(0.9),
-            centered: Some(true),
-            velocity: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
-            gradient: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
-            buffer: vec![vec![vec![tensor::Tensor::vector(vec![0.0])]]],
+            centered: true,
+            velocity: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
+            gradient: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
+            buffer: vec![vec![vec![tensor::Tensor::single(vec![0.0])]]],
         });
         assert!(format!("{}", rmsprop).contains("RMSprop"));
     }

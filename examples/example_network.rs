@@ -3,7 +3,7 @@
 use neurons::{activation, network, tensor};
 
 fn main() {
-    let mut network = network::Network::new(tensor::Shape::Vector(2));
+    let mut network = network::Network::new(tensor::Shape::Single(2));
 
     network.dense(100, activation::Activation::ReLU, false, None);
     network.convolution(

@@ -32,7 +32,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::tensor(vec![image]).resize(tensor::Shape::Tensor(1, 14, 14)));
+        images.push(tensor::Tensor::triple(vec![image]).resize(tensor::Shape::Triple(1, 14, 14)));
     }
 
     Ok(images)
@@ -65,7 +65,7 @@ fn main() {
         let start = time::Instant::now();
 
         // Create the network
-        let mut network = network::Network::new(tensor::Shape::Tensor(1, 14, 14));
+        let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
         network.convolution(
             8,

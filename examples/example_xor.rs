@@ -5,23 +5,23 @@ use neurons::{activation, network, objective, optimizer, tensor};
 fn main() {
     // Create the training data for the binary AND operation
     let x: Vec<tensor::Tensor> = vec![
-        tensor::Tensor::vector(vec![0.0, 0.0]),
-        tensor::Tensor::vector(vec![0.0, 1.0]),
-        tensor::Tensor::vector(vec![1.0, 0.0]),
-        tensor::Tensor::vector(vec![1.0, 1.0]),
+        tensor::Tensor::single(vec![0.0, 0.0]),
+        tensor::Tensor::single(vec![0.0, 1.0]),
+        tensor::Tensor::single(vec![1.0, 0.0]),
+        tensor::Tensor::single(vec![1.0, 1.0]),
     ];
     let y: Vec<tensor::Tensor> = vec![
-        tensor::Tensor::vector(vec![0.0]),
-        tensor::Tensor::vector(vec![0.0]),
-        tensor::Tensor::vector(vec![0.0]),
-        tensor::Tensor::vector(vec![1.0]),
+        tensor::Tensor::single(vec![0.0]),
+        tensor::Tensor::single(vec![0.0]),
+        tensor::Tensor::single(vec![0.0]),
+        tensor::Tensor::single(vec![1.0]),
     ];
 
     let inputs: Vec<&tensor::Tensor> = x.iter().collect();
     let targets: Vec<&tensor::Tensor> = y.iter().collect();
 
     // Create the network
-    let mut network = network::Network::new(tensor::Shape::Vector(2));
+    let mut network = network::Network::new(tensor::Shape::Single(2));
 
     network.dense(10, activation::Activation::ReLU, true, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);

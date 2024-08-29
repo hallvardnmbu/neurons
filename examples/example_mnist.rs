@@ -31,7 +31,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::tensor(vec![image]).resize(tensor::Shape::Tensor(1, 10, 10)));
+        images.push(tensor::Tensor::triple(vec![image]).resize(tensor::Shape::Triple(1, 10, 10)));
     }
 
     Ok(images)
@@ -67,7 +67,7 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Tensor(1, 10, 10));
+    let mut network = network::Network::new(tensor::Shape::Triple(1, 10, 10));
 
     network.convolution(
         8,
@@ -80,14 +80,9 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
+    network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
         learning_rate: 0.001,
         decay: None,
-        beta1: 0.9,
-        beta2: 0.999,
-        epsilon: 1e-8,
-        velocity: vec![],
-        momentum: vec![],
     }));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function

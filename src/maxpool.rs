@@ -51,14 +51,14 @@ impl Maxpool {
         stride: &(usize, usize),
     ) -> tensor::Shape {
         let input: &(usize, usize, usize) = match input {
-            tensor::Shape::Tensor(ch, he, wi) => &(*ch, *he, *wi),
+            tensor::Shape::Triple(ch, he, wi) => &(*ch, *he, *wi),
             _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
         };
 
         let height = (input.1 - kernel.0) / stride.0 + 1;
         let width = (input.2 - kernel.1) / stride.1 + 1;
 
-        tensor::Shape::Tensor(input.0, height, width)
+        tensor::Shape::Triple(input.0, height, width)
     }
 
     /// Creates a new maxpool layer.
@@ -103,7 +103,7 @@ impl Maxpool {
     ) {
         // Extracting the data from the input `tensor::Tensor`.
         let (x, ih, iw) = match &x.data {
-            tensor::Data::Vector(vector) => {
+            tensor::Data::Single(vector) => {
                 let root = (vector.len() as f32).sqrt() as usize;
                 (
                     vec![vector.chunks(root).map(|v| v.to_vec()).collect()],
@@ -111,11 +111,11 @@ impl Maxpool {
                     root,
                 )
             }
-            tensor::Data::Tensor(tensor) => (tensor.clone(), tensor[0].len(), tensor[0][0].len()),
+            tensor::Data::Triple(tensor) => (tensor.clone(), tensor[0].len(), tensor[0][0].len()),
             _ => panic!("Expected `Vector` or `Tensor` input data."),
         };
         let (oc, oh, ow) = match &self.outputs {
-            tensor::Shape::Tensor(channels, height, width) => (*channels, *height, *width),
+            tensor::Shape::Triple(channels, height, width) => (*channels, *height, *width),
             _ => panic!("Expected `Tensor` output shape."),
         };
 
@@ -147,7 +147,7 @@ impl Maxpool {
             }
         }
 
-        let pre = tensor::Tensor::tensor(y);
+        let pre = tensor::Tensor::triple(y);
         let mut post = pre.clone();
 
         if self.flatten_output {
@@ -177,7 +177,7 @@ impl Maxpool {
         max: &Vec<Vec<Vec<(usize, usize)>>>,
     ) -> tensor::Tensor {
         let (ic, ih, iw) = match &self.inputs {
-            tensor::Shape::Tensor(channels, height, width) => (*channels, *height, *width),
+            tensor::Shape::Triple(channels, height, width) => (*channels, *height, *width),
             _ => panic!("Expected `Tensor` input shape."),
         };
 
@@ -186,7 +186,7 @@ impl Maxpool {
         //     _ => panic!("Expected `Tensor` gradient data."),
         // };
         // println!("{} {}", gradient.shape, self.outputs);
-        let ogradient = gradient.get_tensor(&self.outputs);
+        let ogradient = gradient.get_triple(&self.outputs);
         let mut igradient = vec![vec![vec![0.0; iw]; ih]; ic];
 
         let (oh, ow) = (ogradient[0].len(), ogradient[0][0].len());
@@ -199,7 +199,7 @@ impl Maxpool {
             }
         }
 
-        tensor::Tensor::tensor(igradient)
+        tensor::Tensor::triple(igradient)
     }
 }
 
@@ -211,25 +211,25 @@ mod tests {
 
     #[test]
     fn test_calculate_output_size() {
-        let input = tensor::Shape::Tensor(1, 4, 4);
+        let input = tensor::Shape::Triple(1, 4, 4);
         let kernel = (2, 2);
         let stride = (2, 2);
 
         let output = Maxpool::calculate_output_size(&input, &kernel, &stride);
 
-        assert_eq_shape!(output, tensor::Shape::Tensor(1, 2, 2));
+        assert_eq_shape!(output, tensor::Shape::Triple(1, 2, 2));
     }
 
     #[test]
     fn test_create() {
-        let input = tensor::Shape::Tensor(1, 4, 4);
+        let input = tensor::Shape::Triple(1, 4, 4);
         let kernel = (2, 2);
         let stride = (2, 2);
 
         let maxpool = Maxpool::create(input.clone(), kernel, stride);
 
         assert_eq_shape!(maxpool.inputs, input);
-        assert_eq_shape!(maxpool.outputs, tensor::Shape::Tensor(1, 2, 2));
+        assert_eq_shape!(maxpool.outputs, tensor::Shape::Triple(1, 2, 2));
         assert_eq!(maxpool.kernel, kernel);
         assert_eq!(maxpool.stride, stride);
         assert_eq!(maxpool.flatten_output, false);
@@ -238,13 +238,13 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let input = tensor::Shape::Tensor(1, 4, 4);
+        let input = tensor::Shape::Triple(1, 4, 4);
         let kernel = (2, 2);
         let stride = (2, 2);
         let maxpool = Maxpool::create(input.clone(), kernel, stride);
 
         let x = tensor::Tensor {
-            data: Data::Tensor(vec![vec![
+            data: Data::Triple(vec![vec![
                 vec![1.0, 2.0, 3.0, 4.0],
                 vec![5.0, 6.0, 7.0, 8.0],
                 vec![9.0, 10.0, 11.0, 12.0],
@@ -257,25 +257,25 @@ mod tests {
 
         assert_eq_data!(
             pre.data,
-            Data::Tensor(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
+            Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
         );
         assert_eq_data!(
             post.data,
-            Data::Tensor(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
+            Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
         );
         assert_eq!(max, vec![vec![vec![(1, 1), (1, 3)], vec![(3, 1), (3, 3)]]]);
     }
 
     #[test]
     fn test_backward() {
-        let input = tensor::Shape::Tensor(1, 4, 4);
+        let input = tensor::Shape::Triple(1, 4, 4);
         let kernel = (2, 2);
         let stride = (2, 2);
         let maxpool = Maxpool::create(input.clone(), kernel, stride);
 
         let gradient = tensor::Tensor {
-            data: Data::Tensor(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]),
-            shape: tensor::Shape::Tensor(1, 2, 2),
+            data: Data::Triple(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]),
+            shape: tensor::Shape::Triple(1, 2, 2),
         };
 
         let max = vec![vec![vec![(1, 1), (1, 3)], vec![(3, 1), (3, 3)]]];
@@ -284,7 +284,7 @@ mod tests {
 
         assert_eq_data!(
             igradient.data,
-            Data::Tensor(vec![vec![
+            Data::Triple(vec![vec![
                 vec![0.0, 0.0, 0.0, 0.0],
                 vec![0.0, 1.0, 0.0, 2.0],
                 vec![0.0, 0.0, 0.0, 0.0],

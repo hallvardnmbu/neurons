@@ -86,7 +86,7 @@ pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, title: &str, path: &str) {
 /// * `path` - The path to save the plot.
 pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
     let x = match data.data {
-        tensor::Data::Tensor(ref x) => x,
+        tensor::Data::Triple(ref x) => x,
         _ => return (),
         // _ => panic!("Expected a tensor, but got one-dimensional data."),
     };

@@ -126,7 +126,7 @@ impl Network {
     ) {
         if self.layers.is_empty() {
             let inputs = match self.input {
-                tensor::Shape::Vector(inputs) => inputs,
+                tensor::Shape::Single(inputs) => inputs,
                 _ => panic!(
                     "Network is configured for image inputs; the first layer must be Convolutional"
                 ),
@@ -146,7 +146,7 @@ impl Network {
                 // Make sure the output of the convolutional layer is flattened.
                 layer.flatten_output = true;
                 match layer.outputs {
-                    tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
                     _ => panic!("Expected `tensor::Tensor` shape"),
                 }
             }
@@ -154,7 +154,7 @@ impl Network {
                 // Make sure the output of the maxpool layer is flattened.
                 layer.flatten_output = true;
                 match layer.outputs {
-                    tensor::Shape::Tensor(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
                     _ => panic!("Expected `tensor::Tensor` shape"),
                 }
             }
@@ -208,7 +208,7 @@ impl Network {
         self.layers
             .push(Layer::Convolution(convolution::Convolution::create(
                 match self.layers.last().unwrap() {
-                    Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
+                    Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
                     Layer::Convolution(layer) => layer.outputs.clone(),
                     Layer::Maxpool(layer) => layer.outputs.clone(),
                 },
@@ -237,7 +237,7 @@ impl Network {
             return;
         }
         let input = match self.layers.last().unwrap() {
-            Layer::Dense(layer) => tensor::Shape::Vector(layer.outputs),
+            Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
             Layer::Convolution(layer) => layer.outputs.clone(),
             Layer::Maxpool(layer) => layer.outputs.clone(),
         };
@@ -331,28 +331,28 @@ impl Network {
             match layer {
                 Layer::Dense(layer) => {
                     vectors.push(vec![vec![
-                        tensor::Tensor::matrix(vec![vec![0.0; layer.inputs]; layer.outputs]),
+                        tensor::Tensor::double(vec![vec![0.0; layer.inputs]; layer.outputs]),
                         if layer.bias.is_some() {
-                            tensor::Tensor::vector(vec![0.0; layer.outputs])
+                            tensor::Tensor::single(vec![0.0; layer.outputs])
                         } else {
-                            tensor::Tensor::vector(vec![])
+                            tensor::Tensor::single(vec![])
                         },
                     ]]);
                 }
                 Layer::Convolution(layer) => {
                     let (ch, kh, kw) = match layer.kernels[0].shape {
-                        tensor::Shape::Tensor(ch, he, wi) => (ch, he, wi),
+                        tensor::Shape::Triple(ch, he, wi) => (ch, he, wi),
                         _ => panic!("Expected Convolution shape"),
                     };
                     vectors.push(vec![
                         vec![
-                            tensor::Tensor::tensor(vec![vec![vec![0.0; kw]; kh]; ch]),
+                            tensor::Tensor::triple(vec![vec![vec![0.0; kw]; kh]; ch]),
                             // TODO: Add bias term here.
                         ];
                         layer.kernels.len()
                     ]);
                 }
-                Layer::Maxpool(_) => vectors.push(vec![vec![tensor::Tensor::vector(vec![0.0; 0])]]),
+                Layer::Maxpool(_) => vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]]),
             }
         }
 
@@ -778,7 +778,7 @@ impl Network {
                 Layer::Convolution(layer) => layer.backward(&gradient, input, output),
                 Layer::Maxpool(layer) => (
                     layer.backward(&gradient, &maxpools.pop_front().unwrap()),
-                    tensor::Tensor::vector(vec![0.0; 0]),
+                    tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),
             };
@@ -834,7 +834,7 @@ impl Network {
                     for (f, (filter, gradient)) in layer
                         .kernels
                         .iter_mut()
-                        .zip(weight_gradients[i].gradient_to_tensor_vec().iter_mut())
+                        .zip(weight_gradients[i].quadruple_to_vec_triple().iter_mut())
                         .enumerate()
                     {
                         self.optimizer.update(i, f, false, stepnr, filter, gradient);
@@ -981,7 +981,7 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let mut network = Network::new(tensor::Shape::Tensor(1, 3, 3));
+        let mut network = Network::new(tensor::Shape::Triple(1, 3, 3));
 
         network.convolution(
             1,
@@ -994,7 +994,7 @@ mod tests {
 
         match network.layers[0] {
             Layer::Convolution(ref mut conv) => {
-                conv.kernels[0] = tensor::Tensor::tensor(vec![vec![
+                conv.kernels[0] = tensor::Tensor::triple(vec![vec![
                     vec![0.0, 0.0, 0.0],
                     vec![0.0, 1.0, 0.0],
                     vec![0.0, 0.0, 0.0],
@@ -1003,7 +1003,7 @@ mod tests {
             _ => (),
         }
 
-        let input = tensor::Tensor::tensor(vec![vec![
+        let input = tensor::Tensor::triple(vec![vec![
             vec![1.0, 2.0, 3.0],
             vec![4.0, 5.0, 6.0],
             vec![7.0, 8.0, 9.0],
@@ -1019,7 +1019,7 @@ mod tests {
     fn test_backward() {
         // See Python file `documentation/validation/test_network_backward.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
 
         network.convolution(
             3,
@@ -1033,15 +1033,15 @@ mod tests {
 
         match network.layers[0] {
             Layer::Convolution(ref mut conv) => {
-                conv.kernels[0] = tensor::Tensor::tensor(vec![
+                conv.kernels[0] = tensor::Tensor::triple(vec![
                     vec![vec![1.0, 1.0], vec![2.0, 2.0]],
                     vec![vec![1.0, 2.0], vec![1.0, 2.0]],
                 ]);
-                conv.kernels[1] = tensor::Tensor::tensor(vec![
+                conv.kernels[1] = tensor::Tensor::triple(vec![
                     vec![vec![2.0, 2.0], vec![1.0, 1.0]],
                     vec![vec![2.0, 1.0], vec![2.0, 1.0]],
                 ]);
-                conv.kernels[2] = tensor::Tensor::tensor(vec![
+                conv.kernels[2] = tensor::Tensor::triple(vec![
                     vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                     vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                 ]);
@@ -1050,19 +1050,19 @@ mod tests {
         }
         match network.layers[1] {
             Layer::Dense(ref mut dense) => {
-                dense.weights = tensor::Tensor::matrix(vec![
+                dense.weights = tensor::Tensor::double(vec![
                     vec![2.5; dense.inputs],
                     vec![-1.2; dense.inputs],
                     vec![0.5; dense.inputs],
                     vec![3.5; dense.inputs],
                     vec![5.2; dense.inputs],
                 ]);
-                dense.bias = Some(tensor::Tensor::vector(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
+                dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
             }
             _ => (),
         }
 
-        let input = tensor::Tensor::tensor(vec![
+        let input = tensor::Tensor::triple(vec![
             vec![
                 vec![0.0, 0.0, 0.0, 0.0],
                 vec![0.0, 1.0, 2.0, 0.0],
@@ -1078,7 +1078,7 @@ mod tests {
         ]);
 
         let output = vec![
-            tensor::Tensor::tensor(vec![
+            tensor::Tensor::triple(vec![
                 vec![
                     vec![10.0, 16.0, 7.0],
                     vec![19.0, 31.0, 14.0],
@@ -1095,12 +1095,12 @@ mod tests {
                     vec![0.0, 0.0, 0.0],
                 ],
             ]),
-            tensor::Tensor::vector(vec![
+            tensor::Tensor::single(vec![
                 10.0, 16.0, 7.0, 19.0, 31.0, 14.0, 7.0, 11.0, 5.0, 5.0, 14.0, 8.0, 11.0, 29.0,
                 16.0, 8.0, 19.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             ]),
-            tensor::Tensor::vector(vec![603.0, -284.00003, 125.0, 846.0, 1255.0]),
-            tensor::Tensor::vector(vec![603.0, 0.0, 125.0, 846.0, 1255.0]),
+            tensor::Tensor::single(vec![603.0, -284.00003, 125.0, 846.0, 1255.0]),
+            tensor::Tensor::single(vec![603.0, 0.0, 125.0, 846.0, 1255.0]),
         ];
 
         let (pre, post, max) = network.forward(&input);
@@ -1112,17 +1112,17 @@ mod tests {
         assert_eq_data!(post[2].data, output[3].data);
 
         // let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
-        let gradient = tensor::Tensor::vector(vec![1.0; 5]);
+        let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
         let (weight_gradient, bias_gradient) = network.backward(gradient, &pre, &post, max);
 
         let _weight_gradient = vec![
-            tensor::Tensor::gradient(vec![
+            tensor::Tensor::quadruple(vec![
                 vec![vec![vec![117., 117.]; 2]; 2],
                 vec![vec![vec![117., 117.]; 2]; 2],
                 vec![vec![vec![0.0, 0.0]; 2]; 2],
             ]),
-            tensor::Tensor::matrix(vec![
+            tensor::Tensor::double(vec![
                 vec![
                     10., 16., 7., 19., 31., 14., 7., 11., 5., 5., 14., 8., 11., 29., 16., 8., 19.,
                     10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -1144,7 +1144,7 @@ mod tests {
                     10., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                 ],
             ]),
-            tensor::Tensor::vector(vec![1., 0., 1., 1., 1.]),
+            tensor::Tensor::single(vec![1., 0., 1., 1., 1.]),
         ];
 
         // Kernel gradient(s)
@@ -1161,7 +1161,7 @@ mod tests {
     fn test_update() {
         // See Python file `documentation/validation/test_network_update.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Tensor(2, 4, 4));
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
 
         network.convolution(
             3,
@@ -1180,15 +1180,15 @@ mod tests {
 
         match network.layers[0] {
             Layer::Convolution(ref mut conv) => {
-                conv.kernels[0] = tensor::Tensor::tensor(vec![
+                conv.kernels[0] = tensor::Tensor::triple(vec![
                     vec![vec![1.0, 1.0], vec![2.0, 2.0]],
                     vec![vec![1.0, 2.0], vec![1.0, 2.0]],
                 ]);
-                conv.kernels[1] = tensor::Tensor::tensor(vec![
+                conv.kernels[1] = tensor::Tensor::triple(vec![
                     vec![vec![2.0, 2.0], vec![1.0, 1.0]],
                     vec![vec![2.0, 1.0], vec![2.0, 1.0]],
                 ]);
-                conv.kernels[2] = tensor::Tensor::tensor(vec![
+                conv.kernels[2] = tensor::Tensor::triple(vec![
                     vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                     vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                 ]);
@@ -1197,19 +1197,19 @@ mod tests {
         }
         match network.layers[1] {
             Layer::Dense(ref mut dense) => {
-                dense.weights = tensor::Tensor::matrix(vec![
+                dense.weights = tensor::Tensor::double(vec![
                     vec![2.5; dense.inputs],
                     vec![-1.2; dense.inputs],
                     vec![0.5; dense.inputs],
                     vec![3.5; dense.inputs],
                     vec![5.2; dense.inputs],
                 ]);
-                dense.bias = Some(tensor::Tensor::vector(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
+                dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
             }
             _ => (),
         }
 
-        let input = tensor::Tensor::tensor(vec![
+        let input = tensor::Tensor::triple(vec![
             vec![
                 vec![0.0, 0.0, 0.0, 0.0],
                 vec![0.0, 1.0, 2.0, 0.0],
@@ -1226,7 +1226,7 @@ mod tests {
 
         let (pre, post, max) = network.forward(&input);
 
-        let gradient = tensor::Tensor::vector(vec![1.0; 5]);
+        let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
         let (weight_gradients, bias_gradients) = network.backward(gradient, &pre, &post, max);
 
@@ -1236,7 +1236,7 @@ mod tests {
             Layer::Convolution(ref mut conv) => {
                 assert_eq_data!(
                     conv.kernels[0].data,
-                    tensor::Tensor::tensor(vec![
+                    tensor::Tensor::triple(vec![
                         vec![vec![-10.7, -10.7], vec![-9.7000, -9.7000]],
                         vec![vec![-10.7, -9.7000], vec![-10.7, -9.7000]],
                     ])
@@ -1244,7 +1244,7 @@ mod tests {
                 );
                 assert_eq_data!(
                     conv.kernels[1].data,
-                    tensor::Tensor::tensor(vec![
+                    tensor::Tensor::triple(vec![
                         vec![vec![-9.7000, -9.7000], vec![-10.7, -10.7]],
                         vec![vec![-9.7000, -10.7], vec![-9.7000, -10.7]],
                     ])
@@ -1252,7 +1252,7 @@ mod tests {
                 );
                 assert_eq_data!(
                     conv.kernels[2].data,
-                    tensor::Tensor::tensor(vec![
+                    tensor::Tensor::triple(vec![
                         vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                         vec![vec![0.0, 0.0], vec![0.0, 0.0]],
                     ])
@@ -1265,7 +1265,7 @@ mod tests {
             Layer::Dense(ref mut dense) => {
                 assert_eq_data!(
                     dense.weights.data,
-                    tensor::Data::Matrix(vec![
+                    tensor::Data::Double(vec![
                         vec![
                             1.5000, 0.9000, 1.8000, 0.6000, -0.6000, 1.1000, 1.8000, 1.4000,
                             2.0000, 2.0000, 1.1000, 1.7000, 1.4000, -0.4000, 0.9000, 1.7000,
@@ -1299,7 +1299,7 @@ mod tests {
                 if let Some(bias) = &dense.bias {
                     assert_eq_data!(
                         bias.data,
-                        tensor::Data::Vector(vec![2.9000, 4.0000, 4.9000, 5.9000, 6.9000])
+                        tensor::Data::Single(vec![2.9000, 4.0000, 4.9000, 5.9000, 6.9000])
                     );
                 }
             }
