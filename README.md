@@ -17,7 +17,7 @@
 ## Features
 
 - Modular design
-  - Ready-to-use dense and convolutional layers.
+  - Ready-to-use dense, convolutional and maxpool layers.
   - Inferred input shapes when adding layers.
   - Easily specify activation functions, biases, and dropout.
   - Customizable objective functions and optimization techniques.
