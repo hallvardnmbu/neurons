@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long.svg", alt="neurons">
+  <img src="https://raw.githubusercontent.com/hallvardnmbu/neurons/main/documentation/neurons-long-white-bg.svg", alt="neurons">
   <br>
 </h1>
 
