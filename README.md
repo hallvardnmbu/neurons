@@ -174,7 +174,6 @@ Create modular neural networks in Rust with ease!
 
   ## Architecture
     - [x] Feedforward (dubbed `Network`)
-    - [x] Convolutional
     - [ ] Recurrent
     - [ ] Skip connections
     - [ ] Feedback connections
@@ -183,10 +182,15 @@ Create modular neural networks in Rust with ease!
       - [ ] Convolutional to Dense
       - [ ] Convolutional to Convolutional
 
+  ### Feedback
+    - [ ] Selectable gradient accumulation
+    - [ ] Selectable __loops__ integration wrt. updating weights
+    - [ ] Improved feedback logic wrt. output/input-shapes
+
   ## Regularization
     - [x] Dropout
-    - [ ] Batch normalization
     - [x] Early stopping
+    - [ ] Batch normalization
 
   ## Parallelization
     - [x] Parallelization of batches
@@ -233,13 +237,13 @@ Create modular neural networks in Rust with ease!
       - [ ] General data loading functionality
     - [x] Custom icon/image for documentation
     - [x] Custom stylesheet for documentation
+    - [x] Add number of parameters when displaying `Network`
     - [ ] Network type specification (e.g. f32, f64)
     - [ ] Saving and loading
       - [ ] Single layer weights
       - [ ] Entire network weights
       - [ ] Custom (binary) file format, with header explaining contents
     - [ ] Logging
-    - [x] Add number of parameters when displaying `Network`
 
 </details>
 
