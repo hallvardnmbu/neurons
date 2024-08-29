@@ -37,7 +37,7 @@ fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
     Ok(images)
 }
 
-fn load_labels(file_path: &str, numbers: f32) -> Result<Vec<tensor::Tensor>> {
+fn load_labels(file_path: &str, numbers: usize) -> Result<Vec<tensor::Tensor>> {
     let mut reader = BufReader::new(File::open(file_path)?);
     let _magic_number = read(&mut reader)?;
     let num_labels = read(&mut reader)?;
@@ -47,15 +47,15 @@ fn load_labels(file_path: &str, numbers: f32) -> Result<Vec<tensor::Tensor>> {
 
     Ok(_labels
         .iter()
-        .map(|&x| tensor::Tensor::one_hot(x as f32, numbers))
+        .map(|&x| tensor::Tensor::one_hot(x as usize, numbers))
         .collect())
 }
 
 fn main() {
     let x_train = load_images("./examples/datasets/mnist/train-images-idx3-ubyte").unwrap();
-    let y_train = load_labels("./examples/datasets/mnist/train-labels-idx1-ubyte", 10f32).unwrap();
+    let y_train = load_labels("./examples/datasets/mnist/train-labels-idx1-ubyte", 10).unwrap();
     let x_test = load_images("./examples/datasets/mnist/t10k-images-idx3-ubyte").unwrap();
-    let y_test = load_labels("./examples/datasets/mnist/t10k-labels-idx1-ubyte", 10f32).unwrap();
+    let y_test = load_labels("./examples/datasets/mnist/t10k-labels-idx1-ubyte", 10).unwrap();
     println!(
         "Train: {} images, Test: {} images",
         x_train.len(),

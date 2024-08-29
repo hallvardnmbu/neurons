@@ -730,7 +730,6 @@ impl KLDivergence {
 mod tests {
     use super::*;
     use crate::tensor::Tensor;
-    use approx::assert_relative_eq;
 
     fn create_test_tensors() -> (Tensor, Tensor) {
         let prediction = Tensor::single(vec![0.1, 0.2, 0.3, 0.4]);
@@ -745,7 +744,7 @@ mod tests {
 
         let (loss, gradient) = ae.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 1.6, epsilon = 1e-6);
+        assert!((loss - 1.6).abs() < 1e-6);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
@@ -756,7 +755,7 @@ mod tests {
 
         let (loss, gradient) = mae.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.4, epsilon = 1e-6);
+        assert!((loss - 0.4).abs() < 1e-6);
         assert_eq!(gradient.get_flat(), vec![1.0, 1.0, -1.0, -1.0]);
     }
 
@@ -767,7 +766,7 @@ mod tests {
 
         let (loss, gradient) = mse.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.225, epsilon = 1e-6);
+        assert!((loss - 0.225).abs() < 1e-6);
         assert_eq!(
             gradient.get_flat().as_slice(),
             vec![0.05, 0.1, -0.35, -0.3].as_slice()
@@ -781,7 +780,7 @@ mod tests {
 
         let (loss, gradient) = rmse.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 0.4743416490252569, epsilon = 1e-6);
+        assert!((loss - 0.4743416490252569).abs() < 1e-6);
         assert_eq!(
             gradient.get_flat().as_slice(),
             vec![0.25, 0.25, -0.25, -0.25].as_slice()
@@ -795,7 +794,7 @@ mod tests {
 
         let (loss, gradient) = ce.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 2.120263536200091, epsilon = 1e-6);
+        assert!((loss - 2.120263536200091).abs() < 1e-6);
         assert_eq!(
             gradient.get_flat().as_slice(),
             vec![0.1, 0.2, -0.7, -0.6].as_slice()
@@ -809,13 +808,11 @@ mod tests {
 
         let (loss, gradient) = bce.loss(&prediction, &target);
 
-        assert_relative_eq!(loss, 2.448767603172127, epsilon = 1e-6);
+        assert!((loss - 2.448767603172127).abs() < 1e-6);
         let expected_gradient = vec![1.111111111111111, 1.25, -3.333333333333333, -2.5];
-        assert_relative_eq!(
-            gradient.get_flat().as_slice(),
-            expected_gradient.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in gradient.get_flat().iter().zip(expected_gradient.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]
@@ -827,11 +824,10 @@ mod tests {
         let (loss, gradient) = kld.loss(&prediction, &target);
 
         assert!((loss - 0.10484119778475744).abs() <= 1e-5);
-        assert_relative_eq!(
-            gradient.get_flat().as_slice(),
-            vec![-1.0, -1.0, -1.1, -1.0].as_slice(),
-            epsilon = 1e-5
-        );
+        let expected_gradient = vec![-1.0, -1.0, -1.1, -1.0];
+        for (a, b) in gradient.get_flat().iter().zip(expected_gradient.iter()) {
+            assert!((a - b).abs() < 1e-5);
+        }
     }
 
     #[test]
@@ -842,11 +838,9 @@ mod tests {
         let (_, gradient) = mse_clamped.loss(&prediction, &target);
 
         let expected_gradient = vec![0.05, 0.1, -0.2, -0.2];
-        assert_relative_eq!(
-            gradient.get_flat().as_slice(),
-            expected_gradient.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in gradient.get_flat().iter().zip(expected_gradient.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]

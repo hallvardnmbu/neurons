@@ -855,7 +855,7 @@ impl Network {
     ///
     /// * `inputs` - The input data (x).
     /// * `targets` - The targets of the given inputs (y).
-    /// * `tol` - The tolerance for the accuracy, see `self.accuracy`.
+    /// * `tol` - The tolerance for the accuracy.
     ///
     /// # Returns
     ///

@@ -531,7 +531,6 @@ impl Linear {
 mod tests {
     use super::*;
     use crate::tensor::Tensor;
-    use approx::assert_relative_eq;
 
     fn create_test_tensor() -> Tensor {
         Tensor::single(vec![-2.0, -1.0, 0.0, 1.0, 2.0])
@@ -561,20 +560,16 @@ mod tests {
         // Test forward
         let output = leaky_relu.forward(&input);
         let expected = vec![-0.02, -0.01, 0.0, 1.0, 2.0];
-        assert_relative_eq!(
-            output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
 
         // Test backward
         let grad_output = leaky_relu.backward(&input);
         let expected = vec![0.01, 0.01, 0.01, 1.0, 1.0];
-        assert_relative_eq!(
-            grad_output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in grad_output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]
@@ -591,11 +586,9 @@ mod tests {
             0.7310585786300049,
             0.8807970779778823,
         ];
-        assert_relative_eq!(
-            output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
 
         // Test backward
         let grad_output = sigmoid.backward(&input);
@@ -606,11 +599,9 @@ mod tests {
             0.19661193324148185,
             0.10499358540350662,
         ];
-        assert_relative_eq!(
-            grad_output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in grad_output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]
@@ -627,20 +618,16 @@ mod tests {
             0.23412165725273662,
             0.6364086465588308,
         ];
-        assert_relative_eq!(
-            output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
 
         // Test backward
         let grad_output = softmax.backward(&input);
         let expected = vec![1.4051605, 1.4051604, 1.4051604, 1.4051604, 1.4051605];
-        assert_relative_eq!(
-            grad_output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in grad_output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]
@@ -657,11 +644,9 @@ mod tests {
             0.7615941559557649,
             0.9640275800758169,
         ];
-        assert_relative_eq!(
-            output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
 
         // Test backward
         let grad_output = tanh.backward(&input);
@@ -672,11 +657,9 @@ mod tests {
             0.4199743416140261,
             0.07065082485316447,
         ];
-        assert_relative_eq!(
-            grad_output.get_flat().as_slice(),
-            expected.as_slice(),
-            epsilon = 1e-6
-        );
+        for (a, b) in grad_output.get_flat().iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-6);
+        }
     }
 
     #[test]

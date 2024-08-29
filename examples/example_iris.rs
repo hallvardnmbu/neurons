@@ -1,17 +1,21 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-extern crate csv;
-
 use neurons::{activation, network, objective, optimizer, random, tensor};
 
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
+
 fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
-    let mut reader = csv::Reader::from_path(path).unwrap();
+    let reader = BufReader::new(File::open(&path).unwrap());
 
     let mut x: Vec<Vec<f32>> = Vec::new();
-    let mut y: Vec<Vec<f32>> = Vec::new();
+    let mut y: Vec<usize> = Vec::new();
 
-    reader.records().for_each(|record| {
-        let record = record.unwrap();
+    for line in reader.lines().skip(1) {
+        let line = line.unwrap();
+        let record: Vec<&str> = line.split(',').collect();
         x.push(vec![
             record.get(1).unwrap().parse::<f32>().unwrap(),
             record.get(2).unwrap().parse::<f32>().unwrap(),
@@ -19,15 +23,12 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
             record.get(4).unwrap().parse::<f32>().unwrap(),
         ]);
         y.push(match record.get(5).unwrap() {
-            "Iris-setosa" => vec![1.0, 0.0, 0.0],
-            "Iris-versicolor" => vec![0.0, 1.0, 0.0],
-            "Iris-virginica" => vec![0.0, 0.0, 1.0],
-            // "Iris-setosa" => vec![0.0],
-            // "Iris-versicolor" => vec![1.0],
-            // "Iris-virginica" => vec![2.0],
+            &"Iris-setosa" => 0,
+            &"Iris-versicolor" => 1,
+            &"Iris-virginica" => 2,
             _ => panic!("Unknown class"),
         });
-    });
+    }
 
     let mut generator = random::Generator::create(12345);
     let mut indices: Vec<usize> = (0..x.len()).collect();
@@ -39,7 +40,7 @@ fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
         .collect();
     let y: Vec<tensor::Tensor> = indices
         .iter()
-        .map(|&i| tensor::Tensor::single(y[i].clone()))
+        .map(|&i| tensor::Tensor::one_hot(y[i], 3))
         .collect();
 
     (x, y)

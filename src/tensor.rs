@@ -373,11 +373,11 @@ impl Tensor {
     }
 
     /// One-hot encodes a value into a `Shape::Vector`.
-    pub fn one_hot(value: f32, max: f32) -> Self {
-        let mut data = vec![0.0; max as usize];
-        data[value as usize] = 1.0;
+    pub fn one_hot(value: usize, max: usize) -> Self {
+        let mut data = vec![0.0; max];
+        data[value] = 1.0;
         Tensor {
-            shape: Shape::Single(max as usize),
+            shape: Shape::Single(max),
             data: Data::Single(data),
         }
     }
@@ -1089,11 +1089,11 @@ mod tests {
 
     #[test]
     fn test_tensor_one_hot() {
-        let tensor = Tensor::one_hot(2.0, 5.0);
+        let tensor = Tensor::one_hot(2, 5);
         assert_eq!(tensor.shape, Shape::Single(5));
         assert_eq!(tensor.data, Data::Single(vec![0.0, 0.0, 1.0, 0.0, 0.0]));
 
-        let tensor = Tensor::one_hot(0.0, 3.0);
+        let tensor = Tensor::one_hot(0, 3);
         assert_eq!(tensor.shape, Shape::Single(3));
         assert_eq!(tensor.data, Data::Single(vec![1.0, 0.0, 0.0]));
     }
