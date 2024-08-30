@@ -25,11 +25,6 @@ impl std::fmt::Display for Optimizer {
                 write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tmomentum: {}\n", structure.momentum)?;
                 write!(f, "\t\t\tdampening: {}\n", structure.dampening)?;
-                write!(
-                    f,
-                    "\t\t\tvelocity: {:?}\n",
-                    structure.velocity.clone().reverse()
-                )?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t)")
             }
@@ -38,16 +33,6 @@ impl std::fmt::Display for Optimizer {
                 write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
                 write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
-                write!(
-                    f,
-                    "\t\t\tmomentum: {:?}\n",
-                    structure.momentum.clone().reverse()
-                )?;
-                write!(
-                    f,
-                    "\t\t\tvelocity: {:?}\n",
-                    structure.velocity.clone().reverse()
-                )?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
                 write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
                 write!(f, "\t\t)")
@@ -57,16 +42,6 @@ impl std::fmt::Display for Optimizer {
                 write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
                 write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
-                write!(
-                    f,
-                    "\t\t\tmomentum: {:?}\n",
-                    structure.momentum.clone().reverse()
-                )?;
-                write!(
-                    f,
-                    "\t\t\tvelocity: {:?}\n",
-                    structure.velocity.clone().reverse()
-                )?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay)?;
                 write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
                 write!(f, "\t\t)")

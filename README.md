@@ -11,6 +11,7 @@
     <img src="https://docs.rs/neurons/badge.svg" alt="docs.rs/neurons"/>
   </a>
 </div>
+<br>
 
 <b>neurons</b> is a neural network library written from scratch in Rust. It provides a flexible and efficient way to build, train, and evaluate neural networks. The library is designed to be modular, allowing for easy customization of network architectures, activation functions, objective functions, and optimization techniques.
 
@@ -24,20 +25,20 @@
 * [Resources](#resources)
 
 ## Features
-> 
+>
 > ### Modular design
 > * Ready-to-use dense, convolutional and maxpool layers.
 > * Inferred input shapes when adding layers.
 > * Easily specify activation functions, biases, and dropout.
 > * Customizable objective functions and optimization techniques.
-> 
+>
 > ### Fast
 > * Leveraging Rust's performance and parallelization capabilities.
-> 
+>
 > ### <i>Everything</i> built from scratch
 > * Only dependencies are `rayon` and `plotters`.<br>
-> Where `plotters` only are used through some of the examples (thus optional).
-> 
+> Where `plotters` only is used through some of the examples (thus optional).
+>
 > ### Various examples showcasing the capabilities
 > * Located in the `examples/` directory.
 
@@ -46,7 +47,7 @@
 The package is divided into separate modules, each containing different parts of the library, everything being connected through the <b>network.rs</b> module.
 
 ### Core
-> 
+>
 > #### tensor.rs
 > > Describes the custom tensor struct and its operations.<br>
 > > A tensor is here divided into four different types:
@@ -54,36 +55,42 @@ The package is divided into separate modules, each containing different parts of
 > > * `Double`: Two-dimensional data (`Vec<Vec<_>>`).
 > > * `Triple`: Three-dimensional data (`Vec<Vec<Vec<_>>>`).
 > > * `Quadruple`: Four-dimensional data (`Vec<Vec<Vec<Vec<_>>>>`).
-> > 
+> >
 > > Each shape following the same pattern of operations, but with increasing dimensions.<br>
 > > Thus, every tensor contains information about its shape and data.<br>
 > > The reason for wrapping the data in this way is to easily allow for dynamic shapes and types in the network.
-> 
+>
 > #### random.rs
 > > Functionality for random number generation.<br>
 > > Used when initializing the weights of the network.
+>
+> #### network.rs
+> > Describes the network struct and its operations.<br>
+> > The network contains a vector of layers, an optimizer, and an objective function.<br>
+> > The network is built layer by layer, and then trained using the `learn` function.<br>
+> > See [quickstart](#quickstart) or the `examples/` directory for more information.
 
 ### Layers
-> 
+>
 > #### dense.rs
 > >  Describes the dense layer and its operations.
-> 
+>
 > #### convolution.rs
 > >  Describes the convolutional layer and its operations.<br>
 > >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
-> 
+>
 > #### maxpool.rs
 > >  Describes the maxpool layer and its operations.<br>
 > >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
 
 ### Functions
-> 
+>
 > #### activation.rs
 > > Contains all the possible activation functions to be used.
-> 
+>
 > #### objective.rs
 > > Contains all the possible objective functions to be used.
-> 
+>
 > #### optimizer.rs
 > > Contains all the possible optimization techniques to be used.
 
@@ -145,19 +152,19 @@ fn main() {
 
 <details>
   <summary>v2.0.2 – Improved compatability of differing layers.</summary>
-    
-    Layers now automatically reshape input tensors to the correct shape.<br>
-    I.e., your network could be conv->dense->conv etc.<br>
+
+    Layers now automatically reshape input tensors to the correct shape.
+    I.e., your network could be conv->dense->conv etc.
     Earlier versions only allowed conv/maxpool->dense connections.
-    
-    Note: While this is now possible, some testing proved this to be suboptimal in terms of performance. 
+
+    Note: While this is now possible, some testing proved this to be suboptimal in terms of performance.
 </details>
 
 <details>
   <summary>v2.0.1 – Optimized optimizer step.</summary>
- 
+
     Combines operations to single-loop instead of repeadedly iterating over the `tensor::Tensor`'s.
-    
+
     Benchmarking `examples/example_benchmark.rs` (mnist version):
 
     v2.0.1: 16.504570304s (1.05x speedup)
@@ -169,9 +176,9 @@ fn main() {
 
     Weight updates are now batched correctly.
     See `network::Network::learn` for details.
-    
+
     Benchmarking examples/example_benchmark.rs (mnist version):
-    
+
     batched (128): 17.268632412s (4.82x speedup)
     unbatched (1): 83.347593292s
 </details>

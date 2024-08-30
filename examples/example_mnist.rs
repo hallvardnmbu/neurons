@@ -111,13 +111,14 @@ fn main() {
     let y = y_test.get(5).unwrap();
     plot::heatmap(&x, &format!("Target: {}", y.argmax()), "input.png");
 
-    let (pre, post, _) = network.forward(x);
-    for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {
-        let pre_title = format!("layer_{}_pre", i);
-        let post_title = format!("layer_{}_post", i);
-        let pre_file = format!("layer_{}_pre.png", i);
-        let post_file = format!("layer_{}_post.png", i);
-        plot::heatmap(&i_pre, &pre_title, &pre_file);
-        plot::heatmap(&i_post, &post_title, &post_file);
-    }
+    // Plot the pre- and post-activation heatmaps for each (image) layer.
+    // let (pre, post, _) = network.forward(x);
+    // for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {
+    //     let pre_title = format!("layer_{}_pre", i);
+    //     let post_title = format!("layer_{}_post", i);
+    //     let pre_file = format!("layer_{}_pre.png", i);
+    //     let post_file = format!("layer_{}_post.png", i);
+    //     plot::heatmap(&i_pre, &pre_title, &pre_file);
+    //     plot::heatmap(&i_post, &post_title, &post_file);
+    // }
 }
