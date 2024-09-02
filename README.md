@@ -117,33 +117,30 @@ fn main() {
   // Dense(outputs, activation, bias, Some(dropout))
   network.dense(10, activation::Activation::Softmax, false, None);
 
-  network.set_optimizer(
-      optimizer::Optimizer::AdamW(
-          optimizer::AdamW {
-              learning_rate: 0.001,
-              beta1: 0.9,
-              beta2: 0.999,
-              epsilon: 1e-8,
-              decay: 0.01,
-
-              // To be filled by the network:
-              momentum: vec![],
-              velocity: vec![],
-          }
-      )
-  );
+  network.set_optimizer(optimizer::RMSprop::create(
+      0.001,                     // Learning rate
+      0.0,                       // Alpha
+      1e-8,                      // Epsilon
+      Some(0.01),                // Decay
+      Some(0.01),                // Momentum
+      true,                      // Centered
+  ));
   network.set_objective(
-      objective::Objective::MSE,    // Objective function
-      Some((-1f32, 1f32))           // Gradient clipping
+      objective::Objective::MSE, // Objective function
+      Some((-1f32, 1f32))        // Gradient clipping
   );
 
-  println!("{}", network);          // Display the network
+  println!("{}", network);       // Display the network
 
-  let (x, y) = {  };                // Add your data here
-  let validation = Some((0.2, 5));  // 20% val. & early stopping if val. loss increases 5 times
-  let batch = 32;                   // Minibatch size
-  let epochs = 100;                 // Number of epochs
-  let print = Some(10);             // Print every 10th epoch
+  let (x, y) = {  };             // Add your data here
+  let validation = (
+      x_val,                     // Validation data
+      y_val,                     // Validation labels
+      5                          // Stop if val loss decreases for 5 epochs
+  );
+  let batch = 32;                // Minibatch size
+  let epochs = 100;              // Number of epochs
+  let print = Some(10);          // Print every 10th epoch
   let (train_loss, val_loss) = network.learn(x, y, validation, batch, epochs, print);
 }
 ```
