@@ -25,17 +25,14 @@ fn main() {
     // Dense(outputs, activation, bias, Some(dropout))
     network.dense(10, activation::Activation::Softmax, false, None);
 
-    network.set_optimizer(optimizer::Optimizer::AdamW(optimizer::AdamW {
-        learning_rate: 0.001,
-        beta1: 0.9,
-        beta2: 0.999,
-        epsilon: 1e-8,
-        decay: 0.01,
-
-        // To be filled by the network:
-        momentum: vec![],
-        velocity: vec![],
-    }));
+    network.set_optimizer(optimizer::RMSprop::create(
+        0.001,      // Learning rate
+        0.0,        // Alpha
+        1e-8,       // Epsilon
+        Some(0.01), // Decay
+        Some(0.01), // Momentum
+        true,       // Centered
+    ));
     network.set_objective(
         objective::Objective::MSE, // Objective function
         Some((-1f32, 1f32)),       // Gradient clipping

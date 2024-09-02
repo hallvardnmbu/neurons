@@ -17,19 +17,19 @@ use crate::{activation, tensor};
 /// * `flatten` - Whether the output should be flattened.
 /// * `training` - Whether the layer is training.
 pub struct Convolution {
-    pub(crate) inputs: tensor::Shape,
+    inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    pub(crate) loops: f32,
+    loops: f32,
 
-    pub kernels: Vec<tensor::Tensor>,
+    pub(crate) kernels: Vec<tensor::Tensor>,
     stride: (usize, usize),
     padding: (usize, usize),
 
     pub(crate) activation: activation::Function,
 
     dropout: Option<f32>,
-    pub flatten: bool,
-    pub training: bool,
+    pub(crate) flatten: bool,
+    pub(crate) training: bool,
 }
 
 impl std::fmt::Display for Convolution {

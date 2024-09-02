@@ -15,16 +15,16 @@ use crate::{activation, tensor};
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `training` - Whether the network is training.
 pub struct Dense {
-    pub(crate) inputs: tensor::Shape,
+    inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    pub(crate) loops: f32,
+    loops: f32,
 
-    pub weights: tensor::Tensor,
+    pub(crate) weights: tensor::Tensor,
     pub(crate) bias: Option<tensor::Tensor>,
 
     pub(crate) activation: activation::Function,
 
-    pub(crate) dropout: Option<f32>,
+    dropout: Option<f32>,
     pub(crate) training: bool,
 }
 
@@ -172,7 +172,13 @@ mod tests {
 
     #[test]
     fn test_create() {
-        let dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
+        let dense = Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(2),
+            &Activation::Linear,
+            true,
+            Some(0.5),
+        );
 
         assert_eq_shape!(dense.weights.shape, tensor::Shape::Double(2, 3));
         if let Some(bias) = &dense.bias {
@@ -183,7 +189,13 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let mut dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
+        let mut dense = Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(2),
+            &Activation::Linear,
+            true,
+            Some(0.5),
+        );
         dense.weights = tensor::Tensor::double(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
         dense.bias = Some(tensor::Tensor::single(vec![0.0, 0.0]));
 
@@ -196,7 +208,13 @@ mod tests {
 
     #[test]
     fn test_backward() {
-        let mut dense = Dense::create(3, 2, &Activation::Linear, true, Some(0.5));
+        let mut dense = Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(2),
+            &Activation::Linear,
+            true,
+            Some(0.5),
+        );
         dense.weights = tensor::Tensor::double(vec![vec![0.5, 0.5, 0.5], vec![0.5, 0.5, 0.5]]);
         dense.bias = Some(tensor::Tensor::single(vec![0.0, 0.0]));
 

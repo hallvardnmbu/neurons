@@ -138,7 +138,7 @@ impl Function {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct AE {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl AE {
@@ -228,7 +228,7 @@ impl AE {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct MAE {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl MAE {
@@ -319,7 +319,7 @@ impl MAE {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct MSE {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl MSE {
@@ -396,7 +396,7 @@ impl MSE {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct RMSE {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl RMSE {
@@ -490,7 +490,7 @@ impl RMSE {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct CrossEntropy {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl CrossEntropy {
@@ -569,7 +569,7 @@ impl CrossEntropy {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct BinaryCrossEntropy {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl BinaryCrossEntropy {
@@ -654,7 +654,7 @@ impl BinaryCrossEntropy {
 ///
 /// * `clamp` - The gradient clamp for the objective function.
 pub struct KLDivergence {
-    pub clamp: Option<(f32, f32)>,
+    clamp: Option<(f32, f32)>,
 }
 
 impl KLDivergence {

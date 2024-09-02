@@ -78,15 +78,13 @@ fn main() {
         network.maxpool((2, 2), (2, 2));
         network.dense(10, activation::Activation::Softmax, true, None);
 
-        network.set_optimizer(optimizer::Optimizer::Adam(optimizer::Adam {
-            learning_rate: 0.001,
-            decay: None,
-            beta1: 0.9,
-            beta2: 0.999,
-            epsilon: 1e-8,
-            velocity: vec![],
-            momentum: vec![],
-        }));
+        network.set_optimizer(optimizer::Adam::create(
+            0.001,      // Learning rate
+            0.9,        // Beta1
+            0.999,      // Beta2
+            1e-8,       // Epsilon
+            Some(0.01), // Decay
+        ));
         network.set_objective(
             objective::Objective::CrossEntropy, // Objective function
             None,                               // Gradient clipping

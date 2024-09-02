@@ -13,14 +13,14 @@ use crate::tensor;
 /// * `stride` - The stride of the filter.
 /// * `flatten` - Whether the output should be flattened.
 pub struct Maxpool {
-    pub(crate) inputs: tensor::Shape,
+    inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    pub(crate) loops: f32,
+    loops: f32,
 
     kernel: (usize, usize),
     stride: (usize, usize),
 
-    pub flatten: bool,
+    pub(crate) flatten: bool,
 }
 
 impl std::fmt::Display for Maxpool {

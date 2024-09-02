@@ -26,10 +26,7 @@ fn main() {
     network.dense(10, activation::Activation::ReLU, true, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);
 
-    network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
-        learning_rate: 0.1,
-        decay: Some(0.01),
-    }));
+    network.set_optimizer(optimizer::SGD::create(0.1, Some(0.01)));
     network.set_objective(objective::Objective::BinaryCrossEntropy, None);
 
     // Train the network

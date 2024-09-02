@@ -43,13 +43,13 @@ impl Layer {
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
-    pub(crate) input: tensor::Shape,
+    input: tensor::Shape,
 
-    pub layers: Vec<Layer>,
-    pub(crate) feedbacks: HashMap<usize, usize>,
+    layers: Vec<Layer>,
+    feedbacks: HashMap<usize, usize>,
 
-    pub(crate) optimizer: optimizer::Optimizer,
-    pub objective: objective::Function,
+    optimizer: optimizer::Optimizer,
+    objective: objective::Function,
 }
 
 impl std::fmt::Display for Network {
@@ -98,10 +98,7 @@ impl Network {
             input,
             layers: Vec::new(),
             feedbacks: HashMap::new(),
-            optimizer: optimizer::Optimizer::SGD(optimizer::SGD {
-                learning_rate: 0.1,
-                decay: None,
-            }),
+            optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
     }
@@ -381,71 +378,10 @@ impl Network {
             }
         }
 
-        match optimizer {
-            optimizer::Optimizer::SGD(ref mut params) => {
-                if params.learning_rate == 0.0 {
-                    params.learning_rate = 0.1;
-                }
-            }
-            optimizer::Optimizer::SGDM(ref mut params) => {
-                if params.learning_rate == 0.0 {
-                    params.learning_rate = 0.1;
-                }
-                if params.momentum == 0.0 {
-                    params.momentum = 0.9;
-                }
-                params.velocity = vectors;
-            }
-            optimizer::Optimizer::Adam(ref mut params) => {
-                if params.learning_rate == 0.0 {
-                    params.learning_rate = 0.001;
-                }
-                if params.beta1 == 0.0 {
-                    params.beta1 = 0.9;
-                }
-                if params.beta2 == 0.0 {
-                    params.beta2 = 0.999;
-                }
-                if params.epsilon == 0.0 {
-                    params.epsilon = 1e-8;
-                }
+        // Validate the optimizers' parameters.
+        // Override to default values if wrongly set.
+        optimizer.validate(vectors);
 
-                params.velocity = vectors.clone();
-                params.momentum = vectors;
-            }
-            optimizer::Optimizer::AdamW(ref mut params) => {
-                if params.learning_rate == 0.0 {
-                    params.learning_rate = 0.001;
-                }
-                if params.beta1 == 0.0 {
-                    params.beta1 = 0.9;
-                }
-                if params.beta2 == 0.0 {
-                    params.beta2 = 0.999;
-                }
-                if params.epsilon == 0.0 {
-                    params.epsilon = 1e-8;
-                }
-
-                params.velocity = vectors.clone();
-                params.momentum = vectors;
-            }
-            optimizer::Optimizer::RMSprop(ref mut params) => {
-                if params.learning_rate == 0.0 {
-                    params.learning_rate = 0.01;
-                }
-                if params.alpha == 0.0 {
-                    params.alpha = 0.99;
-                }
-                if params.epsilon == 0.0 {
-                    params.epsilon = 1e-8;
-                }
-
-                params.velocity = vectors.clone();
-                params.gradient = vectors.clone();
-                params.buffer = vectors;
-            }
-        };
         self.optimizer = optimizer;
     }
 
@@ -785,7 +721,7 @@ impl Network {
     /// # Returns
     ///
     /// A tuple containing the weight and bias gradients of each layer.
-    pub fn backward(
+    fn backward(
         &self,
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
@@ -823,7 +759,7 @@ impl Network {
     /// * `stepnr` - The current step number (i.e., epoch number).
     /// * `weight_gradients` - The weight gradients of each layer.
     /// * `bias_gradients` - The bias gradients of each layer.
-    pub fn update(
+    fn update(
         &mut self,
         stepnr: i32,
         mut weight_gradients: Vec<tensor::Tensor>,
@@ -1076,11 +1012,11 @@ mod tests {
         match network.layers[1] {
             Layer::Dense(ref mut dense) => {
                 dense.weights = tensor::Tensor::double(vec![
-                    vec![2.5; dense.inputs],
-                    vec![-1.2; dense.inputs],
-                    vec![0.5; dense.inputs],
-                    vec![3.5; dense.inputs],
-                    vec![5.2; dense.inputs],
+                    vec![2.5; 27],
+                    vec![-1.2; 27],
+                    vec![0.5; 27],
+                    vec![3.5; 27],
+                    vec![5.2; 27],
                 ]);
                 dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
             }
@@ -1143,9 +1079,9 @@ mod tests {
 
         let _weight_gradient = vec![
             tensor::Tensor::quadruple(vec![
-                vec![vec![vec![117., 117.]; 2]; 2],
-                vec![vec![vec![117., 117.]; 2]; 2],
-                vec![vec![vec![0.0, 0.0]; 2]; 2],
+                vec![vec![vec![117., 117.]; 2]; 27],
+                vec![vec![vec![117., 117.]; 2]; 27],
+                vec![vec![vec![0.0, 0.0]; 2]; 27],
             ]),
             tensor::Tensor::double(vec![
                 vec![
@@ -1198,10 +1134,7 @@ mod tests {
         );
         network.dense(5, activation::Activation::ReLU, true, None);
 
-        network.set_optimizer(optimizer::Optimizer::SGD(optimizer::SGD {
-            learning_rate: 0.1,
-            decay: None,
-        }));
+        network.set_optimizer(optimizer::SGD::create(0.1, None));
 
         match network.layers[0] {
             Layer::Convolution(ref mut conv) => {
@@ -1223,11 +1156,11 @@ mod tests {
         match network.layers[1] {
             Layer::Dense(ref mut dense) => {
                 dense.weights = tensor::Tensor::double(vec![
-                    vec![2.5; dense.inputs],
-                    vec![-1.2; dense.inputs],
-                    vec![0.5; dense.inputs],
-                    vec![3.5; dense.inputs],
-                    vec![5.2; dense.inputs],
+                    vec![2.5; 27],
+                    vec![-1.2; 27],
+                    vec![0.5; 27],
+                    vec![3.5; 27],
+                    vec![5.2; 27],
                 ]);
                 dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
             }

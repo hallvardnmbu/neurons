@@ -88,6 +88,74 @@ impl Optimizer {
             Optimizer::RMSprop(rmsprop) => rmsprop.update(layer, filter, bias, values, gradients),
         }
     }
+
+    pub fn validate(&mut self, vectors: Vec<Vec<Vec<tensor::Tensor>>>) {
+        match self {
+            Optimizer::SGD(ref mut parameters) => {
+                if parameters.learning_rate == 0.0 {
+                    parameters.learning_rate = 0.1;
+                }
+            }
+            Optimizer::SGDM(ref mut parameters) => {
+                if parameters.learning_rate == 0.0 {
+                    parameters.learning_rate = 0.1;
+                }
+                if parameters.momentum == 0.0 {
+                    parameters.momentum = 0.9;
+                }
+                parameters.velocity = vectors;
+            }
+            Optimizer::Adam(ref mut parameters) => {
+                if parameters.learning_rate == 0.0 {
+                    parameters.learning_rate = 0.001;
+                }
+                if parameters.beta1 == 0.0 {
+                    parameters.beta1 = 0.9;
+                }
+                if parameters.beta2 == 0.0 {
+                    parameters.beta2 = 0.999;
+                }
+                if parameters.epsilon == 0.0 {
+                    parameters.epsilon = 1e-8;
+                }
+
+                parameters.velocity = vectors.clone();
+                parameters.momentum = vectors;
+            }
+            Optimizer::AdamW(ref mut parameters) => {
+                if parameters.learning_rate == 0.0 {
+                    parameters.learning_rate = 0.001;
+                }
+                if parameters.beta1 == 0.0 {
+                    parameters.beta1 = 0.9;
+                }
+                if parameters.beta2 == 0.0 {
+                    parameters.beta2 = 0.999;
+                }
+                if parameters.epsilon == 0.0 {
+                    parameters.epsilon = 1e-8;
+                }
+
+                parameters.velocity = vectors.clone();
+                parameters.momentum = vectors;
+            }
+            Optimizer::RMSprop(ref mut parameters) => {
+                if parameters.learning_rate == 0.0 {
+                    parameters.learning_rate = 0.01;
+                }
+                if parameters.alpha == 0.0 {
+                    parameters.alpha = 0.99;
+                }
+                if parameters.epsilon == 0.0 {
+                    parameters.epsilon = 1e-8;
+                }
+
+                parameters.velocity = vectors.clone();
+                parameters.gradient = vectors.clone();
+                parameters.buffer = vectors;
+            }
+        };
+    }
 }
 
 /// Stochastic gradient descent optimizer.
@@ -97,11 +165,19 @@ impl Optimizer {
 /// * `learning_rate` - The learning rate of the optimizer.
 /// * `decay` - The decay of the optimizer.
 pub struct SGD {
-    pub learning_rate: f32,
-    pub decay: Option<f32>,
+    learning_rate: f32,
+    decay: Option<f32>,
 }
 
 impl SGD {
+    /// Creates a new stochastic gradient descent optimizer.
+    pub fn create(learning_rate: f32, decay: Option<f32>) -> Optimizer {
+        Optimizer::SGD(SGD {
+            learning_rate,
+            decay,
+        })
+    }
+
     /// Updates the weights of the layer.
     ///
     /// # Function
@@ -157,15 +233,31 @@ impl SGD {
 /// * `decay` - The decay of the optimizer.
 /// * `velocity` - The velocity of the optimizer.
 pub struct SGDM {
-    pub learning_rate: f32,
-    pub momentum: f32,
-    pub dampening: f32,
-    pub decay: Option<f32>,
+    learning_rate: f32,
+    momentum: f32,
+    dampening: f32,
+    decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    velocity: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl SGDM {
+    /// Creates a new stochastic gradient descent optimizer with momentum.
+    pub fn create(
+        learning_rate: f32,
+        momentum: f32,
+        dampening: f32,
+        decay: Option<f32>,
+    ) -> Optimizer {
+        Optimizer::SGDM(SGDM {
+            learning_rate,
+            momentum,
+            dampening,
+            decay,
+            velocity: Vec::new(),
+        })
+    }
+
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html)
     ///
     /// # Function
@@ -272,17 +364,36 @@ impl SGDM {
 /// * `velocity` - The velocity of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 pub struct Adam {
-    pub learning_rate: f32,
-    pub beta1: f32,
-    pub beta2: f32,
-    pub epsilon: f32,
-    pub decay: Option<f32>,
+    learning_rate: f32,
+    beta1: f32,
+    beta2: f32,
+    epsilon: f32,
+    decay: Option<f32>,
 
-    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
-    pub momentum: Vec<Vec<Vec<tensor::Tensor>>>,
+    velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    momentum: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl Adam {
+    /// Creates a new Adam optimizer.
+    pub fn create(
+        learning_rate: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        decay: Option<f32>,
+    ) -> Optimizer {
+        Optimizer::Adam(Adam {
+            learning_rate,
+            beta1,
+            beta2,
+            epsilon,
+            decay,
+            velocity: Vec::new(),
+            momentum: Vec::new(),
+        })
+    }
+
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.Adam.html)
     ///
     /// # Function
@@ -389,17 +500,36 @@ impl Adam {
 /// * `velocity` - The velocity of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
 pub struct AdamW {
-    pub learning_rate: f32,
-    pub beta1: f32,
-    pub beta2: f32,
-    pub epsilon: f32,
-    pub decay: f32,
+    learning_rate: f32,
+    beta1: f32,
+    beta2: f32,
+    epsilon: f32,
+    decay: f32,
 
-    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
-    pub momentum: Vec<Vec<Vec<tensor::Tensor>>>,
+    velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    momentum: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl AdamW {
+    /// Creates a new AdamW optimizer.
+    pub fn create(
+        learning_rate: f32,
+        beta1: f32,
+        beta2: f32,
+        epsilon: f32,
+        decay: f32,
+    ) -> Optimizer {
+        Optimizer::AdamW(AdamW {
+            learning_rate,
+            beta1,
+            beta2,
+            epsilon,
+            decay,
+            velocity: Vec::new(),
+            momentum: Vec::new(),
+        })
+    }
+
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
     ///
     /// # Function
@@ -502,19 +632,41 @@ impl AdamW {
 /// * `gradient` - The gradient of the optimizer.
 /// * `buffer` - The buffer of the optimizer.
 pub struct RMSprop {
-    pub learning_rate: f32,
-    pub alpha: f32,
-    pub epsilon: f32,
-    pub decay: Option<f32>,
-    pub momentum: Option<f32>,
-    pub centered: bool,
+    learning_rate: f32,
+    alpha: f32,
+    epsilon: f32,
+    decay: Option<f32>,
+    momentum: Option<f32>,
+    centered: bool,
 
-    pub velocity: Vec<Vec<Vec<tensor::Tensor>>>,
-    pub gradient: Vec<Vec<Vec<tensor::Tensor>>>,
-    pub buffer: Vec<Vec<Vec<tensor::Tensor>>>,
+    velocity: Vec<Vec<Vec<tensor::Tensor>>>,
+    gradient: Vec<Vec<Vec<tensor::Tensor>>>,
+    buffer: Vec<Vec<Vec<tensor::Tensor>>>,
 }
 
 impl RMSprop {
+    /// Creates a new RMSprop optimizer.
+    pub fn create(
+        learning_rate: f32,
+        alpha: f32,
+        epsilon: f32,
+        decay: Option<f32>,
+        momentum: Option<f32>,
+        centered: bool,
+    ) -> Optimizer {
+        Optimizer::RMSprop(RMSprop {
+            learning_rate,
+            alpha,
+            epsilon,
+            decay,
+            momentum,
+            centered,
+            velocity: Vec::new(),
+            gradient: Vec::new(),
+            buffer: Vec::new(),
+        })
+    }
+
     /// Updates the weights of the layer. [Source.](https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html)
     ///
     /// # Function

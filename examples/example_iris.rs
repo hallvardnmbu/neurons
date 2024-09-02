@@ -81,20 +81,14 @@ fn main() {
     network.dense(50, activation::Activation::ReLU, false, None);
     network.dense(3, activation::Activation::Softmax, false, None);
 
-    network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
-        learning_rate: 0.001,
-        alpha: 0.0,
-        epsilon: 1e-8,
-
-        decay: Some(0.01),
-        momentum: Some(0.01),
-        centered: true,
-
-        // To be filled by the network:
-        velocity: vec![],
-        gradient: vec![],
-        buffer: vec![],
-    }));
+    network.set_optimizer(optimizer::RMSprop::create(
+        0.001,      // Learning rate
+        0.0,        // Alpha
+        1e-8,       // Epsilon
+        Some(0.01), // Decay
+        Some(0.01), // Momentum
+        true,       // Centered
+    ));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
         Some((-1f32, 1f32)),                // Gradient clipping
