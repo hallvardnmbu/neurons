@@ -132,15 +132,15 @@ impl Network {
         dropout: Option<f32>,
     ) {
         if self.layers.is_empty() {
-            let inputs = match self.input {
-                tensor::Shape::Single(inputs) => inputs,
+            match self.input {
+                tensor::Shape::Single(_) => (),
                 _ => panic!(
                     "Network is configured for image inputs; the first layer cannot be dense. Modify the input shape to `tensor::Shape::Single` or add a convolutional layer first."
                 ),
             };
             self.layers.push(Layer::Dense(dense::Dense::create(
-                inputs,
-                outputs,
+                self.input.clone(),
+                tensor::Shape::Single(outputs),
                 &activation,
                 bias,
                 dropout,
@@ -148,21 +148,21 @@ impl Network {
             return;
         }
         let inputs = match &mut self.layers.last_mut().unwrap() {
-            Layer::Dense(layer) => layer.outputs,
+            Layer::Dense(layer) => layer.outputs.clone(),
             // If the previous layer is convolutional or maxpool:
             // * Compute the flattened shape of the output.
             // * Set the `flatten` flag to `true`.
             Layer::Convolution(layer) => {
                 layer.flatten = true;
                 match layer.outputs {
-                    tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Triple(ch, he, wi) => tensor::Shape::Single(ch * he * wi),
                     _ => panic!("Expected `tensor::Tensor` shape."),
                 }
             }
             Layer::Maxpool(layer) => {
                 layer.flatten = true;
                 match layer.outputs {
-                    tensor::Shape::Triple(ch, he, wi) => ch * he * wi,
+                    tensor::Shape::Triple(ch, he, wi) => tensor::Shape::Single(ch * he * wi),
                     _ => panic!("Expected `tensor::Tensor` shape."),
                 }
             }
@@ -170,7 +170,7 @@ impl Network {
 
         self.layers.push(Layer::Dense(dense::Dense::create(
             inputs,
-            outputs,
+            tensor::Shape::Single(outputs),
             &activation,
             bias,
             dropout,
@@ -222,7 +222,7 @@ impl Network {
         self.layers
             .push(Layer::Convolution(convolution::Convolution::create(
                 match self.layers.last().unwrap() {
-                    Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
+                    Layer::Dense(layer) => layer.outputs.clone(),
                     Layer::Convolution(layer) => layer.outputs.clone(),
                     Layer::Maxpool(layer) => layer.outputs.clone(),
                 },
@@ -258,7 +258,7 @@ impl Network {
         }
         self.layers.push(Layer::Maxpool(maxpool::Maxpool::create(
             match self.layers.last().unwrap() {
-                Layer::Dense(layer) => tensor::Shape::Single(layer.outputs),
+                Layer::Dense(layer) => layer.outputs.clone(),
                 Layer::Convolution(layer) => layer.outputs.clone(),
                 Layer::Maxpool(layer) => layer.outputs.clone(),
             },
@@ -280,33 +280,33 @@ impl Network {
             panic!("Invalid layer indices for feedback connection.");
         }
 
-        // TODO: Add support for convolutional layers.
-        // TODO: Add support for mismatched input/output sizes.
-        let inputs = match &self.layers[from] {
-            Layer::Dense(layer) => &layer.inputs,
-            _ => unimplemented!("Feedback connections for convolutional layers."),
-        };
-        let outputs = match &self.layers[to] {
-            Layer::Dense(layer) => &layer.outputs,
-            _ => unimplemented!("Feedback connections for convolutional layers."),
-        };
-        if inputs != outputs {
-            panic!("Incompatible number of values for feedback connection.");
-        }
+        // // TODO: Add support for convolutional layers.
+        // // TODO: Add support for mismatched input/output sizes.
+        // let inputs = match &self.layers[from] {
+        //     Layer::Dense(layer) => &layer.inputs,
+        //     _ => unimplemented!("Feedback connections for convolutional layers."),
+        // };
+        // let outputs = match &self.layers[to] {
+        //     Layer::Dense(layer) => &layer.outputs,
+        //     _ => unimplemented!("Feedback connections for convolutional layers."),
+        // };
+        // if inputs != outputs {
+        //     panic!("Incompatible number of values for feedback connection.");
+        // }
 
-        // Loop through layers to -> from and add +1 to its loopback count.
-        for k in to..from {
-            match &mut self.layers[k] {
-                Layer::Dense(layer) => layer.loops += 1.0,
-                _ => unimplemented!("Feedback connections for convolutional layers."),
-            }
-        }
+        // // Loop through layers to -> from and add +1 to its loopback count.
+        // for k in to..from {
+        //     match &mut self.layers[k] {
+        //         Layer::Dense(layer) => layer.loops += 1.0,
+        //         _ => unimplemented!("Feedback connections for convolutional layers."),
+        //     }
+        // }
 
-        // Store the feedback connection for use in the forward pass.
-        if self.feedbacks.contains_key(&from) {
-            panic!("Feedback connection already exists for layer {}", from);
-        }
-        self.feedbacks.insert(from, to);
+        // // Store the feedback connection for use in the forward pass.
+        // if self.feedbacks.contains_key(&from) {
+        //     panic!("Feedback connection already exists for layer {}", from);
+        // }
+        // self.feedbacks.insert(from, to);
     }
 
     /// Extract the total number of parameters in the network.
@@ -351,10 +351,14 @@ impl Network {
         for layer in self.layers.iter().rev() {
             match layer {
                 Layer::Dense(layer) => {
+                    let (output, input) = match &layer.weights.shape {
+                        tensor::Shape::Double(output, input) => (*output, *input),
+                        _ => panic!("Expected Dense shape"),
+                    };
                     vectors.push(vec![vec![
-                        tensor::Tensor::double(vec![vec![0.0; layer.inputs]; layer.outputs]),
+                        tensor::Tensor::double(vec![vec![0.0; input]; output]),
                         if layer.bias.is_some() {
-                            tensor::Tensor::single(vec![0.0; layer.outputs])
+                            tensor::Tensor::single(vec![0.0; output])
                         } else {
                             tensor::Tensor::single(vec![])
                         },
@@ -469,8 +473,10 @@ impl Network {
     /// * `inputs` - The individual inputs (x) stored in a vector.
     /// * `targets` - The respective individual (y) targets stored in a vector.
     /// * `validation` - An optional tuple.
-    ///     - 1: The percentage of the data to use for validation.
-    ///     - 2: The threshold of consecutive epochs without val loss decrease for early stopping.
+    ///     - 1: The validation inputs.
+    ///     - 2: The corresponding validation targets.
+    ///     - 3: The tolerance for early stopping.
+    ///          If the validation loss does not improve for this many epochs, the training stops.
     /// * `batch` - The batch size to use when training.
     /// * `epochs` - The number of epochs to train the network for.
     /// * `print` - The frequency of printing validation metrics to the console.
@@ -486,30 +492,22 @@ impl Network {
         &mut self,
         inputs: &Vec<&tensor::Tensor>,
         targets: &Vec<&tensor::Tensor>,
-        validation: Option<(f32, i32)>,
+        validation: Option<(&Vec<&tensor::Tensor>, &Vec<&tensor::Tensor>, i32)>,
         batch: usize,
         epochs: i32,
         print: Option<i32>,
     ) -> (Vec<f32>, Vec<f32>) {
-        let (validation, threshold) = match validation {
-            Some((split, threshold)) => (split, threshold),
-            None => (0.0, 0),
-        };
-
-        // Split the input data into training and validation data.
-        if validation < 0.0 || validation > 1.0 {
-            panic!("Validation must be between 0.0 and 1.0. Set to 0.0 for no validation.");
+        let mut val_acc: Option<f32> = None;
+        let mut threshold: Option<i32> = None;
+        if let Some((_, _, limit)) = validation {
+            threshold = Some(limit);
         }
-
-        let split = (inputs.len() as f32 * (1.0 - validation)) as usize;
-        let (train_inputs, val_inputs) = inputs.split_at(split);
-        let (train_targets, val_targets) = targets.split_at(split);
 
         // Print the header of the table.
         if let Some(print) = print {
             if print > epochs as i32 {
                 println!("Note: print frequency is higher than the number of epochs. No printouts will be made.");
-            } else if validation != 0.0 {
+            } else if let Some(_) = validation {
                 println!("{:>5} \t {:<23} \t {:>10}", "EPOCH", "LOSS", "ACCURACY");
                 println!(
                     "{:>5} \t {:>10} | {:<10} \t {:>10}",
@@ -530,9 +528,9 @@ impl Network {
         let mut val_loss = Vec::new();
 
         // Split the input data into batches.
-        let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = train_inputs
+        let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = inputs
             .par_chunks(batch)
-            .zip(train_targets.par_chunks(batch))
+            .zip(targets.par_chunks(batch))
             .collect();
 
         for epoch in 1..epochs + 1 {
@@ -605,17 +603,20 @@ impl Network {
             }
             train_loss.push(loss_epoch / batches.len() as f32);
 
-            let (_val_loss, val_acc) = self.validate(val_inputs, val_targets, 1e-6);
-            val_loss.push(_val_loss);
+            if let Some((val_inputs, val_targets, _)) = validation {
+                let (_val_loss, _val_acc) = self.validate(val_inputs, val_targets, 1e-6);
+                val_loss.push(_val_loss);
+                val_acc = Some(_val_acc);
+            }
 
             if let Some(print) = print {
-                if epoch % print == 0 && validation != 0.0 {
+                if epoch % print == 0 && val_acc.is_some() {
                     println!(
                         "{:>5} \t {:>10.5} | {:<10.5} \t {:>8.2} %",
                         epoch,
                         val_loss.last().unwrap(),
                         train_loss.last().unwrap(),
-                        val_acc * 100.0
+                        val_acc.unwrap() * 100.0
                     );
                 } else if epoch % print == 0 {
                     println!("{:>5} \t {:>10.5}", epoch, train_loss.last().unwrap(),);
@@ -624,18 +625,21 @@ impl Network {
 
             // Check if the validation loss has not improved for the last `threshold` epochs.
             // If so, stop training.
-            if epoch > threshold && validation > 0.0 {
-                let history: Vec<&f32> = val_loss.iter().rev().take(threshold as usize).collect();
-                let mut increasing = true;
-                for i in 0..threshold as usize - 1 {
-                    if history[i] <= history[i + 1] {
-                        increasing = false;
+            if let Some(threshold) = threshold {
+                if epoch > threshold {
+                    let history: Vec<&f32> =
+                        val_loss.iter().rev().take(threshold as usize).collect();
+                    let mut increasing = true;
+                    for i in 0..threshold as usize - 1 {
+                        if history[i] <= history[i + 1] {
+                            increasing = false;
+                            break;
+                        }
+                    }
+                    if increasing {
+                        println!("Validation loss has increased for the last {} epochs.\nStopping training (at epoch {}).", threshold, epoch);
                         break;
                     }
-                }
-                if increasing {
-                    println!("Validation loss has increased for the last {} epochs.\nStopping training (at epoch {}).", threshold, epoch);
-                    break;
                 }
             }
         }

@@ -77,9 +77,9 @@ fn main() {
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(4));
 
-    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.dense(50, activation::Activation::ReLU, false, Some(0.1));
-    network.dense(3, activation::Activation::Softmax, false, Some(0.1));
+    network.dense(50, activation::Activation::ReLU, false, None);
+    network.dense(50, activation::Activation::ReLU, false, None);
+    network.dense(3, activation::Activation::Softmax, false, None);
 
     network.set_optimizer(optimizer::Optimizer::RMSprop(optimizer::RMSprop {
         learning_rate: 0.001,
@@ -101,17 +101,29 @@ fn main() {
     );
 
     // Train the network
-    let (_train_loss, _val_loss) =
-        network.learn(&x_train, &y_train, Some((0.1, 5)), 25, 5, Some(1));
+    let (_train_loss, _val_loss) = network.learn(
+        &x_train,
+        &y_train,
+        Some((&x_test, &y_test, 5)),
+        25,
+        5,
+        Some(1),
+    );
 
     // Validate the network
-    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.05);
-    println!("1. Validation acc: {}, loss: {}", val_acc, val_loss);
+    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
+    println!(
+        "1. Validation acc: {:.2}, loss: {:.5}",
+        val_acc * 100.0,
+        val_loss
+    );
 
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
     println!(
         "2. Input: {}, Target: {}, Output: {}",
-        x_test[0].data, y_test[0].data, prediction
+        x_test[0].data,
+        y_test[0].argmax(),
+        prediction.argmax()
     );
 }

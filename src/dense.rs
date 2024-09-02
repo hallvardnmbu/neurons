@@ -15,8 +15,8 @@ use crate::{activation, tensor};
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `training` - Whether the network is training.
 pub struct Dense {
-    pub(crate) inputs: usize,
-    pub(crate) outputs: usize,
+    pub(crate) inputs: tensor::Shape,
+    pub(crate) outputs: tensor::Shape,
     pub(crate) loops: f32,
 
     pub weights: tensor::Tensor,
@@ -62,20 +62,24 @@ impl Dense {
     ///
     /// A new layer with random weights and bias with the given dimensions.
     pub fn create(
-        inputs: usize,
-        outputs: usize,
+        inputs: tensor::Shape,
+        outputs: tensor::Shape,
         activation: &activation::Activation,
         bias: bool,
         dropout: Option<f32>,
     ) -> Self {
+        let (input, output) = match (&inputs, &outputs) {
+            (tensor::Shape::Single(input), tensor::Shape::Single(output)) => (*input, *output),
+            _ => panic!("Invalid input- and output shape."),
+        };
         Dense {
             inputs,
             outputs,
             loops: 1.0,
-            weights: tensor::Tensor::random(tensor::Shape::Double(outputs, inputs), -1.0, 1.0),
+            weights: tensor::Tensor::random(tensor::Shape::Double(output, input), -1.0, 1.0),
             bias: match bias {
                 true => Some(tensor::Tensor::random(
-                    tensor::Shape::Single(outputs),
+                    tensor::Shape::Single(output),
                     -1.0,
                     1.0,
                 )),
@@ -89,7 +93,11 @@ impl Dense {
 
     /// Extract the number of parameters in the layer.
     pub fn parameters(&self) -> usize {
-        self.inputs * self.outputs + if self.bias.is_some() { self.outputs } else { 0 }
+        let (input, output) = match (&self.inputs, &self.outputs) {
+            (tensor::Shape::Single(input), tensor::Shape::Single(output)) => (*input, *output),
+            _ => panic!("Invalid input- and output shape."),
+        };
+        input * output + if self.bias.is_some() { output } else { 0 }
     }
 
     /// Applies the forward pass of the layer to the input `tensor::Tensor`.

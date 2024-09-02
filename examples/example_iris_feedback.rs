@@ -105,8 +105,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (_train_loss, _val_loss) =
-        network.learn(&x_train, &y_train, Some((0.1, 5)), 25, 5, Some(1));
+    let (_train_loss, _val_loss) = network.learn(&x_train, &y_train, None, 25, 250, Some(50));
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 0.1);

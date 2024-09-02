@@ -92,7 +92,14 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) = network.learn(&x_train, &y_train, Some((0.1, 5)), 128, 5, Some(1));
+    let (train_loss, val_loss) = network.learn(
+        &x_train,
+        &y_train,
+        Some((&x_test, &y_test, 10)),
+        128,
+        5,
+        Some(1),
+    );
     plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
 
     // Validate the network
