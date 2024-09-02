@@ -155,32 +155,32 @@ fn main() {
   Before:
   ```rs
   network.set_optimizer(
-        optimizer::Optimizer::AdamW(
-            optimizer::AdamW {
-                learning_rate: 0.001,
-                beta1: 0.9,
-                beta2: 0.999,
-                epsilon: 1e-8,
-                decay: 0.01,
+    optimizer::Optimizer::AdamW(
+        optimizer::AdamW {
+            learning_rate: 0.001,
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            decay: 0.01,
 
-                // To be filled by the network:
-                momentum: vec![],
-                velocity: vec![],
-            }
-        )
-    );
-    ```
+            // To be filled by the network:
+            momentum: vec![],
+            velocity: vec![],
+        }
+    )
+  );
+  ```
 
   Now:
   ```rs
   network.set_optimizer(optimizer::RMSprop::create(
-        0.001,                     // Learning rate
-        0.0,                       // Alpha
-        1e-8,                      // Epsilon
-        Some(0.01),                // Decay
-        Some(0.01),                // Momentum
-        true,                      // Centered
-    ));
+    0.001,                     // Learning rate
+    0.0,                       // Alpha
+    1e-8,                      // Epsilon
+    Some(0.01),                // Decay
+    Some(0.01),                // Momentum
+    true,                      // Centered
+  ));
   ```
 </details>
 
