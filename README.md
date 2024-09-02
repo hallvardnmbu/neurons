@@ -148,6 +148,43 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.0.3 - Improved optimizer creation.</summary>
+
+  Improved optimizer creation.
+
+  Before:
+  ```rs
+  network.set_optimizer(
+        optimizer::Optimizer::AdamW(
+            optimizer::AdamW {
+                learning_rate: 0.001,
+                beta1: 0.9,
+                beta2: 0.999,
+                epsilon: 1e-8,
+                decay: 0.01,
+
+                // To be filled by the network:
+                momentum: vec![],
+                velocity: vec![],
+            }
+        )
+    );
+    ```
+
+  Now:
+  ```rs
+  network.set_optimizer(optimizer::RMSprop::create(
+        0.001,                     // Learning rate
+        0.0,                       // Alpha
+        1e-8,                      // Epsilon
+        Some(0.01),                // Decay
+        Some(0.01),                // Momentum
+        true,                      // Centered
+    ));
+  ```
+</details>
+
+<details>
   <summary>v2.0.2 – Improved compatability of differing layers.</summary>
 
     Layers now automatically reshape input tensors to the correct shape.
