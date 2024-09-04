@@ -17,9 +17,9 @@ use crate::{activation, tensor};
 /// * `flatten` - Whether the output should be flattened.
 /// * `training` - Whether the layer is training.
 pub struct Convolution {
-    inputs: tensor::Shape,
+    pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    loops: f32,
+    pub(crate) loops: f32,
 
     pub(crate) kernels: Vec<tensor::Tensor>,
     stride: (usize, usize),
@@ -34,23 +34,19 @@ pub struct Convolution {
 
 impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "Convolution{}({} -> {}, kernel: {}x({}), stride: {:?}, padding: {:?}, dropout: {}, loops: {})",
-            self.activation,
-            self.inputs,
-            self.outputs,
-            self.kernels.len(),
-            self.kernels[0].shape,
-            self.stride,
-            self.padding,
-            if self.dropout.is_some() {
-                self.dropout.unwrap().to_string()
-            } else {
-                "false".to_string()
-            },
-            self.loops
-        )
+        write!(f, "Convolution{}(\n", self.activation)?;
+        write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
+        write!(f, "\t\t\tkernel: {}x({})\n", self.kernels.len(), self.kernels[0].shape)?;
+        write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
+        write!(f, "\t\t\tpadding: {:?}\n", self.padding)?;
+        write!(f, "\t\t\tdropout: {}\n", if self.dropout.is_some() {
+            self.dropout.unwrap().to_string()
+        } else {
+            "false".to_string()
+        })?;
+        write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(f, "\t\t)")?;
+        Ok(())
     }
 }
 

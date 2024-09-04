@@ -1,6 +1,8 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{activation, convolution, dense, maxpool, objective, optimizer, tensor};
+use crate::{
+    activation, assert_eq_shape, convolution, dense, maxpool, objective, optimizer, tensor,
+};
 
 use rayon::prelude::*;
 use std::collections::{HashMap, VecDeque};
@@ -266,7 +268,7 @@ impl Network {
 
     /// Add a feedback connection between two layers.
     ///
-    /// INCOMPLETE: Currently only supports feedback connections between dense layers.
+    /// INCOMPLETE: Currently only supports feedback connections for identical shapes.
     ///
     /// # Arguments
     ///
@@ -275,35 +277,33 @@ impl Network {
     pub fn feedback(&mut self, from: usize, to: usize) {
         if from > self.layers.len() || to >= self.layers.len() || from <= to {
             panic!("Invalid layer indices for feedback connection.");
+        } else if self.feedbacks.contains_key(&from) {
+            panic!("Feedback connection already exists for layer {}", from);
         }
 
-        // // TODO: Add support for convolutional layers.
-        // // TODO: Add support for mismatched input/output sizes.
-        // let inputs = match &self.layers[from] {
-        //     Layer::Dense(layer) => &layer.inputs,
-        //     _ => unimplemented!("Feedback connections for convolutional layers."),
-        // };
-        // let outputs = match &self.layers[to] {
-        //     Layer::Dense(layer) => &layer.outputs,
-        //     _ => unimplemented!("Feedback connections for convolutional layers."),
-        // };
-        // if inputs != outputs {
-        //     panic!("Incompatible number of values for feedback connection.");
-        // }
+        let inputs = match &self.layers[from] {
+            Layer::Dense(layer) => &layer.inputs,
+            Layer::Convolution(layer) => &layer.inputs,
+            Layer::Maxpool(layer) => &layer.inputs,
+        };
+        let outputs = match &self.layers[to] {
+            Layer::Dense(layer) => &layer.outputs,
+            Layer::Convolution(layer) => &layer.outputs,
+            Layer::Maxpool(layer) => &layer.outputs,
+        };
+        assert_eq_shape!(inputs, outputs);
 
-        // // Loop through layers to -> from and add +1 to its loopback count.
-        // for k in to..from {
-        //     match &mut self.layers[k] {
-        //         Layer::Dense(layer) => layer.loops += 1.0,
-        //         _ => unimplemented!("Feedback connections for convolutional layers."),
-        //     }
-        // }
+        // Loop through layers to -> from and add +1 to its loopback count.
+        for k in to..from {
+            match &mut self.layers[k] {
+                Layer::Dense(layer) => layer.loops += 1.0,
+                Layer::Convolution(layer) => layer.loops += 1.0,
+                Layer::Maxpool(layer) => layer.loops += 1.0,
+            }
+        }
 
-        // // Store the feedback connection for use in the forward pass.
-        // if self.feedbacks.contains_key(&from) {
-        //     panic!("Feedback connection already exists for layer {}", from);
-        // }
-        // self.feedbacks.insert(from, to);
+        // Store the feedback connection for use in the forward pass.
+        self.feedbacks.insert(from, to);
     }
 
     /// Extract the total number of parameters in the network.
@@ -738,7 +738,7 @@ impl Network {
                 Layer::Dense(layer) => layer.backward(&gradient, input, output),
                 Layer::Convolution(layer) => layer.backward(&gradient, input, output),
                 Layer::Maxpool(layer) => (
-                    layer.backward(&gradient, &maxpools.pop_front().unwrap()),
+                    layer.backward(&gradient, &maxpools.pop_back().unwrap()),
                     tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),

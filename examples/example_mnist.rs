@@ -11,7 +11,7 @@ fn read(reader: &mut dyn Read) -> Result<u32> {
     Ok(u32::from_be_bytes(buffer))
 }
 
-fn load_images(path: &str) -> Result<Vec<tensor::Tensor>> {
+fn load_mnist(path: &str) -> Result<Vec<tensor::Tensor>> {
     let mut reader = BufReader::new(File::open(path)?);
     let mut images: Vec<tensor::Tensor> = Vec::new();
 
@@ -52,9 +52,9 @@ fn load_labels(file_path: &str, numbers: usize) -> Result<Vec<tensor::Tensor>> {
 }
 
 fn main() {
-    let x_train = load_images("./examples/datasets/mnist/train-images-idx3-ubyte").unwrap();
+    let x_train = load_mnist("./examples/datasets/mnist/train-images-idx3-ubyte").unwrap();
     let y_train = load_labels("./examples/datasets/mnist/train-labels-idx1-ubyte", 10).unwrap();
-    let x_test = load_images("./examples/datasets/mnist/t10k-images-idx3-ubyte").unwrap();
+    let x_test = load_mnist("./examples/datasets/mnist/t10k-images-idx3-ubyte").unwrap();
     let y_test = load_labels("./examples/datasets/mnist/t10k-labels-idx1-ubyte", 10).unwrap();
     println!(
         "Train: {} images, Test: {} images",

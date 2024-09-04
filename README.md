@@ -150,8 +150,6 @@ fn main() {
 <details>
   <summary>v2.0.3 - Improved optimizer creation.</summary>
 
-  Improved optimizer creation.
-
   Before:
   ```rs
   network.set_optimizer(

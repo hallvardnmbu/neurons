@@ -88,14 +88,12 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
     let x = match data.data {
         tensor::Data::Triple(ref x) => x,
         _ => return (),
-        // _ => panic!("Expected a tensor, but got one-dimensional data."),
     };
-    let data = x.get(0).unwrap();
 
     let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let (rows, cols) = (data.len(), data[0].len());
+    let (rows, cols) = (x[0].len(), x[0][0].len());
 
     let mut chart = ChartBuilder::on(&root)
         .margin(20)
@@ -105,32 +103,43 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
 
     chart.configure_mesh().disable_mesh().draw().unwrap();
 
-    let min_value = data.iter().flatten().copied().fold(f32::INFINITY, f32::min);
-    let max_value = data
-        .iter()
-        .flatten()
-        .copied()
-        .fold(f32::NEG_INFINITY, f32::max);
-    let rows = data.len();
-    for (y, row) in data.iter().enumerate() {
-        for (x, &value) in row.iter().enumerate() {
-            // Normalize the value to a range between 0 and 1
-            let normalized_value = (value - min_value) / (max_value - min_value);
-
-            // Map the normalized value to a color
-            let r = (normalized_value * 255.0) as u8;
-            let g = ((1.0 - normalized_value) * 255.0) as u8;
-            let b = ((0.5 - (normalized_value - 0.5).abs()) * 255.0) as u8;
-
-            let color = RGBColor(r, g, b);
-
-            chart
-                .draw_series(std::iter::once(Rectangle::new(
-                    [(x, rows - y), (x + 1, rows - y + 1)],
-                    color.filled(),
-                )))
-                .unwrap();
+    if x.len() == 1 {
+        // Single-channel case
+        let data = &x[0];
+        for (y, row) in data.iter().enumerate() {
+            for (x, &value) in row.iter().enumerate() {
+                let gray = (value * 255.0) as u8;
+                let color = RGBColor(gray, gray, gray);
+                chart
+                    .draw_series(std::iter::once(Rectangle::new(
+                        [(x, rows - y), (x + 1, rows - y + 1)],
+                        color.filled(),
+                    )))
+                    .unwrap();
+            }
         }
+    } else if x.len() == 3 {
+        // Three-channel case
+        let data_r = &x[0];
+        let data_g = &x[1];
+        let data_b = &x[2];
+        for (y, (row_r, (row_g, row_b))) in data_r.iter().zip(data_g.iter().zip(data_b.iter())).enumerate() {
+            for (x, (&value_r, (&value_g, &value_b))) in row_r.iter().zip(row_g.iter().zip(row_b.iter())).enumerate() {
+                let r = (value_r * 255.0) as u8;
+                let g = (value_g * 255.0) as u8;
+                let b = (value_b * 255.0) as u8;
+                let color = RGBColor(r, g, b);
+                chart
+                    .draw_series(std::iter::once(Rectangle::new(
+                        [(x, rows - y - 1), (x + 1, rows - y)],
+                        color.filled(),
+                    )))
+                    .unwrap();
+            }
+        }
+    } else {
+        // Unsupported number of channels
+        eprintln!("Unsupported number of channels: {}", x.len());
     }
 
     root.present().unwrap();

@@ -13,9 +13,9 @@ use crate::tensor;
 /// * `stride` - The stride of the filter.
 /// * `flatten` - Whether the output should be flattened.
 pub struct Maxpool {
-    inputs: tensor::Shape,
+    pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    loops: f32,
+    pub(crate) loops: f32,
 
     kernel: (usize, usize),
     stride: (usize, usize),
@@ -25,11 +25,13 @@ pub struct Maxpool {
 
 impl std::fmt::Display for Maxpool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "Maxpool({} -> {}, kernel: {:?}, stride: {:?}, loops: {})",
-            self.inputs, self.outputs, self.kernel, self.stride, self.loops
-        )
+        write!(f, "Maxpool(\n")?;
+        write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
+        write!(f, "\t\t\tkernel: {:?}\n", self.kernel)?;
+        write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
+        write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(f, "\t\t)")?;
+        Ok(())
     }
 }
 
@@ -154,9 +156,9 @@ impl Maxpool {
                             let _dh = h + k;
                             let _dw = w + l;
                             if _dh < ih && _dw < iw {
-                                let x = x[c][_dh][_dw];
-                                if x > value {
-                                    value = x;
+                                let _x = x[c][_dh][_dw];
+                                if _x > value {
+                                    value = _x;
                                     index = (_dh, _dw);
                                 }
                             }

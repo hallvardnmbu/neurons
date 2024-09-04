@@ -15,9 +15,9 @@ use crate::{activation, tensor};
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `training` - Whether the network is training.
 pub struct Dense {
-    inputs: tensor::Shape,
+    pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    loops: f32,
+    pub(crate) loops: f32,
 
     pub(crate) weights: tensor::Tensor,
     pub(crate) bias: Option<tensor::Tensor>,
@@ -30,20 +30,17 @@ pub struct Dense {
 
 impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "Dense{}({} -> {}, bias: {}, dropout: {}, loops: {})",
-            self.activation,
-            self.inputs,
-            self.outputs,
-            self.bias.is_some(),
-            if let Some(dropout) = self.dropout {
-                dropout.to_string()
-            } else {
-                "false".to_string()
-            },
-            self.loops
-        )
+        write!(f, "Dense{}(\n", self.activation)?;
+        write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
+        write!(f, "\t\t\tbias: {}\n", self.bias.is_some())?;
+        write!(f, "\t\t\tdropout: {}\n", if self.dropout.is_some() {
+            self.dropout.unwrap().to_string()
+        } else {
+            "false".to_string()
+        })?;
+        write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(f, "\t\t)")?;
+        Ok(())
     }
 }
 

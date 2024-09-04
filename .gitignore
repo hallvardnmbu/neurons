@@ -28,3 +28,4 @@ Icon?
 
 # Datasets.
 examples/datasets/mnist/*
+examples/datasets/cifar10/*
