@@ -88,6 +88,8 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
+    network.feedback(2, 1);
+
     network.set_optimizer(optimizer::SGD::create(
         0.001, // Learning rate
         None,  // Decay

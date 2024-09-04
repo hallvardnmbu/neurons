@@ -107,7 +107,7 @@ fn main() {
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
     println!(
-        "1. Validation acc: {:.2}, loss: {:.5}",
+        "Final validation accuracy: {:.2} % and loss: {:.5}",
         val_acc * 100.0,
         val_loss
     );
@@ -115,7 +115,7 @@ fn main() {
     // Use the network
     let prediction = network.predict(x_test.get(0).unwrap());
     println!(
-        "2. Input: {}, Target: {}, Output: {}",
+        "Prediction on input: {}. Target: {}. Output: {}.",
         x_test[0].data,
         y_test[0].argmax(),
         prediction.argmax()

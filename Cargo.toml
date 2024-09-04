@@ -44,3 +44,11 @@ path = "examples/example_convolution.rs"
 [[example]]
 name = "example_mnist"
 path = "examples/example_mnist.rs"
+
+[[example]]
+name = "example_mnist_feedback"
+path = "examples/example_mnist_feedback.rs"
+
+[[example]]
+name = "example_cifar10"
+path = "examples/example_cifar10.rs"

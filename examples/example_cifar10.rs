@@ -134,4 +134,21 @@ fn main() {
         Some(1),
     );
     plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
+
+    // Validate the network
+    let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
+    println!(
+        "Final validation accuracy: {:.2} % and loss: {:.5}",
+        val_acc * 100.0,
+        val_loss
+    );
+
+    // Use the network
+    let prediction = network.predict(x_test.get(0).unwrap());
+    println!(
+        "Prediction on input: {}. Target: {}. Output: {}.",
+        x_test[0].data,
+        y_test[0].argmax(),
+        prediction.argmax()
+    );
 }

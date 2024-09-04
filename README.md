@@ -384,7 +384,7 @@ fn main() {
   - [x] XOR
   - [x] Iris
     - [x] MLP
-    - [ ] MLP + Feedback
+    - [x] MLP + Feedback
   - [ ] Linear regression
     - [ ] MLP
     - [ ] MLP + Feedback
@@ -397,7 +397,7 @@ fn main() {
     - [x] CNN
     - [ ] CNN + Feedback
   - [ ] CIFAR-10
-    - [ ] CNN
+    - [x] CNN
     - [ ] CNN + Feedback
 </details>
 

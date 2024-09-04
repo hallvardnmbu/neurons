@@ -444,12 +444,14 @@ impl Network {
             if print > epochs as i32 {
                 println!("Note: print frequency is higher than the number of epochs. No printouts will be made.");
             } else if let Some(_) = validation {
+                // println!("{}", "-".repeat(51));
                 println!("{:>5} \t {:<23} \t {:>10}", "EPOCH", "LOSS", "ACCURACY");
                 println!(
                     "{:>5} \t {:>10} | {:<10} \t {:>10}",
                     "", "validation", "train", "validation"
                 );
             } else {
+                // println!("{}", "-".repeat(19));
                 println!("{:>5} \t {:>10}", "EPOCH", "TRAIN LOSS");
             }
         }
@@ -586,6 +588,15 @@ impl Network {
                 _ => (),
             }
         }
+
+        // // Print the footer of the table.
+        // if print.unwrap_or(epochs + 1) <= epochs as i32 {
+        //     if let Some(_) = validation {
+        //         println!("{}", "-".repeat(51));
+        //     } else {
+        //         println!("{}", "-".repeat(19));
+        //     }
+        // }
 
         (train_loss, val_loss)
     }
@@ -822,11 +833,29 @@ impl Network {
     ///
     /// A tuple containing the total loss and accuracy of the network for the given `inputs` and `targets`.
     pub fn validate(
-        &self,
+        &mut self,
         inputs: &[&tensor::Tensor],
         targets: &[&tensor::Tensor],
         tol: f32,
     ) -> (f32, f32) {
+        let mut training: bool = false;
+        for layer in &mut self.layers {
+            match layer {
+                Layer::Dense(layer) => {
+                    if layer.training && !training {
+                        training = true;
+                    } else {
+                        break;
+                    }
+                    layer.training = false
+                },
+                Layer::Convolution(layer) => {
+                    layer.training = false
+                },
+                _ => (),
+            }
+        }
+
         let results: Vec<_> = inputs
             .par_iter()
             .zip(targets.par_iter())
@@ -874,6 +903,16 @@ impl Network {
                 (loss, acc)
             })
             .collect();
+
+        if training {
+            for layer in &mut self.layers {
+                match layer {
+                    Layer::Dense(layer) => layer.training = true,
+                    Layer::Convolution(layer) => layer.training = true,
+                    _ => (),
+                }
+            }
+        }
 
         let mut loss: Vec<f32> = Vec::new();
         let mut acc: Vec<f32> = Vec::new();

@@ -33,20 +33,19 @@ fn main() {
     let _epoch_loss = network.learn(&inputs, &targets, None, 4, 500, Some(50));
 
     // Validate the network
-    let (val_loss, val_acc) = network.validate(&inputs, &targets, 0.1);
-    println!("1. Validation acc: {} loss: {}", val_acc, val_loss);
+    let (val_loss, val_acc) = network.validate(&inputs, &targets, 1e-1);
+    println!(
+        "Final validation accuracy: {:.2} % and loss: {:.5}",
+        val_acc * 100.0,
+        val_loss
+    );
 
     // Use the network
     let prediction = network.predict(inputs.get(0).unwrap());
     println!(
-        "2. Input: {}, Target: {}, Output: {}",
-        inputs[0].data, targets[0].data, prediction.data
-    );
-
-    // Use the network on batch
-    let predictions = network.predict_batch(&inputs);
-    println!(
-        "3. Input: {},\n   Target: {},\n   Output: {}",
-        inputs[0].data, targets[0].data, predictions[0].data
+        "Prediction on input: {} Target: {} Output: {}",
+        inputs[0].data,
+        targets[0].data,
+        prediction.data
     );
 }
