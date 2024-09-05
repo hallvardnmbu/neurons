@@ -148,7 +148,7 @@ fn main() {
 ## Releases
 
 <details>
-  <summary>v2.0.3 – Initial feedback block structure.</summary>
+  <summary>v2.0.4 – Initial feedback block structure.</summary>
 
     Add skeleton for feedback block structure.
     Missing correct handling of backward pass.
