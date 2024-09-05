@@ -8,14 +8,12 @@ use crate::tensor;
 ///
 /// * `inputs` - The `tensor::Shape` of the input to the layer.
 /// * `outputs` - The `tensor::Shape` of the output from the layer.
-/// * `loops` - The number of loops to run the layer.
 /// * `kernel` - The shape of the filter.
 /// * `stride` - The stride of the filter.
 /// * `flatten` - Whether the output should be flattened.
 pub struct Maxpool {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    pub(crate) loops: f32,
 
     kernel: (usize, usize),
     stride: (usize, usize),
@@ -29,7 +27,6 @@ impl std::fmt::Display for Maxpool {
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tkernel: {:?}\n", self.kernel)?;
         write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
-        write!(f, "\t\t\tloops: {}\n", self.loops)?;
         write!(f, "\t\t)")?;
         Ok(())
     }
@@ -98,7 +95,6 @@ impl Maxpool {
             kernel,
             stride,
             flatten: false,
-            loops: 1.0,
         }
     }
 
@@ -252,7 +248,6 @@ mod tests {
         assert_eq!(maxpool.kernel, kernel);
         assert_eq!(maxpool.stride, stride);
         assert_eq!(maxpool.flatten, false);
-        assert_eq!(maxpool.loops, 1.0);
     }
 
     #[test]

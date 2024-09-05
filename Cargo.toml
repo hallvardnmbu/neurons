@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "2.0.3"
+version = "2.0.4"
 edition = "2021"
 description = "Neural networks from scratch, in Rust."
 authors = ["Hallvard Høyland Lavik"]
@@ -30,10 +30,6 @@ name = "example_iris"
 path = "examples/example_iris.rs"
 
 [[example]]
-name = "example_iris_feedback"
-path = "examples/example_iris_feedback.rs"
-
-[[example]]
 name = "example_benchmark"
 path = "examples/example_benchmark.rs"
 
@@ -44,10 +40,6 @@ path = "examples/example_convolution.rs"
 [[example]]
 name = "example_mnist"
 path = "examples/example_mnist.rs"
-
-[[example]]
-name = "example_mnist_feedback"
-path = "examples/example_mnist_feedback.rs"
 
 [[example]]
 name = "example_cifar10"

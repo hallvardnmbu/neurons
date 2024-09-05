@@ -148,6 +148,15 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.0.3 – Initial feedback block structure.</summary>
+
+    Add skeleton for feedback block structure.
+    Missing correct handling of backward pass.
+
+    How should the optimizer be handled (wrt. buffer, etc.)?
+</details>
+
+<details>
   <summary>v2.0.3 - Improved optimizer creation.</summary>
 
   Before:
@@ -291,6 +300,7 @@ fn main() {
       - [x] Stride
       - [ ] Dilation
     - [x] Max pooling
+    - [ ] Feedback
 </details>
 
 <details>
@@ -333,19 +343,14 @@ fn main() {
   - [x] Feedforward (dubbed `Network`)
   - [ ] Recurrent
   - [ ] Skip connections
-  - [ ] Feedback connections
-    - [x] Dense to Dense
-    - [ ] Dense to Convolutional
-    - [ ] Convolutional to Dense
-    - [ ] Convolutional to Convolutional
+  - [ ] Feedback blocks
 </details>
 
 <details>
   <summary>Feedback</summary>
 
   - [ ] Selectable gradient accumulation
-  - [ ] Selectable __loops__ integration wrt. updating weights
-  - [ ] Improved feedback logic wrt. output/input-shapes
+  - [ ] Handle backward pass of feedback block in `network::Network`
 </details>
 
 <details>
@@ -371,7 +376,7 @@ fn main() {
     - [x] Thorough testing of activation functions
     - [x] Thorough testing of objective functions
     - [x] Thorough testing of optimization techniques
-    - [ ] Thorough testing of feedback scaling (wrt. gradients)
+    - [ ] Thorough testing of feedback blocks
   - [x] Integration tests
     - [x] Network forward pass
     - [x] Network backward pass
@@ -384,7 +389,7 @@ fn main() {
   - [x] XOR
   - [x] Iris
     - [x] MLP
-    - [x] MLP + Feedback
+    - [ ] MLP + Feedback
   - [ ] Linear regression
     - [ ] MLP
     - [ ] MLP + Feedback

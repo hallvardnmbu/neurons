@@ -8,7 +8,6 @@ use crate::{activation, tensor};
 ///
 /// * `inputs` - The number of inputs to the layer.
 /// * `outputs` - The number of outputs from the layer.
-/// * `loops` - The number of loops, i.e., feedback connections.
 /// * `weights` - The weights of the layer.
 /// * `bias` - The bias of the layer.
 /// * `activation` - The `activation::Function` of the layer.
@@ -17,7 +16,6 @@ use crate::{activation, tensor};
 pub struct Dense {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
-    pub(crate) loops: f32,
 
     pub(crate) weights: tensor::Tensor,
     pub(crate) bias: Option<tensor::Tensor>,
@@ -33,12 +31,15 @@ impl std::fmt::Display for Dense {
         write!(f, "Dense{}(\n", self.activation)?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tbias: {}\n", self.bias.is_some())?;
-        write!(f, "\t\t\tdropout: {}\n", if self.dropout.is_some() {
-            self.dropout.unwrap().to_string()
-        } else {
-            "false".to_string()
-        })?;
-        write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(
+            f,
+            "\t\t\tdropout: {}\n",
+            if self.dropout.is_some() {
+                self.dropout.unwrap().to_string()
+            } else {
+                "false".to_string()
+            }
+        )?;
         write!(f, "\t\t)")?;
         Ok(())
     }
@@ -72,7 +73,6 @@ impl Dense {
         Dense {
             inputs,
             outputs,
-            loops: 1.0,
             weights: tensor::Tensor::random(tensor::Shape::Double(output, input), -1.0, 1.0),
             bias: match bias {
                 true => Some(tensor::Tensor::random(
@@ -147,7 +147,7 @@ impl Dense {
             _ => panic!("Invalid gradient shape."),
         };
         let derivative = self.activation.backward(output);
-        let delta = derivative.hadamard(gradient).mul_scalar(self.loops);
+        let delta = derivative.hadamard(gradient);
 
         let weight_gradient = delta.product(input);
 
