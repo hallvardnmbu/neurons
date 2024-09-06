@@ -1,9 +1,12 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{activation, convolution, dense, feedback, maxpool, objective, optimizer, tensor};
+use crate::{
+    activation, assert_eq_shape, convolution, dense, feedback, maxpool, objective, optimizer,
+    tensor,
+};
 
 use rayon::prelude::*;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 /// Layer types of the network.
 pub enum Layer {
@@ -42,12 +45,14 @@ impl Layer {
 ///
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
+/// * `feedbacks` - The feedback connections of the network.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
     input: tensor::Shape,
 
     layers: Vec<Layer>,
+    feedbacks: HashMap<usize, usize>,
 
     optimizer: optimizer::Optimizer,
     objective: objective::Function,
@@ -65,6 +70,13 @@ impl std::fmt::Display for Network {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
         write!(f, "\t)\n")?;
+        if !self.feedbacks.is_empty() {
+            write!(f, "\tfeedback connections: (\n")?;
+            for (i, j) in self.feedbacks.iter() {
+                write!(f, "\t\t{} -> {}\n", i, j)?;
+            }
+            write!(f, "\t)\n")?;
+        }
         write!(f, "\tparameters: {}\n)", self.parameters())?;
         Ok(())
     }
@@ -91,6 +103,7 @@ impl Network {
         Network {
             input,
             layers: Vec::new(),
+            feedbacks: HashMap::new(),
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -265,6 +278,49 @@ impl Network {
             kernel,
             stride,
         )));
+    }
+
+    /// Add a feedback connection between two layers.
+    ///
+    /// INCOMPLETE: Currently only supports feedback connections for identical shapes.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - The index of the layer to connect from.
+    /// * `to` - The index of the layer to connect to.
+    pub fn feedback(&mut self, from: usize, to: usize) {
+        if from > self.layers.len() || to >= self.layers.len() || from <= to {
+            panic!("Invalid layer indices for feedback connection.");
+        } else if self.feedbacks.contains_key(&from) {
+            panic!("Feedback connection already exists for layer {}", from);
+        }
+
+        let inputs = match &self.layers[from] {
+            Layer::Dense(layer) => &layer.inputs,
+            Layer::Convolution(layer) => &layer.inputs,
+            Layer::Maxpool(layer) => &layer.inputs,
+            Layer::Feedback(feedback) => &feedback.inputs,
+        };
+        let outputs = match &self.layers[to] {
+            Layer::Dense(layer) => &layer.outputs,
+            Layer::Convolution(layer) => &layer.outputs,
+            Layer::Maxpool(layer) => &layer.outputs,
+            Layer::Feedback(feedback) => &feedback.outputs,
+        };
+        assert_eq_shape!(inputs, outputs);
+
+        // Loop through layers to -> from and add +1 to its loopback count.
+        for k in to..from {
+            match &mut self.layers[k] {
+                Layer::Dense(layer) => layer.loops += 1.0,
+                Layer::Convolution(layer) => layer.loops += 1.0,
+                Layer::Maxpool(layer) => layer.loops += 1.0,
+                Layer::Feedback(_) => panic!("Feedback connection to feedback layer."),
+            }
+        }
+
+        // Store the feedback connection for use in the forward pass.
+        self.feedbacks.insert(from, to);
     }
 
     /// Extract the total number of parameters in the network.
@@ -591,7 +647,76 @@ impl Network {
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
         let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
 
-        for layer in &self.layers {
+        for i in 1..self.layers.len() + 1 {
+            let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i - 1, i);
+
+            if self.feedbacks.contains_key(&i) {
+                let (fpre, fpost, _fmax) =
+                    self._forward(post.last().unwrap(), self.feedbacks[&i], i);
+
+                // Adding the forward pass (before feedback) to the unactivated and activated vectors.
+                // This is done after calculating the forward pass of the fed-back layers.
+                // Due to said pass needing `post.last()`.
+                unactivated.append(&mut pre);
+                activated.append(&mut post);
+                maxpools.append(&mut max);
+
+                for (idx, j) in (self.feedbacks[&i]..i).enumerate() {
+                    // TODO: Handle the case with feedbacks.
+                    // TODO: Handle maxpool indices.
+                    // The values should be overwritten(?) summed(?) multiplied(?).
+
+                    // // Overwriting.
+                    // unactivated[j] = fpre[idx].to_owned();
+                    // activated[j + 1] = fpost[idx].to_owned();
+                    // maxpools[j] = fmax[idx].to_owned();
+
+                    // Summing.
+                    unactivated[j].add_inplace(&fpre[idx]);
+                    activated[j + 1].add_inplace(&fpost[idx]);
+                    // maxpools[j].add_inplace(&fmax[idx]);
+
+                    // // Multiplying.
+                    // unactivated[j].mul_inplace(&fpre[idx]);
+                    // activated[j + 1].mul_inplace(&fpost[idx]);
+                    // maxpools[j].mul_inplace(&fmax[idx]);
+                }
+            } else {
+                unactivated.append(&mut pre);
+                activated.append(&mut post);
+                maxpools.append(&mut max);
+            }
+        }
+
+        (unactivated, activated, maxpools)
+    }
+
+    /// Compute the forward pass for the specified range of layers.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input data (x).
+    /// * `from` - The starting index of the layers to compute the forward pass for.
+    /// * `to` - The ending index of the layers to compute the forward pass for.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of each layer inbetween.
+    fn _forward(
+        &self,
+        input: &tensor::Tensor,
+        from: usize,
+        to: usize,
+    ) -> (
+        Vec<tensor::Tensor>,
+        Vec<tensor::Tensor>,
+        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+    ) {
+        let mut unactivated: Vec<tensor::Tensor> = Vec::new();
+        let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
+        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
+
+        for layer in &self.layers[from..to] {
             match layer {
                 Layer::Dense(layer) => {
                     let (pre, post) = layer.forward(activated.last().unwrap());
@@ -610,16 +735,17 @@ impl Network {
                     maxpools.push_back(max);
                 }
                 Layer::Feedback(layer) => {
-                    let (pre, post, max) = layer.forward(activated.last().unwrap());
-
-                    // TODO: Keep track of the feedback values.
-                    // TODO: See `backward`.
-                    unactivated.extend(pre);
-                    activated.extend(post);
-                    maxpools.extend(max)
+                    let (pres, posts, maxs) = layer.forward(activated.last().unwrap());
+                    unactivated.extend(pres);
+                    activated.extend(posts);
+                    maxpools.extend(maxs);
                 }
             };
         }
+
+        // Removing the input clone from the activated vector.
+        // As this is present in the `forward` function.
+        activated.remove(0);
 
         (unactivated, activated, maxpools)
     }
@@ -657,7 +783,7 @@ impl Network {
                     tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),
-                Layer::Feedback(feedback) => {
+                Layer::Feedback(_) => {
                     // TODO: Correctly handle feedback backward pass.
                     // TODO: Make sure to extract correct unact. act. and maxpools.
                     panic!("TODO!")

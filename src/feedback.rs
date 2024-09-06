@@ -192,7 +192,7 @@ impl Feedback {
         (unactivated, activated, maxpools)
     }
 
-    pub fn backward(&self, input: &tensor::Tensor, output: &tensor::Tensor) -> tensor::Tensor {
+    pub fn backward(&self, _input: &tensor::Tensor, _output: &tensor::Tensor) -> tensor::Tensor {
         panic!("TODO!")
     }
 }
