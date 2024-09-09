@@ -10,8 +10,8 @@
   <a href="https://docs.rs/neurons">
     <img src="https://docs.rs/neurons/badge.svg" alt="docs.rs/neurons"/>
   </a>
-  <a href="https://github.com/hallvardnmbu/neurons/actions/workflows/rust.yml">
-    <img src="https://github.com/hallvardnmbu/neurons/actions/workflows/rust.yml/badge.svg" alt="github.com/hallvardnmbu/neurons/actions/workflows/rust.yml"/>
+  <a href="https://github.com/hallvardnmbu/neurons/actions/workflows/tests.yml">
+    <img src="https://github.com/hallvardnmbu/neurons/actions/workflows/tests.yml/badge.svg" alt="github.com/hallvardnmbu/neurons/actions/workflows/tests.yml"/>
   </a>
 </div>
 <br>
