@@ -306,8 +306,8 @@ mod tests {
         };
 
         let max: Vec<Vec<Vec<Vec<(usize, usize)>>>> = vec![vec![
-            vec![vec![vec![(1, 1)]], vec![vec![(1, 3)]]],
-            vec![vec![vec![(3, 1)]], vec![vec![(3, 3)]]],
+            vec![vec![(1, 1)], vec![(1, 3)]],
+            vec![vec![(3, 1)], vec![(3, 3)]],
         ]];
 
         let igradient = maxpool.backward(&gradient, &max);

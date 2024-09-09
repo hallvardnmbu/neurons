@@ -6,7 +6,7 @@ use crate::{
 };
 
 use rayon::prelude::*;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 /// Layer types of the network.
 pub enum Layer {
