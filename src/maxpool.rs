@@ -286,10 +286,10 @@ mod tests {
         );
         assert_eq!(
             max,
-            vec![
-            vec![vec![vec![(1, 1)]], vec![vec![(1, 3)]]],
-            vec![vec![vec![(1, 1)], vec![vec![(1, 3)]]]]
-            ]
+            vec![vec![
+                vec![vec![(1, 1)], vec![(1, 3)]],
+                vec![vec![(3, 1)], vec![(3, 3)]]
+            ]]
         );
     }
 
