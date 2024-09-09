@@ -697,12 +697,21 @@ impl Tensor {
     }
 
     /// Multiply the `i == j` elements of two `Tensor`s of the same shape together.
-    pub fn hadamard(&self, other: &Tensor) -> Self {
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The `Tensor` to multiply with.
+    /// * `scalar` - A scalar value to multiply the result by (e.g., `1.0 / self.loops`).
+    pub fn hadamard(&self, other: &Tensor, scalar: f32) -> Self {
         assert_eq_shape!(self.shape, other.shape);
 
         match (&self.data, &other.data) {
             (Data::Single(data1), Data::Single(data2)) => {
-                let data: Vec<f32> = data1.iter().zip(data2.iter()).map(|(a, b)| a * b).collect();
+                let data: Vec<f32> = data1
+                    .iter()
+                    .zip(data2.iter())
+                    .map(|(a, b)| a * b * scalar)
+                    .collect();
                 Self {
                     shape: self.shape.clone(),
                     data: Data::Single(data),
@@ -712,7 +721,12 @@ impl Tensor {
                 let data: Vec<Vec<f32>> = data1
                     .iter()
                     .zip(data2.iter())
-                    .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect())
+                    .map(|(r1, r2)| {
+                        r1.iter()
+                            .zip(r2.iter())
+                            .map(|(a, b)| a * b * scalar)
+                            .collect()
+                    })
                     .collect();
                 Self {
                     shape: self.shape.clone(),
@@ -726,7 +740,12 @@ impl Tensor {
                     .map(|(c1, c2)| {
                         c1.iter()
                             .zip(c2.iter())
-                            .map(|(r1, r2)| r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect())
+                            .map(|(r1, r2)| {
+                                r1.iter()
+                                    .zip(r2.iter())
+                                    .map(|(a, b)| a * b * scalar)
+                                    .collect()
+                            })
                             .collect()
                     })
                     .collect();
@@ -746,7 +765,10 @@ impl Tensor {
                                 c1.iter()
                                     .zip(c2.iter())
                                     .map(|(r1, r2)| {
-                                        r1.iter().zip(r2.iter()).map(|(a, b)| a * b).collect()
+                                        r1.iter()
+                                            .zip(r2.iter())
+                                            .map(|(a, b)| a * b * scalar)
+                                            .collect()
                                     })
                                     .collect()
                             })
@@ -826,44 +848,6 @@ impl Tensor {
                 _ => panic!("Invalid dot"),
             },
             _ => panic!("Invalid dot"),
-        }
-    }
-
-    /// Multiply all elements of the `Tensor` by `scalar`.
-    pub fn mul_scalar(&self, scalar: f32) -> Self {
-        let data = match &self.data {
-            Data::Single(data) => Data::Single(data.iter().map(|x| x * scalar).collect()),
-            Data::Double(data) => Data::Double(
-                data.iter()
-                    .map(|r| r.iter().map(|x| x * scalar).collect())
-                    .collect(),
-            ),
-            Data::Triple(data) => Data::Triple(
-                data.iter()
-                    .map(|c| {
-                        c.iter()
-                            .map(|r| r.iter().map(|x| x * scalar).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            Data::Quadruple(data) => Data::Quadruple(
-                data.iter()
-                    .map(|f| {
-                        f.iter()
-                            .map(|c| {
-                                c.iter()
-                                    .map(|r| r.iter().map(|x| x * scalar).collect())
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-        };
-        Self {
-            shape: self.shape.clone(),
-            data,
         }
     }
 
@@ -1003,50 +987,27 @@ pub fn pad3d(data: &Vec<Vec<Vec<f32>>>, into: (usize, usize)) -> Vec<Vec<Vec<f32
 ///
 /// * `ten1` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
 /// * `ten2` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
+/// * `scalar` - A scalar value to multiply the result by (e.g., `1.0 / self.loops`).
 ///
 /// # Returns
 ///
 /// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `ten1` and `ten2`.
-pub fn hadamard3d(ten1: &Vec<Vec<Vec<f32>>>, ten2: &Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+pub fn hadamard3d(
+    ten1: &Vec<Vec<Vec<f32>>>,
+    ten2: &Vec<Vec<Vec<f32>>>,
+    scalar: f32,
+) -> Vec<Vec<Vec<f32>>> {
     ten1.iter()
         .zip(ten2.iter())
         .map(|(a, b)| {
             a.iter()
                 .zip(b.iter())
-                .map(|(c, d)| c.iter().zip(d.iter()).map(|(e, f)| e * f).collect())
-                .collect()
-        })
-        .collect()
-}
-
-/// Element-wise multiplication of a tensor and scalar.
-///
-/// # Arguments
-///
-/// * `tensor` - A reference to a tensor of `Vec<Vec<Vec<f32>>>`.
-/// * `scalar` - A scalar of `f32`.
-///
-/// # Returns
-///
-/// A tensor of `Vec<Vec<Vec<f32>>>` containing the element-wise product of `tensor` and `scalar`.
-///
-/// # Examples
-///
-/// ```
-/// use neurons::tensor::mul3d_scalar;
-///
-/// let tensor = vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]], vec![vec![5.0, 6.0], vec![7.0, 8.0]]];
-/// let scalar = 2.0;
-/// let result = mul3d_scalar(&tensor, scalar);
-///
-/// assert_eq!(result, vec![vec![vec![2.0, 4.0], vec![6.0, 8.0]], vec![vec![10.0, 12.0], vec![14.0, 16.0]]]);
-/// ```
-pub fn mul3d_scalar(tensor: &Vec<Vec<Vec<f32>>>, scalar: f32) -> Vec<Vec<Vec<f32>>> {
-    tensor
-        .iter()
-        .map(|row| {
-            row.iter()
-                .map(|col| col.iter().map(|a| a * scalar).collect())
+                .map(|(c, d)| {
+                    c.iter()
+                        .zip(d.iter())
+                        .map(|(e, f)| e * f * scalar)
+                        .collect()
+                })
                 .collect()
         })
         .collect()
@@ -1495,44 +1456,12 @@ mod tests {
             vec![vec![9.0, 10.0], vec![11.0, 12.0]],
             vec![vec![13.0, 14.0], vec![15.0, 16.0]],
         ];
-        let result = hadamard3d(&tensor1, &tensor2);
+        let result = hadamard3d(&tensor1, &tensor2, 1.0);
         assert_eq!(
             result,
             vec![
                 vec![vec![9.0, 20.0], vec![33.0, 48.0]],
                 vec![vec![65.0, 84.0], vec![105.0, 128.0]]
-            ]
-        );
-    }
-
-    #[test]
-    fn test_mul3d_scalar() {
-        let tensor = vec![
-            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
-            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
-        ];
-        let scalar = 2.0;
-        let result = mul3d_scalar(&tensor, scalar);
-        assert_eq!(
-            result,
-            vec![
-                vec![vec![2.0, 4.0], vec![6.0, 8.0]],
-                vec![vec![10.0, 12.0], vec![14.0, 16.0]]
-            ]
-        );
-
-        // Test with negative scalar
-        let tensor = vec![
-            vec![vec![1.0, 2.0], vec![3.0, 4.0]],
-            vec![vec![5.0, 6.0], vec![7.0, 8.0]],
-        ];
-        let scalar = -2.0;
-        let result = mul3d_scalar(&tensor, scalar);
-        assert_eq!(
-            result,
-            vec![
-                vec![vec![-2.0, -4.0], vec![-6.0, -8.0]],
-                vec![vec![-10.0, -12.0], vec![-14.0, -16.0]]
             ]
         );
     }

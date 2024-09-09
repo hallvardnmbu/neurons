@@ -10,6 +10,9 @@
   <a href="https://docs.rs/neurons">
     <img src="https://docs.rs/neurons/badge.svg" alt="docs.rs/neurons"/>
   </a>
+  <a href="https://github.com/hallvardnmbu/neurons/actions/workflows/rust.yml">
+    <img src="https://github.com/hallvardnmbu/neurons/actions/workflows/rust.yml/badge.svg" alt="github.com/hallvardnmbu/neurons/actions/workflows/rust.yml"/>
+  </a>
 </div>
 <br>
 
@@ -400,7 +403,7 @@ fn main() {
     - [ ] MLP
     - [ ] MLP + Feedback
     - [x] CNN
-    - [ ] CNN + Feedback
+    - [x] CNN + Feedback
   - [ ] CIFAR-10
     - [x] CNN
     - [ ] CNN + Feedback

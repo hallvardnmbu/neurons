@@ -73,7 +73,7 @@ impl std::fmt::Display for Network {
         if !self.feedbacks.is_empty() {
             write!(f, "\tfeedback connections: (\n")?;
             for (i, j) in self.feedbacks.iter() {
-                write!(f, "\t\t{} -> {}\n", i, j)?;
+                write!(f, "\t\t{}.output -> {}.input\n", i, j)?;
             }
             write!(f, "\t)\n")?;
         }
@@ -289,19 +289,19 @@ impl Network {
     /// * `from` - The index of the layer to connect from.
     /// * `to` - The index of the layer to connect to.
     pub fn feedback(&mut self, from: usize, to: usize) {
-        if from > self.layers.len() || to >= self.layers.len() || from <= to {
+        if from > self.layers.len() || to >= self.layers.len() || from < to {
             panic!("Invalid layer indices for feedback connection.");
         } else if self.feedbacks.contains_key(&from) {
             panic!("Feedback connection already exists for layer {}", from);
         }
 
-        let inputs = match &self.layers[from] {
+        let inputs = match &self.layers[to] {
             Layer::Dense(layer) => &layer.inputs,
             Layer::Convolution(layer) => &layer.inputs,
             Layer::Maxpool(layer) => &layer.inputs,
             Layer::Feedback(feedback) => &feedback.inputs,
         };
-        let outputs = match &self.layers[to] {
+        let outputs = match &self.layers[from] {
             Layer::Dense(layer) => &layer.outputs,
             Layer::Convolution(layer) => &layer.outputs,
             Layer::Maxpool(layer) => &layer.outputs,
@@ -310,7 +310,7 @@ impl Network {
         assert_eq_shape!(inputs, outputs);
 
         // Loop through layers to -> from and add +1 to its loopback count.
-        for k in to..from {
+        for k in to..from + 1 {
             match &mut self.layers[k] {
                 Layer::Dense(layer) => layer.loops += 1.0,
                 Layer::Convolution(layer) => layer.loops += 1.0,
@@ -349,7 +349,6 @@ impl Network {
             Layer::Convolution(ref mut layer) => {
                 layer.activation = activation::Function::create(&activation)
             }
-            // TODO: Handle feedback blocks.
             _ => panic!("Maxpool layers do not use activation functions!"),
         }
     }
@@ -393,10 +392,7 @@ impl Network {
                     ]);
                 }
                 Layer::Maxpool(_) => vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]]),
-                Layer::Feedback(_) => {
-                    // TODO: Handle feedback blocks.
-                    panic!("Error!")
-                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
             }
         }
 
@@ -641,50 +637,52 @@ impl Network {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+        HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
+        let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
 
         for i in 1..self.layers.len() + 1 {
             let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i - 1, i);
 
+            unactivated.append(&mut pre);
+            activated.append(&mut post);
+            if max.contains_key(&(i - 1)) {
+                maxpools.insert(i - 1, max.remove(&(i - 1)).unwrap());
+            }
+
             if self.feedbacks.contains_key(&i) {
-                let (fpre, fpost, _fmax) =
-                    self._forward(post.last().unwrap(), self.feedbacks[&i], i);
+                let (fpre, fpost, fmax) =
+                    self._forward(activated.last().unwrap(), self.feedbacks[&i], i + 1);
 
-                // Adding the forward pass (before feedback) to the unactivated and activated vectors.
-                // This is done after calculating the forward pass of the fed-back layers.
-                // Due to said pass needing `post.last()`.
-                unactivated.append(&mut pre);
-                activated.append(&mut post);
-                maxpools.append(&mut max);
-
-                for (idx, j) in (self.feedbacks[&i]..i).enumerate() {
-                    // TODO: Handle the case with feedbacks.
-                    // TODO: Handle maxpool indices.
+                for (idx, j) in (self.feedbacks[&i]..i + 1).enumerate() {
+                    // TODO: Handle the case with feedback blocks.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 
                     // // Overwriting.
                     // unactivated[j] = fpre[idx].to_owned();
                     // activated[j + 1] = fpost[idx].to_owned();
-                    // maxpools[j] = fmax[idx].to_owned();
 
                     // Summing.
-                    unactivated[j].add_inplace(&fpre[idx]);
-                    activated[j + 1].add_inplace(&fpost[idx]);
-                    // maxpools[j].add_inplace(&fmax[idx]);
+                    unactivated[j - 1].add_inplace(&fpre[idx]);
+                    activated[j].add_inplace(&fpost[idx]);
 
                     // // Multiplying.
                     // unactivated[j].mul_inplace(&fpre[idx]);
                     // activated[j + 1].mul_inplace(&fpost[idx]);
-                    // maxpools[j].mul_inplace(&fmax[idx]);
+
+                    // Extending the additional maxpool indices to the existing ones.
+                    if let Some(maxpool) = maxpools.get_mut(&(j + 1)) {
+                        for (original, updates) in maxpool.iter_mut().zip(fmax[&idx].iter()) {
+                            for (old, new) in original.iter_mut().zip(updates.iter()) {
+                                for (old, new) in old.iter_mut().zip(new.iter()) {
+                                    old.extend(new);
+                                }
+                            }
+                        }
+                    }
                 }
-            } else {
-                unactivated.append(&mut pre);
-                activated.append(&mut post);
-                maxpools.append(&mut max);
             }
         }
 
@@ -710,13 +708,13 @@ impl Network {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+        HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
+        let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
 
-        for layer in &self.layers[from..to] {
+        for (idx, layer) in (from..to).zip(&self.layers[from..to]) {
             match layer {
                 Layer::Dense(layer) => {
                     let (pre, post) = layer.forward(activated.last().unwrap());
@@ -732,14 +730,9 @@ impl Network {
                     let (pre, post, max) = layer.forward(activated.last().unwrap());
                     unactivated.push(pre);
                     activated.push(post);
-                    maxpools.push_back(max);
+                    maxpools.insert(idx, max);
                 }
-                Layer::Feedback(layer) => {
-                    let (pres, posts, maxs) = layer.forward(activated.last().unwrap());
-                    unactivated.extend(pres);
-                    activated.extend(posts);
-                    maxpools.extend(maxs);
-                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
             };
         }
 
@@ -767,7 +760,7 @@ impl Network {
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
-        mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+        maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
@@ -779,15 +772,11 @@ impl Network {
                 Layer::Dense(layer) => layer.backward(&gradient, input, output),
                 Layer::Convolution(layer) => layer.backward(&gradient, input, output),
                 Layer::Maxpool(layer) => (
-                    layer.backward(&gradient, &maxpools.pop_back().unwrap()),
+                    layer.backward(&gradient, &maxpools[&(self.layers.len() - i - 1)]),
                     tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),
-                Layer::Feedback(_) => {
-                    // TODO: Correctly handle feedback backward pass.
-                    // TODO: Make sure to extract correct unact. act. and maxpools.
-                    panic!("TODO!")
-                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
             };
 
             weight_gradient.push(wg);
@@ -849,10 +838,7 @@ impl Network {
                     }
                 }
                 Layer::Maxpool(_) => {}
-                Layer::Feedback(_) => {
-                    // TODO: Handle feedback layers properly.
-                    panic!("TODO!")
-                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
             });
     }
 
@@ -936,9 +922,7 @@ impl Network {
                     Layer::Maxpool(_) => {
                         unimplemented!("Image output (target) not supported.")
                     }
-                    Layer::Feedback(_) => {
-                        unimplemented!("ERROR!")
-                    }
+                    _ => unimplemented!("Feedback blocks not yet implemented."),
                 };
 
                 (loss, acc)
@@ -997,10 +981,7 @@ impl Network {
                     let (_, out, _) = layer.forward(&output);
                     output = out;
                 }
-                Layer::Feedback(feedback) => {
-                    let (_, outs, _) = feedback.forward(&output);
-                    output = outs.last().unwrap().clone();
-                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
             }
         }
         output

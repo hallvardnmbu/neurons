@@ -357,10 +357,7 @@ impl Convolution {
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         let gradient = gradient.get_triple(&self.outputs);
         let derivative = self.activation.backward(&output).get_triple(&self.outputs);
-        let delta = tensor::mul3d_scalar(
-            &tensor::hadamard3d(&gradient, &derivative),
-            1.0 / self.loops,
-        );
+        let delta = tensor::hadamard3d(&gradient, &derivative, 1.0 / self.loops);
 
         // Extracting the kernel dimensions.
         let (kh, kw) = match self.kernels[0].shape {

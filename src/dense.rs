@@ -151,7 +151,7 @@ impl Dense {
             _ => panic!("Invalid gradient shape."),
         };
         let derivative = self.activation.backward(output);
-        let delta = derivative.hadamard(gradient).mul_scalar(1.0 / self.loops);
+        let delta = derivative.hadamard(gradient, 1.0 / self.loops);
 
         let weight_gradient = delta.product(input);
 

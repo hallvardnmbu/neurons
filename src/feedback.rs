@@ -87,11 +87,11 @@ impl Feedback {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+        VecDeque<Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
+        let mut maxpools: VecDeque<Vec<Vec<Vec<Vec<(usize, usize)>>>>> = VecDeque::new();
 
         for i in 1..self.layers.len() + 1 {
             let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i - 1, i);
@@ -157,11 +157,11 @@ impl Feedback {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        VecDeque<Vec<Vec<Vec<(usize, usize)>>>>,
+        VecDeque<Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: VecDeque<Vec<Vec<Vec<(usize, usize)>>>> = VecDeque::new();
+        let mut maxpools: VecDeque<Vec<Vec<Vec<Vec<(usize, usize)>>>>> = VecDeque::new();
 
         for layer in &self.layers[from..to] {
             match layer {

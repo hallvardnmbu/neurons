@@ -118,12 +118,12 @@ impl Maxpool {
     ) -> (
         tensor::Tensor,
         tensor::Tensor,
-        Vec<Vec<Vec<(usize, usize)>>>,
+        Vec<Vec<Vec<Vec<(usize, usize)>>>>,
     ) {
         // Extracting the data from the input `tensor::Tensor`.
         let (x, ih, iw) = match &x.data {
             tensor::Data::Single(vector) => {
-                let (h, w) = match &self.inputs {
+                let (h, w) = match &self.outputs {
                     tensor::Shape::Triple(_, h, w) => (*h, *w),
                     _ => panic!("Maxpool layers should have `tensor::Shape::Triple` input."),
                 };
@@ -145,7 +145,8 @@ impl Maxpool {
         };
 
         let mut y = vec![vec![vec![0.0; ow]; oh]; oc];
-        let mut max = vec![vec![vec![(0, 0); ow]; oh]; oc];
+        let mut max: Vec<Vec<Vec<Vec<(usize, usize)>>>> =
+            vec![vec![vec![vec![(0, 0)]; ow]; oh]; oc];
         for c in 0..oc {
             for h in (0..ih - self.kernel.0 + 1).step_by(self.stride.0) {
                 for w in (0..iw - self.kernel.1 + 1).step_by(self.stride.1) {
@@ -167,7 +168,7 @@ impl Maxpool {
                     let h = h / self.stride.0;
                     let w = w / self.stride.1;
                     y[c][h][w] = value;
-                    max[c][h][w] = index;
+                    max[c][h][w] = vec![index];
                 }
             }
         }
@@ -199,7 +200,7 @@ impl Maxpool {
     pub fn backward(
         &self,
         gradient: &tensor::Tensor,
-        max: &Vec<Vec<Vec<(usize, usize)>>>,
+        max: &Vec<Vec<Vec<Vec<(usize, usize)>>>>,
     ) -> tensor::Tensor {
         let (ic, ih, iw) = match &self.inputs {
             tensor::Shape::Triple(ic, ih, iw) => (*ic, *ih, *iw),
@@ -212,9 +213,10 @@ impl Maxpool {
         for c in 0..ic {
             for h in 0..oh {
                 for w in 0..ow {
-                    let (mh, mw) = max[c][h][w];
-                    igradient[c][mh][mw] += ogradient[c][h][w];
-                    igradient[c][mh][mw] *= 1.0 / self.loops;
+                    for (mh, mw) in max[c][h][w].iter() {
+                        igradient[c][*mh][*mw] += ogradient[c][h][w];
+                        igradient[c][*mh][*mw] *= 1.0 / self.loops;
+                    }
                 }
             }
         }
@@ -282,7 +284,13 @@ mod tests {
             post.data,
             Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
         );
-        assert_eq!(max, vec![vec![vec![(1, 1), (1, 3)], vec![(3, 1), (3, 3)]]]);
+        assert_eq!(
+            max,
+            vec![vec![
+                vec![vec![(1, 1)], vec![(1, 3)]],
+                vec![vec![(1, 1)], vec![(1, 3)]]
+            ]]
+        );
     }
 
     #[test]
@@ -297,7 +305,10 @@ mod tests {
             shape: tensor::Shape::Triple(1, 2, 2),
         };
 
-        let max = vec![vec![vec![(1, 1), (1, 3)], vec![(3, 1), (3, 3)]]];
+        let max: Vec<Vec<Vec<Vec<(usize, usize)>>>> = vec![vec![
+            vec![vec![(1, 1)], vec![(1, 3)]],
+            vec![vec![(3, 1)], vec![(3, 3)]],
+        ]];
 
         let igradient = maxpool.backward(&gradient, &max);
 

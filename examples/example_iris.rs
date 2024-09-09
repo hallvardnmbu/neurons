@@ -82,7 +82,7 @@ fn main() {
     network.dense(3, activation::Activation::Softmax, false, None);
 
     network.set_optimizer(optimizer::RMSprop::create(
-        0.001,      // Learning rate
+        0.0001,     // Learning rate
         0.0,        // Alpha
         1e-8,       // Epsilon
         Some(0.01), // Decay
@@ -99,7 +99,7 @@ fn main() {
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 5)),
-        25,
+        1,
         5,
         Some(1),
     );
