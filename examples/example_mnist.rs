@@ -31,7 +31,7 @@ fn load_mnist(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::triple(vec![image]).resize(tensor::Shape::Triple(1, 10, 10)));
+        images.push(tensor::Tensor::triple(vec![image]).resize(tensor::Shape::Triple(1, 14, 14)));
     }
 
     Ok(images)
@@ -67,25 +67,24 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    let mut network = network::Network::new(tensor::Shape::Triple(1, 10, 10));
+    let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        4,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        Some(0.05),
+        None,
     );
     network.convolution(
-        4,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        Some(0.05),
+        None,
     );
-    network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::SGD::create(
@@ -104,11 +103,11 @@ fn main() {
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 10)),
-        128,
+        32,
         25,
         Some(5),
     );
-    plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
+    plot::loss(&train_loss, &val_loss, "Loss per epoch", "./static/mnist.png");
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
@@ -128,7 +127,7 @@ fn main() {
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "input.png");
+    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);

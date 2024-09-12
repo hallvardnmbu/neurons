@@ -83,7 +83,7 @@ fn main() {
     plot::heatmap(
         &x_train[0],
         &format!("{}", &labels[&(y_train[0].argmax() as u8)]),
-        "cifar.png",
+        "./static/input.png",
     );
 
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
@@ -92,28 +92,36 @@ fn main() {
         32,
         (3, 3),
         (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.convolution(
+        32,
+        (3, 3),
+        (1, 1),
         (0, 0),
         activation::Activation::ReLU,
-        Some(0.05),
+        None,
     );
     network.maxpool((2, 2), (2, 2));
     network.convolution(
         32,
         (4, 4),
         (1, 1),
-        (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
-        Some(0.05),
+        Some(0.25),
     );
     network.maxpool((2, 2), (2, 2));
-    network.dense(128, activation::Activation::ReLU, true, Some(0.05));
+    network.dense(512, activation::Activation::ReLU, true, Some(0.5));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::RMSprop::create(
-        0.001,      // Learning rate
+        0.0001,     // Learning rate
         0.0,        // Alpha
         1e-8,       // Epsilon
-        Some(0.01), // Decay
+        Some(1e-6), // Decay
         Some(0.01), // Momentum
         true,       // Centered
     ));
@@ -128,12 +136,12 @@ fn main() {
     let (train_loss, val_loss) = network.learn(
         &x_train,
         &y_train,
-        Some((&x_test, &y_test, 10)),
-        128,
-        50,
-        Some(1),
+        Some((&x_test, &y_test, 25)),
+        32,
+        100,
+        Some(5),
     );
-    plot::loss(&train_loss, &val_loss, "Loss per epoch", "loss.png");
+    plot::loss(&train_loss, &val_loss, "Loss per epoch", "./static/cifar10.png");
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);

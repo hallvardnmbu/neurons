@@ -643,20 +643,30 @@ impl Network {
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
         let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
 
-        for i in 1..self.layers.len() + 1 {
-            let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i - 1, i);
+        for i in 0..self.layers.len() {
+            // Perform the forward pass of the current layer.
+            let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i, i + 1);
 
+            // Add the pre- and post-activation values to the respective lists.
             unactivated.append(&mut pre);
             activated.append(&mut post);
-            if max.contains_key(&(i - 1)) {
-                maxpools.insert(i - 1, max.remove(&(i - 1)).unwrap());
+
+            // Add the maxpool indices of the layer to the hashmap if any.
+            if max.contains_key(&i) {
+                maxpools.insert(i, max.remove(&i).unwrap());
             }
 
+            // Check if the layer output should be fed back to a previous layer.
             if self.feedbacks.contains_key(&i) {
+                // Perform the forward pass of the feedback loop.
                 let (fpre, fpost, fmax) =
                     self._forward(activated.last().unwrap(), self.feedbacks[&i], i + 1);
 
+                // Add the pre- and post-activation values to the respective lists.
+                // Add the maxpool indices of the layer to the hashmap if any.
                 for (idx, j) in (self.feedbacks[&i]..i + 1).enumerate() {
+                    // `activated[0]` contains the input data. Indexing is therefore `+ 1` below.
+
                     // TODO: Handle the case with feedback blocks.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 
@@ -665,8 +675,8 @@ impl Network {
                     // activated[j + 1] = fpost[idx].to_owned();
 
                     // Summing.
-                    unactivated[j - 1].add_inplace(&fpre[idx]);
-                    activated[j].add_inplace(&fpost[idx]);
+                    unactivated[j].add_inplace(&fpre[idx]);
+                    activated[j + 1].add_inplace(&fpost[idx]);
 
                     // // Multiplying.
                     // unactivated[j].mul_inplace(&fpre[idx]);
