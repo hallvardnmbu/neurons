@@ -14,6 +14,7 @@ use crate::{activation, tensor};
 /// * `activation` - The `activation::Function` of the layer.
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `training` - Whether the network is training.
+#[derive(Clone)]
 pub struct Dense {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,

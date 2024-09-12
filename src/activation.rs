@@ -13,6 +13,7 @@ pub enum Activation {
 }
 
 /// Wrapper for the different activation functions.
+#[derive(Clone)]
 pub enum Function {
     ReLU(ReLU),
     LeakyReLU(LeakyReLU),
@@ -91,6 +92,7 @@ impl Function {
 }
 
 /// Rectified Linear Unit (ReLU) activation function.
+#[derive(Clone)]
 pub struct ReLU {}
 
 impl ReLU {
@@ -172,6 +174,7 @@ impl ReLU {
 /// # Attributes
 ///
 /// * `alpha` - The slope of the negative part of the function.
+#[derive(Clone)]
 pub struct LeakyReLU {
     alpha: f32,
 }
@@ -261,6 +264,7 @@ impl LeakyReLU {
 }
 
 /// Sigmoid activation function.
+#[derive(Clone)]
 pub struct Sigmoid {}
 
 impl Sigmoid {
@@ -348,6 +352,7 @@ impl Sigmoid {
 }
 
 /// Softmax activation function.
+#[derive(Clone)]
 pub struct Softmax {}
 
 impl Softmax {
@@ -414,6 +419,7 @@ impl Softmax {
 }
 
 /// Hyperbolic Tangent (Tanh) activation function.
+#[derive(Clone)]
 pub struct Tanh {}
 
 impl Tanh {
@@ -489,6 +495,7 @@ impl Tanh {
 }
 
 /// Linear activation function.
+#[derive(Clone)]
 pub struct Linear {}
 
 impl Linear {

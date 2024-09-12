@@ -12,6 +12,7 @@ use crate::tensor;
 /// * `kernel` - The shape of the filter.
 /// * `stride` - The stride of the filter.
 /// * `flatten` - Whether the output should be flattened.
+#[derive(Clone)]
 pub struct Maxpool {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,

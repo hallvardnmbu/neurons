@@ -16,6 +16,7 @@ use crate::{activation, tensor};
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `flatten` - Whether the output should be flattened.
 /// * `training` - Whether the layer is training.
+#[derive(Clone)]
 pub struct Convolution {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,

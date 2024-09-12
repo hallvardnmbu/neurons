@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// Layer types of the network.
+#[derive(Clone)]
 pub enum Layer {
     Dense(dense::Dense),
     Convolution(convolution::Convolution),
@@ -315,12 +316,33 @@ impl Network {
                 Layer::Dense(layer) => layer.loops += 1.0,
                 Layer::Convolution(layer) => layer.loops += 1.0,
                 Layer::Maxpool(layer) => layer.loops += 1.0,
-                Layer::Feedback(_) => panic!("Feedback connection to feedback layer."),
+                Layer::Feedback(_) => panic!("Feedback connection includes feedback block."),
             }
         }
 
         // Store the feedback connection for use in the forward pass.
         self.feedbacks.insert(from, to);
+    }
+
+    pub fn coupled(&mut self, layers: Vec<Layer>, loops: usize) {
+        assert!(
+            !layers.is_empty(),
+            "Feedback block must have at least one layer."
+        );
+        if self.layers.is_empty() {
+            let inputs = match layers.first().unwrap() {
+                Layer::Dense(layer) => layer.inputs.clone(),
+                Layer::Convolution(layer) => layer.inputs.clone(),
+                Layer::Maxpool(layer) => layer.inputs.clone(),
+                Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
+            };
+            assert_eq_shape!(self.input, inputs);
+            self.layers
+                .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
+            return;
+        }
+        self.layers
+            .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
     }
 
     /// Extract the total number of parameters in the network.
@@ -515,7 +537,7 @@ impl Network {
                 // Collect the results from the parallel iteration, and sum the gradients and loss.
                 for (wg, wb, loss) in results {
                     if loss.is_nan() {
-                        panic!("ERROR: Loss is NaN.");
+                        panic!("Loss is NaN. Aborting.");
                     }
                     losses.push(loss);
 
@@ -541,18 +563,6 @@ impl Network {
                         }
                     }
                 }
-
-                // // Average the gradients wrt. batch size.
-                // weight_gradients.iter_mut().for_each(|gradient| {
-                //     gradient.div_scalar_inplace(batch.0.len() as f32);
-                // });
-                // bias_gradients
-                //     .iter_mut()
-                //     .for_each(|gradient| match gradient {
-                //         Some(gradient) => gradient.div_scalar_inplace(batch.0.len() as f32),
-                //         None => (),
-                //     });
-
                 loss_epoch += losses.iter().sum::<f32>() / losses.len() as f32;
 
                 // Perform the update step wrt. the summed gradients for the batch.
@@ -648,6 +658,7 @@ impl Network {
             let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i, i + 1);
 
             // Add the pre- and post-activation values to the respective lists.
+            // TODO: Handle the case where the layer is a feedback block.
             unactivated.append(&mut pre);
             activated.append(&mut post);
 
