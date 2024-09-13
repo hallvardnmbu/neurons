@@ -70,7 +70,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        1,
+        2,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -78,7 +78,7 @@ fn main() {
         None,
     );
     network.convolution(
-        1,
+        2,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -107,7 +107,12 @@ fn main() {
         25,
         Some(5),
     );
-    plot::loss(&train_loss, &val_loss, "Loss per epoch", "./static/mnist.png");
+    plot::loss(
+        &train_loss,
+        &val_loss,
+        "Loss per epoch",
+        "./static/mnist.png",
+    );
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);

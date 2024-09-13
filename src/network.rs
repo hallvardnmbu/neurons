@@ -658,7 +658,6 @@ impl Network {
             let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i, i + 1);
 
             // Add the pre- and post-activation values to the respective lists.
-            // TODO: Handle the case where the layer is a feedback block.
             unactivated.append(&mut pre);
             activated.append(&mut post);
 
@@ -669,15 +668,25 @@ impl Network {
 
             // Check if the layer output should be fed back to a previous layer.
             if self.feedbacks.contains_key(&i) {
+                let mut current: tensor::Tensor = activated.last().unwrap().clone();
+
+                // Reshaping the last activated tensor in cases of flattened output.
+                current = current.reshape(match self.layers[self.feedbacks[&i]] {
+                    Layer::Dense(ref layer) => layer.inputs.clone(),
+                    Layer::Convolution(ref layer) => layer.inputs.clone(),
+                    Layer::Maxpool(ref layer) => layer.inputs.clone(),
+                    _ => panic!("Feedback not implemented for this layer type."),
+                });
+
+                // Add the original input for of the fed-back layer to the latent representation.
+                current.add_inplace(&activated[self.feedbacks[&i]]);
+
                 // Perform the forward pass of the feedback loop.
-                let (fpre, fpost, fmax) =
-                    self._forward(activated.last().unwrap(), self.feedbacks[&i], i + 1);
+                let (fpre, fpost, fmax) = self._forward(&current, self.feedbacks[&i], i + 1);
 
                 // Add the pre- and post-activation values to the respective lists.
                 // Add the maxpool indices of the layer to the hashmap if any.
                 for (idx, j) in (self.feedbacks[&i]..i + 1).enumerate() {
-                    // `activated[0]` contains the input data. Indexing is therefore `+ 1` below.
-
                     // TODO: Handle the case with feedback blocks.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 
@@ -694,7 +703,7 @@ impl Network {
                     // activated[j + 1].mul_inplace(&fpost[idx]);
 
                     // Extending the additional maxpool indices to the existing ones.
-                    if let Some(maxpool) = maxpools.get_mut(&(j + 1)) {
+                    if let Some(maxpool) = maxpools.get_mut(&j) {
                         for (original, updates) in maxpool.iter_mut().zip(fmax[&idx].iter()) {
                             for (old, new) in original.iter_mut().zip(updates.iter()) {
                                 for (old, new) in old.iter_mut().zip(new.iter()) {
@@ -736,19 +745,23 @@ impl Network {
         let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
 
         for (idx, layer) in (from..to).zip(&self.layers[from..to]) {
+            let x = activated.last().unwrap();
             match layer {
                 Layer::Dense(layer) => {
-                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
                 }
                 Layer::Convolution(layer) => {
-                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
                 }
                 Layer::Maxpool(layer) => {
-                    let (pre, post, max) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post, max) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
                     maxpools.insert(idx, max);

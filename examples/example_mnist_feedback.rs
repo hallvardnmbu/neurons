@@ -70,7 +70,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        1,
+        2,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -78,7 +78,7 @@ fn main() {
         None,
     );
     network.convolution(
-        1,
+        2,
         (3, 3),
         (1, 1),
         (1, 1),
