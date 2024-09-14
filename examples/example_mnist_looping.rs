@@ -85,6 +85,7 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
+    network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.loopback(1, 1);
@@ -113,7 +114,7 @@ fn main() {
         &train_loss,
         &val_loss,
         "Loss per epoch",
-        "./static/mnist-fb.png",
+        "./static/mnist-looping.png",
     );
 
     // Validate the network

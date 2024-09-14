@@ -112,15 +112,8 @@ impl Maxpool {
     ///
     /// # Returns
     ///
-    /// The pre-activation and post-activation `tensor::Tensor`s of the convolved input wrt. the kernels.
-    pub fn forward(
-        &self,
-        x: &tensor::Tensor,
-    ) -> (
-        tensor::Tensor,
-        tensor::Tensor,
-        Vec<Vec<Vec<Vec<(usize, usize)>>>>,
-    ) {
+    /// The pre-, post- and maxpool output `tensor::Tensor`.
+    pub fn forward(&self, x: &tensor::Tensor) -> (tensor::Tensor, tensor::Tensor, tensor::Tensor) {
         // Extracting the data from the input `tensor::Tensor`.
         let (x, ih, iw) = match &x.data {
             tensor::Data::Single(vector) => {
@@ -181,6 +174,8 @@ impl Maxpool {
             post = post.flatten();
         }
 
+        let max = tensor::Tensor::quintuple(vec![max]);
+
         (pre, post, max)
     }
 
@@ -198,14 +193,14 @@ impl Maxpool {
     /// # Notes
     ///
     /// [Source](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
-    pub fn backward(
-        &self,
-        gradient: &tensor::Tensor,
-        max: &Vec<Vec<Vec<Vec<(usize, usize)>>>>,
-    ) -> tensor::Tensor {
+    pub fn backward(&self, gradient: &tensor::Tensor, max: &tensor::Tensor) -> tensor::Tensor {
         let (ic, ih, iw) = match &self.inputs {
             tensor::Shape::Triple(ic, ih, iw) => (*ic, *ih, *iw),
             _ => panic!("Expected `tensor::Shape::Triple` input shape."),
+        };
+        let max = match &max.data {
+            tensor::Data::Quintuple(max) => max.get(0).unwrap(),
+            _ => panic!("Expected `tensor::Data::Quintuple` max indices."),
         };
 
         let ogradient = gradient.get_triple(&self.outputs);
@@ -229,8 +224,7 @@ impl Maxpool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tensor::Data;
-    use crate::{assert_eq_data, assert_eq_shape};
+    use crate::{assert_eq_data, assert_eq_shape, tensor};
 
     #[test]
     fn test_calculate_output_size() {
@@ -266,7 +260,7 @@ mod tests {
         let maxpool = Maxpool::create(input.clone(), kernel, stride);
 
         let x = tensor::Tensor {
-            data: Data::Triple(vec![vec![
+            data: tensor::Data::Triple(vec![vec![
                 vec![1.0, 2.0, 3.0, 4.0],
                 vec![5.0, 6.0, 7.0, 8.0],
                 vec![9.0, 10.0, 11.0, 12.0],
@@ -279,18 +273,18 @@ mod tests {
 
         assert_eq_data!(
             pre.data,
-            Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
+            tensor::Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
         );
         assert_eq_data!(
             post.data,
-            Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
+            tensor::Data::Triple(vec![vec![vec![6.0, 8.0], vec![14.0, 16.0]]])
         );
-        assert_eq!(
-            max,
-            vec![vec![
+        assert_eq_data!(
+            max.data,
+            tensor::Data::Quintuple(vec![vec![vec![
                 vec![vec![(1, 1)], vec![(1, 3)]],
                 vec![vec![(3, 1)], vec![(3, 3)]]
-            ]]
+            ]]])
         );
     }
 
@@ -302,20 +296,20 @@ mod tests {
         let maxpool = Maxpool::create(input.clone(), kernel, stride);
 
         let gradient = tensor::Tensor {
-            data: Data::Triple(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]),
+            data: tensor::Data::Triple(vec![vec![vec![1.0, 2.0], vec![3.0, 4.0]]]),
             shape: tensor::Shape::Triple(1, 2, 2),
         };
 
-        let max: Vec<Vec<Vec<Vec<(usize, usize)>>>> = vec![vec![
+        let max: tensor::Tensor = tensor::Tensor::quintuple(vec![vec![vec![
             vec![vec![(1, 1)], vec![(1, 3)]],
             vec![vec![(3, 1)], vec![(3, 3)]],
-        ]];
+        ]]]);
 
         let igradient = maxpool.backward(&gradient, &max);
 
         assert_eq_data!(
             igradient.data,
-            Data::Triple(vec![vec![
+            tensor::Data::Triple(vec![vec![
                 vec![0.0, 0.0, 0.0, 0.0],
                 vec![0.0, 1.0, 0.0, 2.0],
                 vec![0.0, 0.0, 0.0, 0.0],

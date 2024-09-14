@@ -85,6 +85,7 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
+    network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::SGD::create(

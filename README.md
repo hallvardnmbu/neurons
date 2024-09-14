@@ -151,6 +151,14 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.1.0 – Maxpool tensor consistency.</summary>
+
+    Update maxpool logic to ensure consistency wrt. other layers.
+    Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
+    This will lead to consistency when implementing maxpool for `feedback` blocks.
+</details>
+
+<details>
   <summary>v2.0.5 – Bug fixes and renaming.</summary>
 
     Minor bug fixes to feedback connections.

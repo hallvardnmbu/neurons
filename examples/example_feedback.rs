@@ -13,20 +13,20 @@ fn main() {
         vec![
             network::Layer::Dense(dense::Dense::create(
                 inputs.clone(),
-                inputs.clone(),
+                tensor::Shape::Single(24),
                 &activation::Activation::ReLU,
                 false,
                 None,
             )),
             network::Layer::Dense(dense::Dense::create(
-                inputs.clone(),
-                inputs.clone(),
+                tensor::Shape::Single(24),
+                tensor::Shape::Single(2),
                 &activation::Activation::LeakyReLU,
                 false,
                 None,
             )),
             network::Layer::Dense(dense::Dense::create(
-                inputs.clone(),
+                tensor::Shape::Single(2),
                 inputs.clone(),
                 &activation::Activation::Tanh,
                 false,

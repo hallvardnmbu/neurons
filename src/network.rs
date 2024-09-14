@@ -536,7 +536,7 @@ impl Network {
                         let (loss, gradient) =
                             self.objective.loss(&activated.last().unwrap(), target);
 
-                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, maxpools);
+                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, &maxpools);
 
                         (wg, bg, loss)
                     })
@@ -659,24 +659,20 @@ impl Network {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
+        Vec<Option<tensor::Tensor>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
+        let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
 
         for i in 0..self.layers.len() {
             // Perform the forward pass of the current layer.
             let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i, i + 1);
 
-            // Add the pre- and post-activation values to the respective lists.
+            // Store the outputs of the current layer.
             unactivated.append(&mut pre);
             activated.append(&mut post);
-
-            // Add the maxpool indices of the layer to the hashmap if any.
-            if max.contains_key(&i) {
-                maxpools.insert(i, max.remove(&i).unwrap());
-            }
+            maxpools.append(&mut max);
 
             // Check if the layer output should be fed back to a previous layer.
             if self.loopbacks.contains_key(&i) {
@@ -715,13 +711,11 @@ impl Network {
                     // activated[j + 1].mul_inplace(&fpost[idx]);
 
                     // Extending the additional maxpool indices to the existing ones.
-                    if let Some(maxpool) = maxpools.get_mut(&j) {
-                        for (original, updates) in maxpool.iter_mut().zip(fmax[&idx].iter()) {
-                            for (old, new) in original.iter_mut().zip(updates.iter()) {
-                                for (old, new) in old.iter_mut().zip(new.iter()) {
-                                    old.extend(new);
-                                }
-                            }
+                    if let Some(Some(max)) = maxpools.get_mut(j) {
+                        if let Some(fmax) = &fmax[idx] {
+                            max.extend(&fmax);
+                        } else {
+                            panic!("Maxpool indices are missing.");
                         }
                     }
                 }
@@ -750,13 +744,13 @@ impl Network {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
+        Vec<Option<tensor::Tensor>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
+        let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
 
-        for (idx, layer) in (from..to).zip(&self.layers[from..to]) {
+        for layer in &self.layers[from..to] {
             let x = activated.last().unwrap();
             match layer {
                 Layer::Dense(layer) => {
@@ -764,19 +758,21 @@ impl Network {
                     let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
+                    maxpools.push(None);
                 }
                 Layer::Convolution(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
+                    maxpools.push(None);
                 }
                 Layer::Maxpool(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post, max) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
-                    maxpools.insert(idx, max);
+                    maxpools.push(Some(max));
                 }
                 _ => unimplemented!("Feedback blocks not yet implemented."),
             };
@@ -806,7 +802,7 @@ impl Network {
         mut gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
-        maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
+        maxpools: &Vec<Option<tensor::Tensor>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
@@ -818,7 +814,14 @@ impl Network {
                 Layer::Dense(layer) => layer.backward(&gradient, input, output),
                 Layer::Convolution(layer) => layer.backward(&gradient, input, output),
                 Layer::Maxpool(layer) => (
-                    layer.backward(&gradient, &maxpools[&(self.layers.len() - i - 1)]),
+                    layer.backward(
+                        &gradient,
+                        if let Some(max) = &maxpools[i + 1] {
+                            max
+                        } else {
+                            panic!("Maxpool indices are missing.")
+                        },
+                    ),
                     tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),
@@ -1187,7 +1190,7 @@ mod tests {
         // let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
-        let (weight_gradient, bias_gradient) = network.backward(gradient, &pre, &post, max);
+        let (weight_gradient, bias_gradient) = network.backward(gradient, &pre, &post, &max);
 
         let _weight_gradient = vec![
             tensor::Tensor::quadruple(vec![
@@ -1298,7 +1301,7 @@ mod tests {
 
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
-        let (weight_gradients, bias_gradients) = network.backward(gradient, &pre, &post, max);
+        let (weight_gradients, bias_gradients) = network.backward(gradient, &pre, &post, &max);
 
         network.update(0, weight_gradients, bias_gradients);
 

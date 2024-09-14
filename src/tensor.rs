@@ -9,6 +9,7 @@ pub enum Shape {
     Double(usize, usize),
     Triple(usize, usize, usize),
     Quadruple(usize, usize, usize, usize),
+    Quintuple(usize, usize, usize, usize, usize),
 }
 
 impl std::fmt::Display for Shape {
@@ -18,6 +19,7 @@ impl std::fmt::Display for Shape {
             Shape::Double(rows, cols) => write!(f, "{}x{}", rows, cols),
             Shape::Triple(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
             Shape::Quadruple(ch, fi, he, wi) => write!(f, "{}x{}x{}x{}", ch, fi, he, wi),
+            Shape::Quintuple(ba, ch, fi, he, wi) => write!(f, "{}x{}x{}x{}x{}", ba, ch, fi, he, wi),
         }
     }
 }
@@ -32,6 +34,9 @@ impl PartialEq for Shape {
             }
             (Shape::Quadruple(ac, af, ah, aw), Shape::Quadruple(bc, bf, bh, bw)) => {
                 ac == bc && af == bf && ah == bh && aw == bw
+            }
+            (Shape::Quintuple(ab, ac, af, ah, aw), Shape::Quintuple(bb, bc, bf, bh, bw)) => {
+                ab == bb && ac == bc && af == bf && ah == bh && aw == bw
             }
             _ => false,
         }
@@ -60,6 +65,7 @@ pub enum Data {
     Double(Vec<Vec<f32>>),
     Triple(Vec<Vec<Vec<f32>>>),
     Quadruple(Vec<Vec<Vec<Vec<f32>>>>),
+    Quintuple(Vec<Vec<Vec<Vec<Vec<(usize, usize)>>>>>),
 }
 
 impl PartialEq for Data {
@@ -102,6 +108,22 @@ impl PartialEq for Data {
                             for (l, y) in x.iter().enumerate() {
                                 if (y - b[i][j][k][l]).abs() >= 1e-5 {
                                     return false;
+                                }
+                            }
+                        }
+                    }
+                }
+                true
+            }
+            (Data::Quintuple(a), Data::Quintuple(b)) => {
+                for (a1, b1) in a.iter().zip(b.iter()) {
+                    for (a2, b2) in a1.iter().zip(b1.iter()) {
+                        for (a3, b3) in a2.iter().zip(b2.iter()) {
+                            for (a4, b4) in a3.iter().zip(b3.iter()) {
+                                for (a5, b5) in a4.iter().zip(b4.iter()) {
+                                    if a5 != b5 {
+                                        return false;
+                                    }
                                 }
                             }
                         }
@@ -199,6 +221,43 @@ impl std::fmt::Display for Data {
                     }
                 }
             }
+            Data::Quintuple(data) => {
+                for (i, c) in data.iter().enumerate() {
+                    for (j, h) in c.iter().enumerate() {
+                        for (k, w) in h.iter().enumerate() {
+                            for (l, x) in w.iter().enumerate() {
+                                for y in x.iter() {
+                                    write!(f, "{:>8.4?} ", y)?;
+                                }
+                                if l == w.len() - 1
+                                    && k == h.len() - 1
+                                    && j == c.len() - 1
+                                    && i == data.len() - 1
+                                {
+                                    write!(f, "")?;
+                                } else {
+                                    write!(f, "\n")?;
+                                }
+                            }
+                            if k == h.len() - 1 && j == c.len() - 1 && i == data.len() - 1 {
+                                write!(f, "")?;
+                            } else {
+                                write!(f, "\n")?;
+                            }
+                        }
+                        if j == c.len() - 1 && i == data.len() - 1 {
+                            write!(f, "")?;
+                        } else {
+                            write!(f, "\n")?;
+                        }
+                    }
+                    if i == data.len() - 1 {
+                        write!(f, "")?;
+                    } else {
+                        write!(f, "\n")?;
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -264,6 +323,7 @@ impl Tensor {
                         .collect(),
                 ),
             },
+            _ => panic!("`Quintuple` shape is meant for maxpool indices."),
         }
     }
 
@@ -306,6 +366,7 @@ impl Tensor {
                         .collect(),
                 ),
             },
+            _ => panic!("`Quintuple` shape is meant for maxpool indices."),
         }
     }
 
@@ -369,6 +430,7 @@ impl Tensor {
                         .collect(),
                 ),
             },
+            _ => panic!("`Quintuple` shape is meant for maxpool indices."),
         }
     }
 
@@ -419,6 +481,21 @@ impl Tensor {
         Tensor {
             shape,
             data: Data::Quadruple(data),
+        }
+    }
+
+    /// Creates a new Tensor from the given five-dimensional vector.
+    pub fn quintuple(data: Vec<Vec<Vec<Vec<Vec<(usize, usize)>>>>>) -> Self {
+        let shape = Shape::Quintuple(
+            data.len(),
+            data[0].len(),
+            data[0][0].len(),
+            data[0][0][0].len(),
+            data[0][0][0][0].len(),
+        );
+        Tensor {
+            shape,
+            data: Data::Quintuple(data),
         }
     }
 
@@ -882,7 +959,20 @@ impl Tensor {
                     }
                 }
             }
-            _ => unimplemented!("Dropout not implemented for `Data::Quadruple`."),
+            Data::Quadruple(data) => {
+                for b in data.iter_mut() {
+                    for c in b.iter_mut() {
+                        for r in c.iter_mut() {
+                            for x in r.iter_mut() {
+                                if generator.generate(0.0, 1.0) < dropout {
+                                    *x = 0.0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => panic!("`Quintuple` is meant for maxpool indices."),
         }
     }
 
@@ -913,6 +1003,7 @@ impl Tensor {
                     });
                 });
             }
+            _ => panic!("`Quintuple` is meant for maxpool indices."),
         }
         self
     }
@@ -933,6 +1024,32 @@ impl Tensor {
                 }
             }
             _ => unimplemented!("Transpose not implemented for this shape."),
+        }
+    }
+
+    // Extend the maxpool indices inplace.
+    pub fn extend(&mut self, other: &Tensor) {
+        match (&mut self.data, &other.data) {
+            (Data::Quintuple(ref mut data1), Data::Quintuple(ref data2)) => {
+                // The data should be one-dimensional.
+                // The additional dimension comes from compatability wrt. feedback blocks.
+                // In order to contain maxpool indices in the same blueprint for both cases,
+                // the "standard" maxpool indices are wrapped in a vector -> Tensor::Quintuple.
+                assert!(
+                    data1.len() == 1 && data2.len() == 1,
+                    "Unexpected maxpool shapes."
+                );
+
+                // Extending the maxpool indices for each CxHxW.
+                for (c1, c2) in data1[0].iter_mut().zip(data2[0].iter()) {
+                    for (h1, h2) in c1.iter_mut().zip(c2.iter()) {
+                        for (w1, w2) in h1.iter_mut().zip(h2.iter()) {
+                            w1.extend(w2.iter().cloned());
+                        }
+                    }
+                }
+            }
+            _ => unimplemented!("Extend not implemented for these shapes."),
         }
     }
 }

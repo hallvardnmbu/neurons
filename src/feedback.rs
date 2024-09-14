@@ -2,8 +2,6 @@
 
 use crate::{assert_eq_shape, network, tensor};
 
-use std::collections::HashMap;
-
 /// A feedback block.
 ///
 /// # Attributes
@@ -156,29 +154,31 @@ impl Feedback {
     ) -> (
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
-        HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>>,
+        Vec<Option<tensor::Tensor>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: HashMap<usize, Vec<Vec<Vec<Vec<(usize, usize)>>>>> = HashMap::new();
+        let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
 
-        for (idx, layer) in self.layers.iter().enumerate() {
+        for layer in self.layers.iter() {
             match layer {
                 network::Layer::Dense(layer) => {
                     let (pre, post) = layer.forward(activated.last().unwrap());
                     unactivated.push(pre);
                     activated.push(post);
+                    maxpools.push(None);
                 }
                 network::Layer::Convolution(layer) => {
                     let (pre, post) = layer.forward(activated.last().unwrap());
                     unactivated.push(pre);
                     activated.push(post);
+                    maxpools.push(None);
                 }
                 network::Layer::Maxpool(layer) => {
                     let (pre, post, max) = layer.forward(activated.last().unwrap());
                     unactivated.push(pre);
                     activated.push(post);
-                    maxpools.insert(idx, max);
+                    maxpools.push(Some(max))
                 }
                 network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
             };
