@@ -156,9 +156,10 @@ fn main() {
 <details>
   <summary>v2.2.0 – Selectable scaling wrt. loopbacks.</summary>
 
-    Update maxpool logic to ensure consistency wrt. other layers.
-    Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
-    This will lead to consistency when implementing maxpool for `feedback` blocks.
+    Add possibility of selecting the scaling function.
+    * `tensor::Scale`
+    * `feedback::Accumulation`
+    See implementations of the above for more information.
 </details>
 
 <details>
