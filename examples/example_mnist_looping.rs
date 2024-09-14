@@ -4,6 +4,7 @@ use neurons::{activation, network, objective, optimizer, plot, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
+use std::sync::Arc;
 
 fn read(reader: &mut dyn Read) -> Result<u32> {
     let mut buffer = [0; 4];
@@ -88,7 +89,11 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.loopback(1, 1);
+    network.loopback(
+        1,                             // From layer X's output.
+        1,                             // To layer Y's input.
+        Arc::new(|loops| 1.0 / loops), // Gradient scaling.
+    );
 
     network.set_optimizer(optimizer::SGD::create(
         0.001, // Learning rate

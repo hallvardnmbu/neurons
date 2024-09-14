@@ -369,6 +369,7 @@ fn main() {
   <summary>Feedback</summary>
 
   - [x] Feedback connection
+  - [x] Selectable gradient scaling
   - [ ] Selectable gradient accumulation
   - [ ] Feedback block
 </details>

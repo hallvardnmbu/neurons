@@ -2,6 +2,8 @@
 
 use crate::{activation, tensor};
 
+use std::sync::Arc;
+
 /// A convolutional layer.
 ///
 /// # Attributes
@@ -9,6 +11,7 @@ use crate::{activation, tensor};
 /// * `inputs` - The `tensor::Shape` of the input to the layer.
 /// * `outputs` - The `tensor::Shape` of the output from the layer.
 /// * `loops` - The number of loops to run the layer.
+/// * `scale` - The scaling function of the loops. Default is `1.0 / x`.
 /// * `kernels` - The kernels of the layer.
 /// * `stride` - The stride of the filter.
 /// * `padding` - The padding applied to the input before convolving.
@@ -20,7 +23,9 @@ use crate::{activation, tensor};
 pub struct Convolution {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
+
     pub(crate) loops: f32,
+    pub(crate) scale: tensor::Scale,
 
     pub(crate) kernels: Vec<tensor::Tensor>,
     stride: (usize, usize),
@@ -55,6 +60,7 @@ impl std::fmt::Display for Convolution {
             }
         )?;
         write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(f, "\t\t\tscaling factor: {}\n", (self.scale)(self.loops))?;
         write!(f, "\t\t)")?;
         Ok(())
     }
@@ -149,6 +155,7 @@ impl Convolution {
             training: false,
             flatten: false,
             loops: 1.0,
+            scale: Arc::new(|x| 1.0 / x),
         }
     }
 
@@ -358,7 +365,7 @@ impl Convolution {
     ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
         let gradient = gradient.get_triple(&self.outputs);
         let derivative = self.activation.backward(&output).get_triple(&self.outputs);
-        let delta = tensor::hadamard3d(&gradient, &derivative, 1.0 / self.loops);
+        let delta = tensor::hadamard3d(&gradient, &derivative, (self.scale)(self.loops));
 
         // Extracting the kernel dimensions.
         let (kh, kw) = match self.kernels[0].shape {

@@ -2,6 +2,8 @@
 
 use crate::{activation, tensor};
 
+use std::sync::Arc;
+
 /// A dense layer.
 ///
 /// # Attributes
@@ -9,6 +11,7 @@ use crate::{activation, tensor};
 /// * `inputs` - The number of inputs to the layer.
 /// * `outputs` - The number of outputs from the layer.
 /// * `loops` - The number of loops, i.e., feedback connections.
+/// * `scale` - The scaling function of the loops. Default is `1.0 / x`.
 /// * `weights` - The weights of the layer.
 /// * `bias` - The bias of the layer.
 /// * `activation` - The `activation::Function` of the layer.
@@ -18,7 +21,9 @@ use crate::{activation, tensor};
 pub struct Dense {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
+
     pub(crate) loops: f32,
+    pub(crate) scale: tensor::Scale,
 
     pub(crate) weights: tensor::Tensor,
     pub(crate) bias: Option<tensor::Tensor>,
@@ -44,6 +49,7 @@ impl std::fmt::Display for Dense {
             }
         )?;
         write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        write!(f, "\t\t\tscaling factor: {}\n", (self.scale)(self.loops))?;
         write!(f, "\t\t)")?;
         Ok(())
     }
@@ -78,6 +84,7 @@ impl Dense {
             inputs,
             outputs,
             loops: 1.0,
+            scale: Arc::new(|x| 1.0 / x),
             weights: tensor::Tensor::random(tensor::Shape::Double(output, input), -1.0, 1.0),
             bias: match bias {
                 true => Some(tensor::Tensor::random(
@@ -152,7 +159,7 @@ impl Dense {
             _ => panic!("Invalid gradient shape."),
         };
         let derivative = self.activation.backward(output);
-        let delta = derivative.hadamard(gradient, 1.0 / self.loops);
+        let delta = derivative.hadamard(gradient, (self.scale)(self.loops));
 
         let weight_gradient = delta.product(input);
 

@@ -7,6 +7,7 @@ use crate::{
 
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Layer types of the network.
 #[derive(Clone)]
@@ -322,7 +323,7 @@ impl Network {
     ///
     /// * `from` - The index of the layer to connect from.
     /// * `to` - The index of the layer to connect to.
-    pub fn loopback(&mut self, from: usize, to: usize) {
+    pub fn loopback(&mut self, from: usize, to: usize, scale: tensor::Scale) {
         if from > self.layers.len() || to >= self.layers.len() || from < to {
             panic!("Invalid layer indices for loop connection.");
         } else if self.loopbacks.contains_key(&from) {
@@ -346,8 +347,14 @@ impl Network {
         // Loop through layers to -> from and add +1 to its loopback count.
         for k in to..from + 1 {
             match &mut self.layers[k] {
-                Layer::Dense(layer) => layer.loops += 1.0,
-                Layer::Convolution(layer) => layer.loops += 1.0,
+                Layer::Dense(layer) => {
+                    layer.scale = Arc::clone(&scale);
+                    layer.loops += 1.0
+                }
+                Layer::Convolution(layer) => {
+                    layer.scale = Arc::clone(&scale);
+                    layer.loops += 1.0
+                }
                 Layer::Maxpool(layer) => layer.loops += 1.0,
                 Layer::Feedback(_) => panic!("Loop connection includes feedback block."),
             }

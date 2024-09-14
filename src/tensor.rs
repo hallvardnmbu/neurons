@@ -2,6 +2,10 @@
 
 use crate::random;
 
+use std::sync::Arc;
+
+pub type Scale = Arc<dyn Fn(f32) -> f32 + Send + Sync>;
+
 /// The different `Tensor` shapes.
 #[derive(Clone, Debug)]
 pub enum Shape {
