@@ -1,10 +1,13 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, tensor};
+use neurons::{activation, network, objective, optimizer, tensor, feedback};
 
 fn main() {
     // New feedforward network with input shape (1, 28, 28)
-    let mut network = network::Network::new(tensor::Shape::Triple(1, 28, 28));
+    let mut network = network::Network::new(
+        tensor::Shape::Triple(1, 28, 28),
+        feedback::Accumulation::Add,
+    );
 
     // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
     network.convolution(

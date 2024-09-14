@@ -2,6 +2,12 @@
 
 use crate::{assert_eq_shape, network, tensor};
 
+pub enum Accumulation {
+    Add,
+    Multiply,
+    Overwrite,
+}
+
 /// A feedback block.
 ///
 /// # Attributes

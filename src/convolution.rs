@@ -59,8 +59,12 @@ impl std::fmt::Display for Convolution {
                 "false".to_string()
             }
         )?;
-        write!(f, "\t\t\tloops: {}\n", self.loops)?;
-        write!(f, "\t\t\tscaling factor: {}\n", (self.scale)(self.loops))?;
+        write!(
+            f,
+            "\t\t\tloops: {} (scaling factor: {})\n",
+            self.loops,
+            (self.scale)(self.loops)
+        )?;
         write!(f, "\t\t)")?;
         Ok(())
     }

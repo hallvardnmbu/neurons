@@ -106,7 +106,10 @@ use neurons::{activation, network, objective, optimizer, tensor};
 fn main() {
 
   // New feedforward network with input shape (1, 28, 28)
-  let mut network = network::Network::new(tensor::Shape::Triple(1, 28, 28));
+  let mut network = network::Network::new(
+      tensor::Shape::Triple(1, 28, 28),
+      feedback::Accumulation::Add
+  );
 
   // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
   network.convolution(5, (3, 3), (1, 1), (1, 1), activation::Activation::ReLU, None);
@@ -149,6 +152,14 @@ fn main() {
 ```
 
 ## Releases
+
+<details>
+  <summary>v2.2.0 – Selectable scaling wrt. loopbacks.</summary>
+
+    Update maxpool logic to ensure consistency wrt. other layers.
+    Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
+    This will lead to consistency when implementing maxpool for `feedback` blocks.
+</details>
 
 <details>
   <summary>v2.1.0 – Maxpool tensor consistency.</summary>

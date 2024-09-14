@@ -1,11 +1,11 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, dense, network, tensor};
+use neurons::{activation, dense, network, tensor, feedback};
 
 fn main() {
     let inputs = tensor::Shape::Single(12);
 
-    let mut network = network::Network::new(inputs.clone());
+    let mut network = network::Network::new(inputs.clone(), feedback::Accumulation::Add);
 
     network.dense(12, activation::Activation::Linear, false, None);
 

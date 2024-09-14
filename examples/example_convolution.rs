@@ -1,9 +1,12 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, plot, tensor};
+use neurons::{activation, network, plot, tensor, feedback};
 
 fn main() {
-    let mut network = network::Network::new(tensor::Shape::Triple(1, 24, 24));
+    let mut network = network::Network::new(
+        tensor::Shape::Triple(1, 24, 24),
+        feedback::Accumulation::Add,
+    );
 
     network.convolution(
         5,
@@ -33,5 +36,9 @@ fn main() {
 
     plot::heatmap(&x, "Input", "./static/input.png");
     plot::heatmap(&pre[pre.len() - 1], "Pre-activation", "./static/pre.png");
-    plot::heatmap(&post[post.len() - 1], "Post-activation", "./static/post.png");
+    plot::heatmap(
+        &post[post.len() - 1],
+        "Post-activation",
+        "./static/post.png",
+    );
 }

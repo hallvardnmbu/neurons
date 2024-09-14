@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, plot, random, tensor};
+use neurons::{activation, network, objective, optimizer, plot, random, tensor, feedback};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -86,7 +86,10 @@ fn main() {
         "./static/input.png",
     );
 
-    let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
+    let mut network = network::Network::new(
+        tensor::Shape::Triple(3, 32, 32),
+        feedback::Accumulation::Add
+    );
 
     network.convolution(
         32,
@@ -141,7 +144,12 @@ fn main() {
         100,
         Some(5),
     );
-    plot::loss(&train_loss, &val_loss, "Loss per epoch", "./static/cifar10.png");
+    plot::loss(
+        &train_loss,
+        &val_loss,
+        "Loss per epoch",
+        "./static/cifar10.png",
+    );
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);

@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, tensor};
+use neurons::{activation, feedback, network, objective, optimizer, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
@@ -65,7 +65,10 @@ fn main() {
         let start = time::Instant::now();
 
         // Create the network
-        let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
+        let mut network = network::Network::new(
+            tensor::Shape::Triple(1, 14, 14),
+            feedback::Accumulation::Add,
+        );
 
         network.convolution(
             8,

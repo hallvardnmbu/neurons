@@ -48,6 +48,7 @@ impl Layer {
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
 /// * `loopbacks` - The looped connections of the network.
+/// * `accumulation` - The accumulation type of the network for looped connections.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
@@ -55,6 +56,7 @@ pub struct Network {
 
     layers: Vec<Layer>,
     loopbacks: HashMap<usize, usize>,
+    accumulation: feedback::Accumulation,
 
     optimizer: optimizer::Optimizer,
     objective: objective::Function,
@@ -101,11 +103,12 @@ impl Network {
     /// # Returns
     ///
     /// An empty neural network, with no layers.
-    pub fn new(input: tensor::Shape) -> Self {
+    pub fn new(input: tensor::Shape, accumulation: feedback::Accumulation) -> Self {
         Network {
             input,
             layers: Vec::new(),
             loopbacks: HashMap::new(),
+            accumulation,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -699,31 +702,50 @@ impl Network {
                 // Perform the forward pass of the feedback loop.
                 let (fpre, fpost, fmax) = self._forward(&current, self.loopbacks[&i], i + 1);
 
-                // Add the pre- and post-activation values to the respective lists.
-                // Add the maxpool indices of the layer to the hashmap if any.
+                // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
-                    // TODO: Handle the case with feedback blocks.
-                    // The values should be overwritten(?) summed(?) multiplied(?).
+                    match self.accumulation {
+                        feedback::Accumulation::Add => {
+                            unactivated[j].add_inplace(&fpre[idx]);
+                            activated[j + 1].add_inplace(&fpost[idx]);
 
-                    // // Overwriting.
-                    // unactivated[j] = fpre[idx].to_owned();
-                    // activated[j + 1] = fpost[idx].to_owned();
-
-                    // Summing.
-                    unactivated[j].add_inplace(&fpre[idx]);
-                    activated[j + 1].add_inplace(&fpost[idx]);
-
-                    // // Multiplying.
-                    // unactivated[j].mul_inplace(&fpre[idx]);
-                    // activated[j + 1].mul_inplace(&fpost[idx]);
-
-                    // Extending the additional maxpool indices to the existing ones.
-                    if let Some(Some(max)) = maxpools.get_mut(j) {
-                        if let Some(fmax) = &fmax[idx] {
-                            max.extend(&fmax);
-                        } else {
-                            panic!("Maxpool indices are missing.");
+                            // Extend the maxpool indices.
+                            if let Some(Some(max)) = maxpools.get_mut(j) {
+                                if let Some(fmax) = &fmax[idx] {
+                                    max.extend(&fmax);
+                                } else {
+                                    panic!("Maxpool indices are missing.");
+                                }
+                            }
                         }
+                        feedback::Accumulation::Multiply => {
+                            unactivated[j].mul_inplace(&fpre[idx]);
+                            activated[j + 1].mul_inplace(&fpost[idx]);
+
+                            // Extend the maxpool indices.
+                            if let Some(Some(max)) = maxpools.get_mut(j) {
+                                if let Some(fmax) = &fmax[idx] {
+                                    max.extend(&fmax);
+                                } else {
+                                    panic!("Maxpool indices are missing.");
+                                }
+                            }
+                        }
+                        feedback::Accumulation::Overwrite => {
+                            unactivated[j] = fpre[idx].to_owned();
+                            activated[j + 1] = fpost[idx].to_owned();
+
+                            // Overwrite the maxpool indices.
+                            if let Some(Some(max)) = maxpools.get_mut(j) {
+                                if let Some(fmax) = &fmax[idx] {
+                                    *max = fmax.clone();
+                                } else {
+                                    panic!("Maxpool indices are missing.");
+                                }
+                            }
+                        }
+                        #[allow(unreachable_patterns)]
+                        _ => unimplemented!("Accumulation method not implemented."),
                     }
                 }
             }
@@ -1064,7 +1086,7 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let mut network = Network::new(tensor::Shape::Triple(1, 3, 3));
+        let mut network = Network::new(tensor::Shape::Triple(1, 3, 3), feedback::Accumulation::Add);
 
         network.convolution(
             1,
@@ -1102,7 +1124,7 @@ mod tests {
     fn test_backward() {
         // See Python file `documentation/validation/test_network_backward.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4), feedback::Accumulation::Add);
 
         network.convolution(
             3,
@@ -1244,7 +1266,7 @@ mod tests {
     fn test_update() {
         // See Python file `documentation/validation/test_network_update.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4), feedback::Accumulation::Add);
 
         network.convolution(
             3,

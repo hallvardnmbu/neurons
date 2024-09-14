@@ -773,7 +773,49 @@ impl Tensor {
                     });
                 });
             }
-            _ => panic!("Invalid add"),
+            _ => panic!("Invalid add."),
+        }
+    }
+
+    /// Inplace element-wise multiplication of two `Tensor`s.
+    pub fn mul_inplace(&mut self, other: &Tensor) {
+        assert_eq_shape!(self.shape, other.shape);
+
+        match (&mut self.data, &other.data) {
+            (Data::Single(data1), Data::Single(data2)) => {
+                data1
+                    .iter_mut()
+                    .zip(data2.iter())
+                    .for_each(|(a, b)| *a *= b);
+            }
+            (Data::Double(data1), Data::Double(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
+                    r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                        *a *= b;
+                    });
+                });
+            }
+            (Data::Triple(data1), Data::Triple(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                            *a *= b;
+                        });
+                    });
+                });
+            }
+            (Data::Quadruple(data1), Data::Quadruple(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
+                    f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
+                                *a *= b;
+                            });
+                        });
+                    });
+                });
+            }
+            _ => panic!("Invalid mul."),
         }
     }
 
