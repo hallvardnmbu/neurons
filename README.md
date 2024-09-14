@@ -359,6 +359,7 @@ fn main() {
   <summary>Architecture</summary>
 
   - [x] Feedforward (dubbed `Network`)
+  - [x] Feedback loops
   - [ ] Recurrent
   - [ ] Skip connections
   - [ ] Feedback blocks
@@ -367,8 +368,9 @@ fn main() {
 <details>
   <summary>Feedback</summary>
 
+  - [x] Feedback connection
   - [ ] Selectable gradient accumulation
-  - [ ] Handle backward pass of feedback block in `network::Network`
+  - [ ] Feedback block
 </details>
 
 <details>
@@ -407,20 +409,26 @@ fn main() {
   - [x] XOR
   - [x] Iris
     - [x] MLP
+    - [ ] MLP + Looping
     - [ ] MLP + Feedback
   - [ ] Linear regression
     - [ ] MLP
+    - [ ] MLP + Looping
     - [ ] MLP + Feedback
   - [ ] Classification TBA.
     - [ ] MLP
+    - [ ] MLP + Looping
     - [ ] MLP + Feedback
   - [ ] MNIST
     - [ ] MLP
+    - [ ] MLP + Looping
     - [ ] MLP + Feedback
     - [x] CNN
-    - [x] CNN + Feedback
+    - [x] CNN + Looping
+    - [ ] CNN + Feedback
   - [ ] CIFAR-10
     - [x] CNN
+    - [ ] CNN + Looping
     - [ ] CNN + Feedback
 </details>
 
