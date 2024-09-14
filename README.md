@@ -151,6 +151,13 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.0.5 – Bug fixes and renaming.</summary>
+
+    Minor bug fixes to feedback connections.
+    Rename simple feedback connections to `loopback` connections for consistency.
+</details>
+
+<details>
   <summary>v2.0.4 – Initial feedback block structure.</summary>
 
     Add skeleton for feedback block structure.

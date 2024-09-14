@@ -9,7 +9,7 @@ fn main() {
 
     network.dense(12, activation::Activation::Linear, false, None);
 
-    network.coupled(
+    network.feedback(
         vec![
             network::Layer::Dense(dense::Dense::create(
                 inputs.clone(),

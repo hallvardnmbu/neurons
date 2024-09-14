@@ -46,14 +46,14 @@ impl Layer {
 ///
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
-/// * `feedbacks` - The feedback connections of the network.
+/// * `loopbacks` - The looped connections of the network.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
     input: tensor::Shape,
 
     layers: Vec<Layer>,
-    feedbacks: HashMap<usize, usize>,
+    loopbacks: HashMap<usize, usize>,
 
     optimizer: optimizer::Optimizer,
     objective: objective::Function,
@@ -71,9 +71,9 @@ impl std::fmt::Display for Network {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
         write!(f, "\t)\n")?;
-        if !self.feedbacks.is_empty() {
-            write!(f, "\tfeedback connections: (\n")?;
-            for (i, j) in self.feedbacks.iter() {
+        if !self.loopbacks.is_empty() {
+            write!(f, "\tloops: (\n")?;
+            for (i, j) in self.loopbacks.iter() {
                 write!(f, "\t\t{}.output -> {}.input\n", i, j)?;
             }
             write!(f, "\t)\n")?;
@@ -104,7 +104,7 @@ impl Network {
         Network {
             input,
             layers: Vec::new(),
-            feedbacks: HashMap::new(),
+            loopbacks: HashMap::new(),
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -281,19 +281,52 @@ impl Network {
         )));
     }
 
-    /// Add a feedback connection between two layers.
+    /// Adds a new feedback block to the network.
     ///
-    /// INCOMPLETE: Currently only supports feedback connections for identical shapes.
+    /// # Arguments
+    ///
+    /// * `layers` - The layers of the feedback block.
+    /// * `loops` - The number of loops in the feedback block.
+    ///
+    /// # Notes
+    ///
+    /// * The feedback block must have at least one layer.
+    /// * The input and output shapes of the feedback block must match.
+    ///   - To allow for loops.
+    pub fn feedback(&mut self, layers: Vec<Layer>, loops: usize) {
+        assert!(
+            !layers.is_empty(),
+            "Feedback block must have at least one layer."
+        );
+        if self.layers.is_empty() {
+            let inputs = match layers.first().unwrap() {
+                Layer::Dense(layer) => layer.inputs.clone(),
+                Layer::Convolution(layer) => layer.inputs.clone(),
+                Layer::Maxpool(layer) => layer.inputs.clone(),
+                Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
+            };
+            assert_eq_shape!(self.input, inputs);
+            self.layers
+                .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
+            return;
+        }
+        self.layers
+            .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
+    }
+
+    /// Add a loop connection between two layers.
+    ///
+    /// INCOMPLETE: Currently only supports loop connections for identical shapes.
     ///
     /// # Arguments
     ///
     /// * `from` - The index of the layer to connect from.
     /// * `to` - The index of the layer to connect to.
-    pub fn feedback(&mut self, from: usize, to: usize) {
+    pub fn loopback(&mut self, from: usize, to: usize) {
         if from > self.layers.len() || to >= self.layers.len() || from < to {
-            panic!("Invalid layer indices for feedback connection.");
-        } else if self.feedbacks.contains_key(&from) {
-            panic!("Feedback connection already exists for layer {}", from);
+            panic!("Invalid layer indices for loop connection.");
+        } else if self.loopbacks.contains_key(&from) {
+            panic!("Loop connection already exists for layer {}", from);
         }
 
         let inputs = match &self.layers[to] {
@@ -316,33 +349,12 @@ impl Network {
                 Layer::Dense(layer) => layer.loops += 1.0,
                 Layer::Convolution(layer) => layer.loops += 1.0,
                 Layer::Maxpool(layer) => layer.loops += 1.0,
-                Layer::Feedback(_) => panic!("Feedback connection includes feedback block."),
+                Layer::Feedback(_) => panic!("Loop connection includes feedback block."),
             }
         }
 
-        // Store the feedback connection for use in the forward pass.
-        self.feedbacks.insert(from, to);
-    }
-
-    pub fn coupled(&mut self, layers: Vec<Layer>, loops: usize) {
-        assert!(
-            !layers.is_empty(),
-            "Feedback block must have at least one layer."
-        );
-        if self.layers.is_empty() {
-            let inputs = match layers.first().unwrap() {
-                Layer::Dense(layer) => layer.inputs.clone(),
-                Layer::Convolution(layer) => layer.inputs.clone(),
-                Layer::Maxpool(layer) => layer.inputs.clone(),
-                Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
-            };
-            assert_eq_shape!(self.input, inputs);
-            self.layers
-                .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
-            return;
-        }
-        self.layers
-            .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
+        // Store the loop connection for use in the forward pass.
+        self.loopbacks.insert(from, to);
     }
 
     /// Extract the total number of parameters in the network.
@@ -667,11 +679,11 @@ impl Network {
             }
 
             // Check if the layer output should be fed back to a previous layer.
-            if self.feedbacks.contains_key(&i) {
+            if self.loopbacks.contains_key(&i) {
                 let mut current: tensor::Tensor = activated.last().unwrap().clone();
 
                 // Reshaping the last activated tensor in cases of flattened output.
-                current = current.reshape(match self.layers[self.feedbacks[&i]] {
+                current = current.reshape(match self.layers[self.loopbacks[&i]] {
                     Layer::Dense(ref layer) => layer.inputs.clone(),
                     Layer::Convolution(ref layer) => layer.inputs.clone(),
                     Layer::Maxpool(ref layer) => layer.inputs.clone(),
@@ -679,14 +691,14 @@ impl Network {
                 });
 
                 // Add the original input for of the fed-back layer to the latent representation.
-                current.add_inplace(&activated[self.feedbacks[&i]]);
+                current.add_inplace(&activated[self.loopbacks[&i]]);
 
                 // Perform the forward pass of the feedback loop.
-                let (fpre, fpost, fmax) = self._forward(&current, self.feedbacks[&i], i + 1);
+                let (fpre, fpost, fmax) = self._forward(&current, self.loopbacks[&i], i + 1);
 
                 // Add the pre- and post-activation values to the respective lists.
                 // Add the maxpool indices of the layer to the hashmap if any.
-                for (idx, j) in (self.feedbacks[&i]..i + 1).enumerate() {
+                for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
                     // TODO: Handle the case with feedback blocks.
                     // The values should be overwritten(?) summed(?) multiplied(?).
 

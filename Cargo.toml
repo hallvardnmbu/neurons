@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "2.0.4"
+version = "2.0.5"
 edition = "2021"
 description = "Neural networks from scratch, in Rust."
 authors = ["Hallvard Høyland Lavik"]
@@ -20,6 +20,10 @@ plotters = "0.3.6"
 [[example]]
 name = "example_network"
 path = "examples/example_network.rs"
+
+[[example]]
+name = "example_feedback"
+path = "examples/example_feedback.rs"
 
 [[example]]
 name = "example_xor"
@@ -42,8 +46,8 @@ name = "example_mnist"
 path = "examples/example_mnist.rs"
 
 [[example]]
-name = "example_mnist_feedback"
-path = "examples/example_mnist_feedback.rs"
+name = "example_mnist_looping"
+path = "examples/example_mnist_looping.rs"
 
 [[example]]
 name = "example_cifar10"
