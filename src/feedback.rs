@@ -3,9 +3,10 @@
 use crate::{assert_eq_shape, network, tensor};
 
 pub enum Accumulation {
-    Add,
+    Sum,
     Multiply,
     Overwrite,
+    // TODO: Expand?
 }
 
 /// A feedback block.

@@ -1,12 +1,9 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, plot, tensor, feedback};
+use neurons::{activation, network, plot, tensor};
 
 fn main() {
-    let mut network = network::Network::new(
-        tensor::Shape::Triple(1, 24, 24),
-        feedback::Accumulation::Add,
-    );
+    let mut network = network::Network::new(tensor::Shape::Triple(1, 24, 24));
 
     network.convolution(
         5,

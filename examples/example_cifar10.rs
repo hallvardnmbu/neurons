@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, plot, random, tensor, feedback};
+use neurons::{activation, network, objective, optimizer, plot, random, tensor};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -86,10 +86,7 @@ fn main() {
         "./static/input.png",
     );
 
-    let mut network = network::Network::new(
-        tensor::Shape::Triple(3, 32, 32),
-        feedback::Accumulation::Add
-    );
+    let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
 
     network.convolution(
         32,

@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, tensor, feedback};
+use neurons::{activation, network, objective, optimizer, tensor};
 
 fn main() {
     // Create the training data for the binary AND operation
@@ -21,7 +21,7 @@ fn main() {
     let targets: Vec<&tensor::Tensor> = y.iter().collect();
 
     // Create the network
-    let mut network = network::Network::new(tensor::Shape::Single(2), feedback::Accumulation::Add);
+    let mut network = network::Network::new(tensor::Shape::Single(2));
 
     network.dense(10, activation::Activation::ReLU, true, None);
     network.dense(1, activation::Activation::Sigmoid, false, None);

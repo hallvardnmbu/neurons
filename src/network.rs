@@ -103,12 +103,12 @@ impl Network {
     /// # Returns
     ///
     /// An empty neural network, with no layers.
-    pub fn new(input: tensor::Shape, accumulation: feedback::Accumulation) -> Self {
+    pub fn new(input: tensor::Shape) -> Self {
         Network {
             input,
             layers: Vec::new(),
             loopbacks: HashMap::new(),
-            accumulation,
+            accumulation: feedback::Accumulation::Sum,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -370,6 +370,12 @@ impl Network {
     /// Extract the total number of parameters in the network.
     fn parameters(&self) -> usize {
         self.layers.iter().map(|layer| layer.parameters()).sum()
+    }
+
+    /// Set the `feedback::Accumulation` function of the network.
+    /// Note that this is only relevant for loopback connections.
+    pub fn set_accumulation(&mut self, accumulation: feedback::Accumulation) {
+        self.accumulation = accumulation;
     }
 
     /// Set the `activation::Activation` function of a layer.
@@ -705,7 +711,7 @@ impl Network {
                 // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
                     match self.accumulation {
-                        feedback::Accumulation::Add => {
+                        feedback::Accumulation::Sum => {
                             unactivated[j].add_inplace(&fpre[idx]);
                             activated[j + 1].add_inplace(&fpost[idx]);
 
@@ -1086,7 +1092,7 @@ mod tests {
 
     #[test]
     fn test_forward() {
-        let mut network = Network::new(tensor::Shape::Triple(1, 3, 3), feedback::Accumulation::Add);
+        let mut network = Network::new(tensor::Shape::Triple(1, 3, 3));
 
         network.convolution(
             1,
@@ -1124,7 +1130,7 @@ mod tests {
     fn test_backward() {
         // See Python file `documentation/validation/test_network_backward.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4), feedback::Accumulation::Add);
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
 
         network.convolution(
             3,
@@ -1266,7 +1272,7 @@ mod tests {
     fn test_update() {
         // See Python file `documentation/validation/test_network_update.py` for the reference implementation.
 
-        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4), feedback::Accumulation::Add);
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
 
         network.convolution(
             3,

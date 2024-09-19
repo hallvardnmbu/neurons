@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, random, tensor, feedback};
+use neurons::{activation, network, objective, optimizer, random, tensor};
 
 use std::{
     fs::File,
@@ -75,7 +75,7 @@ fn main() {
     );
 
     // Create the network
-    let mut network = network::Network::new(tensor::Shape::Single(4), feedback::Accumulation::Add);
+    let mut network = network::Network::new(tensor::Shape::Single(4));
 
     network.dense(50, activation::Activation::ReLU, false, None);
     network.dense(50, activation::Activation::ReLU, false, None);
