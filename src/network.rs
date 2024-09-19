@@ -48,7 +48,8 @@ impl Layer {
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
 /// * `loopbacks` - The looped connections of the network.
-/// * `accumulation` - The accumulation type of the network for looped connections.
+/// * `skips` - The skip connections of the network.
+/// * `accumulation` - The accumulation type of the network for looped- and skip connections.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
@@ -56,6 +57,7 @@ pub struct Network {
 
     layers: Vec<Layer>,
     loopbacks: HashMap<usize, usize>,
+    skips: HashMap<usize, usize>,
     accumulation: feedback::Accumulation,
 
     optimizer: optimizer::Optimizer,
@@ -74,12 +76,22 @@ impl std::fmt::Display for Network {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
         write!(f, "\t)\n")?;
-        if !self.loopbacks.is_empty() {
-            write!(f, "\tloops: (\n")?;
-            for (i, j) in self.loopbacks.iter() {
-                write!(f, "\t\t{}.output -> {}.input\n", i, j)?;
+        if !self.skips.is_empty() {
+            write!(f, "\tskip connections: (\n")?;
+            for (to, from) in self.skips.iter() {
+                write!(f, "\t\t{}.output -> {}.output\n", from, to)?;
             }
             write!(f, "\t)\n")?;
+        }
+        if !self.loopbacks.is_empty() {
+            write!(f, "\tloops: (\n")?;
+            for (from, to) in self.loopbacks.iter() {
+                write!(f, "\t\t{}.output -> {}.input\n", from, to)?;
+            }
+            write!(f, "\t)\n")?;
+        }
+        if !self.loopbacks.is_empty() || !self.skips.is_empty() {
+            write!(f, "\taccumulation: {}\n", self.accumulation)?;
         }
         write!(f, "\tparameters: {}\n)", self.parameters())?;
         Ok(())
@@ -108,6 +120,7 @@ impl Network {
             input,
             layers: Vec::new(),
             loopbacks: HashMap::new(),
+            skips: HashMap::new(),
             accumulation: feedback::Accumulation::Sum,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
@@ -326,6 +339,7 @@ impl Network {
     ///
     /// * `from` - The index of the layer to connect from.
     /// * `to` - The index of the layer to connect to.
+    /// * `scale` - The scaling function of the loop connection wrt. gradients.
     pub fn loopback(&mut self, from: usize, to: usize, scale: tensor::Scale) {
         if from > self.layers.len() || to >= self.layers.len() || from < to {
             panic!("Invalid layer indices for loop connection.");
@@ -367,13 +381,46 @@ impl Network {
         self.loopbacks.insert(from, to);
     }
 
+    /// Add a skip connection between two layers.
+    ///
+    /// INCOMPLETE: Currently only supports skip connections for identical shapes.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - The index of the layer to connect from.
+    /// * `to` - The index of the layer to connect to.
+    pub fn skip(&mut self, from: usize, to: usize) {
+        if from > self.layers.len() || to >= self.layers.len() || from > to {
+            panic!("Invalid layer indices for skip connection.");
+        } else if self.skips.contains_key(&from) {
+            panic!("Skip connection already exists for layer {}", from);
+        }
+
+        let left = match &self.layers[to] {
+            Layer::Dense(layer) => &layer.outputs,
+            Layer::Convolution(layer) => &layer.outputs,
+            Layer::Maxpool(_) => panic!("Skip connection cannot include maxpool layer."),
+            Layer::Feedback(feedback) => &feedback.outputs,
+        };
+        let right = match &self.layers[from] {
+            Layer::Dense(layer) => &layer.outputs,
+            Layer::Convolution(layer) => &layer.outputs,
+            Layer::Maxpool(_) => panic!("Skip connection cannot include maxpool layer."),
+            Layer::Feedback(feedback) => &feedback.outputs,
+        };
+        assert_eq_shape!(left, right);
+
+        // Store the skip connection for use in the propagation.
+        self.skips.insert(to, from);
+    }
+
     /// Extract the total number of parameters in the network.
     fn parameters(&self) -> usize {
         self.layers.iter().map(|layer| layer.parameters()).sum()
     }
 
     /// Set the `feedback::Accumulation` function of the network.
-    /// Note that this is only relevant for loopback connections.
+    /// Note that this is only relevant for loopback- and skip connections.
     pub fn set_accumulation(&mut self, accumulation: feedback::Accumulation) {
         self.accumulation = accumulation;
     }
@@ -690,6 +737,29 @@ impl Network {
             activated.append(&mut post);
             maxpools.append(&mut max);
 
+            // Check if the layer output includes a skip connection.
+            if self.skips.contains_key(&i) {
+                let _pre = unactivated[self.skips[&i]].clone();
+                let _post = activated[self.skips[&i] + 1].clone();
+
+                match self.accumulation {
+                    feedback::Accumulation::Sum => {
+                        unactivated[i].add_inplace(&_pre);
+                        activated[i + 1].add_inplace(&_post);
+                    }
+                    feedback::Accumulation::Multiply => {
+                        unactivated[i].mul_inplace(&_pre);
+                        activated[i + 1].mul_inplace(&_post);
+                    }
+                    feedback::Accumulation::Overwrite => {
+                        unactivated[i] = _pre;
+                        activated[i + 1] = _post;
+                    }
+                    #[allow(unreachable_patterns)]
+                    _ => unimplemented!("Accumulation method not implemented."),
+                }
+            }
+
             // Check if the layer output should be fed back to a previous layer.
             if self.loopbacks.contains_key(&i) {
                 let mut current: tensor::Tensor = activated.last().unwrap().clone();
@@ -834,24 +904,43 @@ impl Network {
     /// A tuple containing the weight and bias gradients of each layer.
     fn backward(
         &self,
-        mut gradient: tensor::Tensor,
+        gradient: tensor::Tensor,
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
         maxpools: &Vec<Option<tensor::Tensor>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
+        let mut gradients: Vec<tensor::Tensor> = vec![gradient];
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
-        self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
-            let input: &tensor::Tensor = &activated[activated.len() - i - 2];
-            let output: &tensor::Tensor = &unactivated[unactivated.len() - i - 1];
 
-            let (input_gradient, wg, bg) = match layer {
-                Layer::Dense(layer) => layer.backward(&gradient, input, output),
-                Layer::Convolution(layer) => layer.backward(&gradient, input, output),
+        let mut skips = HashMap::new();
+        for (key, value) in self.skips.iter() {
+            skips.insert(value, key);
+        }
+
+        self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
+            let idx = self.layers.len() - i - 1;
+
+            let input: &tensor::Tensor = &activated[idx];
+            let output: &tensor::Tensor = &unactivated[idx];
+
+            // Check for skip connections.
+            // Add the gradient of the skip connection to the current gradient.
+            if skips.contains_key(&idx) {
+                let gradient = gradients[i].clone();
+
+                gradients.last_mut().unwrap().add_inplace(&gradient);
+            }
+
+            let (gradient, wg, bg) = match layer {
+                Layer::Dense(layer) => layer.backward(&gradients.last().unwrap(), input, output),
+                Layer::Convolution(layer) => {
+                    layer.backward(&gradients.last().unwrap(), input, output)
+                }
                 Layer::Maxpool(layer) => (
                     layer.backward(
-                        &gradient,
-                        if let Some(max) = &maxpools[i + 1] {
+                        &gradients.last().unwrap(),
+                        if let Some(max) = &maxpools[idx] {
                             max
                         } else {
                             panic!("Maxpool indices are missing.")
@@ -863,10 +952,9 @@ impl Network {
                 _ => unimplemented!("Feedback blocks not yet implemented."),
             };
 
+            gradients.push(gradient);
             weight_gradient.push(wg);
             bias_gradient.push(bg);
-
-            gradient = input_gradient;
         });
         (weight_gradient, bias_gradient)
     }

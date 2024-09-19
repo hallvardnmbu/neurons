@@ -151,6 +151,16 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.3.0 – Skip connection.</summary>
+
+    Add possibility of skip connections.
+
+    Limitations:
+    * Only works between equal shapes.
+    * Backward pass assumes an identity mapping (gradients are simply added).
+</details>
+
+<details>
   <summary>v2.2.0 – Selectable scaling wrt. loopbacks.</summary>
 
     Add possibility of selecting the scaling function.
@@ -369,8 +379,8 @@ fn main() {
 
   - [x] Feedforward (dubbed `Network`)
   - [x] Feedback loops
+  - [x] Skip connections
   - [ ] Recurrent
-  - [ ] Skip connections
   - [ ] Feedback blocks
 </details>
 
@@ -379,7 +389,7 @@ fn main() {
 
   - [x] Feedback connection
   - [x] Selectable gradient scaling
-  - [ ] Selectable gradient accumulation
+  - [x] Selectable gradient accumulation
   - [ ] Feedback block
 </details>
 
@@ -434,10 +444,12 @@ fn main() {
     - [ ] MLP + Looping
     - [ ] MLP + Feedback
     - [x] CNN
+    - [x] CNN + Skip
     - [x] CNN + Looping
     - [ ] CNN + Feedback
   - [ ] CIFAR-10
     - [x] CNN
+    - [ ] CNN + Skip
     - [ ] CNN + Looping
     - [ ] CNN + Feedback
 </details>

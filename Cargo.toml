@@ -1,6 +1,6 @@
 [package]
 name = "neurons"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2021"
 description = "Neural networks from scratch, in Rust."
 authors = ["Hallvard Høyland Lavik"]
@@ -44,6 +44,10 @@ path = "examples/example_convolution.rs"
 [[example]]
 name = "example_mnist"
 path = "examples/example_mnist.rs"
+
+[[example]]
+name = "example_mnist_skip"
+path = "examples/example_mnist_skip.rs"
 
 [[example]]
 name = "example_mnist_looping"

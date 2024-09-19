@@ -736,6 +736,7 @@ impl Tensor {
     }
 
     /// Inplace element-wise addition of two `Tensor`s.
+    /// Validates their shapes beforehand.
     pub fn add_inplace(&mut self, other: &Tensor) {
         assert_eq_shape!(self.shape, other.shape);
 
@@ -778,6 +779,7 @@ impl Tensor {
     }
 
     /// Inplace element-wise multiplication of two `Tensor`s.
+    /// Validates their shapes beforehand.
     pub fn mul_inplace(&mut self, other: &Tensor) {
         assert_eq_shape!(self.shape, other.shape);
 
@@ -820,6 +822,7 @@ impl Tensor {
     }
 
     /// Multiply the `i == j` elements of two `Tensor`s of the same shape together.
+    /// Validates their shapes beforehand.
     ///
     /// # Arguments
     ///

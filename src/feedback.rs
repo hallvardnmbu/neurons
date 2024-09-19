@@ -9,6 +9,16 @@ pub enum Accumulation {
     // TODO: Expand?
 }
 
+impl std::fmt::Display for Accumulation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Accumulation::Sum => write!(f, "sum"),
+            Accumulation::Multiply => write!(f, "multiply"),
+            Accumulation::Overwrite => write!(f, "overwrite"),
+        }
+    }
+}
+
 /// A feedback block.
 ///
 /// # Attributes
