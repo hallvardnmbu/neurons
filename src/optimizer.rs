@@ -171,6 +171,11 @@ pub struct SGD {
 
 impl SGD {
     /// Creates a new stochastic gradient descent optimizer.
+    ///
+    /// # Default values
+    ///
+    /// * `learning_rate` - 0.001
+    /// * `decay` - None
     pub fn create(learning_rate: f32, decay: Option<f32>) -> Optimizer {
         Optimizer::SGD(SGD {
             learning_rate,
@@ -243,6 +248,13 @@ pub struct SGDM {
 
 impl SGDM {
     /// Creates a new stochastic gradient descent optimizer with momentum.
+    ///
+    /// # Default values
+    ///
+    /// * `learning_rate` - 0.001
+    /// * `momentum` - 0
+    /// * `dampening` - 0
+    /// * `decay` - None
     pub fn create(
         learning_rate: f32,
         momentum: f32,
@@ -376,6 +388,14 @@ pub struct Adam {
 
 impl Adam {
     /// Creates a new Adam optimizer.
+    ///
+    /// # Default values
+    ///
+    /// * `learning_rate` - 0.001
+    /// * `beta1` - 0.9
+    /// * `beta2` - 0.999
+    /// * `epsilon` - 1e-8
+    /// * `decay` - None
     pub fn create(
         learning_rate: f32,
         beta1: f32,
@@ -512,6 +532,14 @@ pub struct AdamW {
 
 impl AdamW {
     /// Creates a new AdamW optimizer.
+    ///
+    /// # Default values
+    ///
+    /// * `learning_rate` - 0.001
+    /// * `beta1` - 0.9
+    /// * `beta2` - 0.999
+    /// * `epsilon` - 1e-8
+    /// * `decay` - 0.01
     pub fn create(
         learning_rate: f32,
         beta1: f32,
@@ -646,6 +674,15 @@ pub struct RMSprop {
 
 impl RMSprop {
     /// Creates a new RMSprop optimizer.
+    ///
+    /// # Default values
+    ///
+    /// * `learning_rate` - 0.001
+    /// * `alpha` - 0.9
+    /// * `epsilon` - 1e-7
+    /// * `decay` - None
+    /// * `momentum` - None
+    /// * `centered` - false
     pub fn create(
         learning_rate: f32,
         alpha: f32,

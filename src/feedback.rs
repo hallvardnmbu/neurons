@@ -3,18 +3,24 @@
 use crate::{assert_eq_shape, network, tensor};
 
 pub enum Accumulation {
-    Sum,
+    Add,
+    Sub,
     Multiply,
     Overwrite,
+    Mean,
     // TODO: Expand?
 }
 
 impl std::fmt::Display for Accumulation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Accumulation::Sum => write!(f, "sum"),
-            Accumulation::Multiply => write!(f, "multiply"),
+            Accumulation::Add => write!(f, "additive"),
+            Accumulation::Sub => write!(f, "subtractive"),
+            Accumulation::Multiply => write!(f, "multiplicative"),
             Accumulation::Overwrite => write!(f, "overwrite"),
+            Accumulation::Mean => write!(f, "mean"),
+            #[allow(unreachable_patterns)]
+            _ => unimplemented!("Accumulation method not implemented."),
         }
     }
 }

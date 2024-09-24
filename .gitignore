@@ -21,3 +21,4 @@ Icon?
 # Datasets.
 examples/datasets/mnist/*
 examples/datasets/cifar10/*
+documentation/validation/datasets/*

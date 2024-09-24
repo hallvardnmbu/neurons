@@ -50,21 +50,17 @@ impl std::fmt::Display for Convolution {
         )?;
         write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
         write!(f, "\t\t\tpadding: {:?}\n", self.padding)?;
-        write!(
-            f,
-            "\t\t\tdropout: {}\n",
-            if self.dropout.is_some() {
-                self.dropout.unwrap().to_string()
-            } else {
-                "false".to_string()
-            }
-        )?;
-        write!(
-            f,
-            "\t\t\tloops: {} (scaling factor: {})\n",
-            self.loops,
-            (self.scale)(self.loops)
-        )?;
+        if self.dropout.is_some() {
+            write!(f, "\t\t\tdropout: {}\n", self.dropout.unwrap().to_string())?;
+        }
+        if self.loops > 1.0 {
+            write!(
+                f,
+                "\t\t\tloops: {} (scaling factor: {})\n",
+                self.loops,
+                (self.scale)(self.loops)
+            )?;
+        }
         write!(f, "\t\t)")?;
         Ok(())
     }

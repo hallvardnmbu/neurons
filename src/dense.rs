@@ -39,21 +39,17 @@ impl std::fmt::Display for Dense {
         write!(f, "Dense{}(\n", self.activation)?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tbias: {}\n", self.bias.is_some())?;
-        write!(
-            f,
-            "\t\t\tdropout: {}\n",
-            if self.dropout.is_some() {
-                self.dropout.unwrap().to_string()
-            } else {
-                "false".to_string()
-            }
-        )?;
-        write!(
-            f,
-            "\t\t\tloops: {} (scaling factor: {})\n",
-            self.loops,
-            (self.scale)(self.loops)
-        )?;
+        if self.dropout.is_some() {
+            write!(f, "\t\t\tdropout: {}\n", self.dropout.unwrap().to_string())?;
+        }
+        if self.loops > 1.0 {
+            write!(
+                f,
+                "\t\t\tloops: {} (scaling factor: {})\n",
+                self.loops,
+                (self.scale)(self.loops)
+            )?;
+        }
         write!(f, "\t\t)")?;
         Ok(())
     }

@@ -70,7 +70,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        2,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -78,7 +78,7 @@ fn main() {
         None,
     );
     network.convolution(
-        2,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -87,6 +87,8 @@ fn main() {
     );
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
+
+    network.connect(0, 2);
 
     network.set_optimizer(optimizer::SGD::create(
         0.001, // Learning rate

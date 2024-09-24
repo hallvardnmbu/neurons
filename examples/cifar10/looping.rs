@@ -2,6 +2,8 @@
 
 use neurons::{activation, network, objective, optimizer, plot, random, tensor};
 
+use std::sync::Arc;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -89,16 +91,8 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
 
     network.convolution(
-        32,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
-    network.convolution(
-        32,
-        (3, 3),
+        6,
+        (5, 5),
         (1, 1),
         (0, 0),
         activation::Activation::ReLU,
@@ -106,46 +100,48 @@ fn main() {
     );
     network.maxpool((2, 2), (2, 2));
     network.convolution(
-        32,
-        (4, 4),
+        16,
+        (5, 5),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        Some(0.25),
+        None,
     );
     network.maxpool((2, 2), (2, 2));
-    network.dense(512, activation::Activation::ReLU, true, Some(0.5));
+    network.dense(120, activation::Activation::ReLU, true, None);
+    network.dense(84, activation::Activation::ReLU, true, None);
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::RMSprop::create(
-        0.0001,     // Learning rate
-        0.0,        // Alpha
-        1e-8,       // Epsilon
+    network.loopback(2, 2, Arc::new(|loops| 1.0 / loops));
+
+    network.set_optimizer(optimizer::SGDM::create(
+        0.001,      // Learning rate
+        0.9,        // Momentum
+        1e-8,       // Dampening
         Some(1e-6), // Decay
-        Some(0.01), // Momentum
-        true,       // Centered
     ));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
         None,                               // Gradient clipping
     );
 
+    // Network based on LeNet-5
     println!("{}", network);
 
     // Train the network
     let (train_loss, val_loss) = network.learn(
         &x_train,
         &y_train,
-        Some((&x_test, &y_test, 25)),
-        32,
-        100,
+        Some((&x_test, &y_test, 50)),
+        128,
+        200,
         Some(5),
     );
     plot::loss(
         &train_loss,
         &val_loss,
         "Loss per epoch",
-        "./static/cifar10.png",
+        "./static/cifar10-looping.png",
     );
 
     // Validate the network

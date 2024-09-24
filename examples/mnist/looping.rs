@@ -71,7 +71,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        2,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -79,7 +79,7 @@ fn main() {
         None,
     );
     network.convolution(
-        2,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -91,11 +91,11 @@ fn main() {
 
     network.loopback(
         1,                             // From layer X's output.
-        1,                             // To layer Y's input.
+        0,                             // To layer Y's input.
         Arc::new(|loops| 1.0 / loops), // Gradient scaling.
     );
     network.set_accumulation(
-        feedback::Accumulation::Sum, // How the pre- and post-activations are accumulated.
+        feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
     );
 
     network.set_optimizer(optimizer::SGD::create(

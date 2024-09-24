@@ -18,41 +18,49 @@ rayon = "1.10"
 plotters = "0.3.6"
 
 [[example]]
-name = "example_network"
-path = "examples/example_network.rs"
+name = "network"
+path = "examples/network.rs"
 
 [[example]]
-name = "example_feedback"
-path = "examples/example_feedback.rs"
+name = "convolution"
+path = "examples/convolution.rs"
 
 [[example]]
-name = "example_xor"
-path = "examples/example_xor.rs"
+name = "feedback"
+path = "examples/feedback.rs"
 
 [[example]]
-name = "example_iris"
-path = "examples/example_iris.rs"
+name = "xor"
+path = "examples/xor.rs"
 
 [[example]]
-name = "example_benchmark"
-path = "examples/example_benchmark.rs"
+name = "iris"
+path = "examples/iris.rs"
 
 [[example]]
-name = "example_convolution"
-path = "examples/example_convolution.rs"
+name = "benchmark"
+path = "examples/benchmark.rs"
 
 [[example]]
-name = "example_mnist"
-path = "examples/example_mnist.rs"
+name = "mnist-plain"
+path = "examples/mnist/plain.rs"
 
 [[example]]
-name = "example_mnist_skip"
-path = "examples/example_mnist_skip.rs"
+name = "mnist-skip"
+path = "examples/mnist/skip.rs"
 
 [[example]]
-name = "example_mnist_looping"
-path = "examples/example_mnist_looping.rs"
+name = "mnist-looping"
+path = "examples/mnist/looping.rs"
 
 [[example]]
-name = "example_cifar10"
-path = "examples/example_cifar10.rs"
+name = "cifar10-plain"
+path = "examples/cifar10/plain.rs"
+
+[[example]]
+name = "cifar10-skip"
+path = "examples/cifar10/skip.rs"
+
+[[example]]
+name = "cifar10-looping"
+path = "examples/cifar10/looping.rs"

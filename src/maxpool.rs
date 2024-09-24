@@ -30,7 +30,9 @@ impl std::fmt::Display for Maxpool {
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tkernel: {:?}\n", self.kernel)?;
         write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
-        write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        if self.loops > 1.0 {
+            write!(f, "\t\t\tloops: {}\n", self.loops)?;
+        }
         write!(f, "\t\t)")?;
         Ok(())
     }

@@ -57,7 +57,7 @@ pub struct Network {
 
     layers: Vec<Layer>,
     loopbacks: HashMap<usize, usize>,
-    skips: HashMap<usize, usize>,
+    connect: HashMap<usize, usize>,
     accumulation: feedback::Accumulation,
 
     optimizer: optimizer::Optimizer,
@@ -69,29 +69,34 @@ impl std::fmt::Display for Network {
         write!(f, "Network (\n")?;
 
         write!(f, "\toptimizer: (\n{}\n", self.optimizer)?;
-        write!(f, "\tobjective: (\n\t\t{}\n\t)\n", self.objective)?;
+        write!(f, "\tobjective: {}\n", self.objective)?;
 
         write!(f, "\tlayers: (\n")?;
         for (i, layer) in self.layers.iter().enumerate() {
             write!(f, "\t\t{}: {}\n", i, layer)?;
         }
         write!(f, "\t)\n")?;
-        if !self.skips.is_empty() {
-            write!(f, "\tskip connections: (\n")?;
-            for (to, from) in self.skips.iter() {
-                write!(f, "\t\t{}.output -> {}.output\n", from, to)?;
+        if !self.connect.is_empty() {
+            write!(f, "\tconnections: (\n")?;
+            write!(f, "\t\taccumulation: {}\n", self.accumulation)?;
+
+            let mut entries: Vec<(&usize, &usize)> = self.connect.iter().collect();
+            entries.sort_by_key(|&(to, _)| to);
+            for (to, from) in entries.iter() {
+                write!(f, "\t\t{}.input -> {}.input\n", from, to)?;
             }
             write!(f, "\t)\n")?;
         }
         if !self.loopbacks.is_empty() {
             write!(f, "\tloops: (\n")?;
-            for (from, to) in self.loopbacks.iter() {
+            write!(f, "\t\taccumulation: {}\n", self.accumulation)?;
+
+            let mut entries: Vec<(&usize, &usize)> = self.loopbacks.iter().collect();
+            entries.sort_by_key(|&(to, _)| to);
+            for (from, to) in entries.iter() {
                 write!(f, "\t\t{}.output -> {}.input\n", from, to)?;
             }
             write!(f, "\t)\n")?;
-        }
-        if !self.loopbacks.is_empty() || !self.skips.is_empty() {
-            write!(f, "\taccumulation: {}\n", self.accumulation)?;
         }
         write!(f, "\tparameters: {}\n)", self.parameters())?;
         Ok(())
@@ -120,8 +125,8 @@ impl Network {
             input,
             layers: Vec::new(),
             loopbacks: HashMap::new(),
-            skips: HashMap::new(),
-            accumulation: feedback::Accumulation::Sum,
+            connect: HashMap::new(),
+            accumulation: feedback::Accumulation::Add,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -382,36 +387,38 @@ impl Network {
     }
 
     /// Add a skip connection between two layers.
+    /// Note: The `from` and `to` refer to their inputs.
+    /// I.e., `from = 0` means the input to the network.
     ///
     /// INCOMPLETE: Currently only supports skip connections for identical shapes.
     ///
     /// # Arguments
     ///
-    /// * `from` - The index of the layer to connect from.
-    /// * `to` - The index of the layer to connect to.
-    pub fn skip(&mut self, from: usize, to: usize) {
+    /// * `from` - The index of the layer to connect from (input).
+    /// * `to` - The index of the layer to connect to (input).
+    pub fn connect(&mut self, from: usize, to: usize) {
         if from > self.layers.len() || to >= self.layers.len() || from > to {
             panic!("Invalid layer indices for skip connection.");
-        } else if self.skips.contains_key(&from) {
+        } else if self.connect.contains_key(&from) {
             panic!("Skip connection already exists for layer {}", from);
         }
 
-        let left = match &self.layers[to] {
-            Layer::Dense(layer) => &layer.outputs,
-            Layer::Convolution(layer) => &layer.outputs,
-            Layer::Maxpool(_) => panic!("Skip connection cannot include maxpool layer."),
-            Layer::Feedback(feedback) => &feedback.outputs,
+        let outof = match &self.layers[from] {
+            Layer::Dense(layer) => &layer.inputs,
+            Layer::Convolution(layer) => &layer.inputs,
+            Layer::Maxpool(_) => panic!("Skip connection from Maxpool layer not supported."),
+            Layer::Feedback(feedback) => &feedback.inputs,
         };
-        let right = match &self.layers[from] {
-            Layer::Dense(layer) => &layer.outputs,
-            Layer::Convolution(layer) => &layer.outputs,
-            Layer::Maxpool(_) => panic!("Skip connection cannot include maxpool layer."),
-            Layer::Feedback(feedback) => &feedback.outputs,
+        let into = match &self.layers[to] {
+            Layer::Dense(layer) => &layer.inputs,
+            Layer::Convolution(layer) => &layer.inputs,
+            Layer::Maxpool(layer) => &layer.inputs,
+            Layer::Feedback(feedback) => &feedback.inputs,
         };
-        assert_eq_shape!(left, right);
+        assert_eq_shape!(outof, into);
 
         // Store the skip connection for use in the propagation.
-        self.skips.insert(to, from);
+        self.connect.insert(to, from);
     }
 
     /// Extract the total number of parameters in the network.
@@ -559,14 +566,12 @@ impl Network {
             if print > epochs as i32 {
                 println!("Note: print frequency is higher than the number of epochs. No printouts will be made.");
             } else if let Some(_) = validation {
-                // println!("{}", "-".repeat(51));
                 println!("{:>5} \t {:<23} \t {:>10}", "EPOCH", "LOSS", "ACCURACY");
                 println!(
                     "{:>5} \t {:>10} | {:<10} \t {:>10}",
                     "", "validation", "train", "validation"
                 );
             } else {
-                // println!("{}", "-".repeat(19));
                 println!("{:>5} \t {:>10}", "EPOCH", "TRAIN LOSS");
             }
         }
@@ -694,15 +699,6 @@ impl Network {
             }
         }
 
-        // // Print the footer of the table.
-        // if print.unwrap_or(epochs + 1) <= epochs as i32 {
-        //     if let Some(_) = validation {
-        //         println!("{}", "-".repeat(51));
-        //     } else {
-        //         println!("{}", "-".repeat(19));
-        //     }
-        // }
-
         (train_loss, val_loss)
     }
 
@@ -729,36 +725,40 @@ impl Network {
         let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
 
         for i in 0..self.layers.len() {
-            // Perform the forward pass of the current layer.
-            let (mut pre, mut post, mut max) = self._forward(activated.last().unwrap(), i, i + 1);
+            let mut x = activated.last().unwrap().clone();
 
-            // Store the outputs of the current layer.
-            unactivated.append(&mut pre);
-            activated.append(&mut post);
-            maxpools.append(&mut max);
-
-            // Check if the layer output includes a skip connection.
-            if self.skips.contains_key(&i) {
-                let _pre = unactivated[self.skips[&i]].clone();
-                let _post = activated[self.skips[&i] + 1].clone();
+            // Check if the layer should account for a skip connection.
+            if self.connect.contains_key(&i) {
+                let _x = activated[self.connect[&i]].clone();
 
                 match self.accumulation {
-                    feedback::Accumulation::Sum => {
-                        unactivated[i].add_inplace(&_pre);
-                        activated[i + 1].add_inplace(&_post);
+                    feedback::Accumulation::Add => {
+                        x.add_inplace(&_x);
+                    }
+                    feedback::Accumulation::Sub => {
+                        x.sub_inplace(&_x);
                     }
                     feedback::Accumulation::Multiply => {
-                        unactivated[i].mul_inplace(&_pre);
-                        activated[i + 1].mul_inplace(&_post);
+                        x.mul_inplace(&_x);
                     }
                     feedback::Accumulation::Overwrite => {
-                        unactivated[i] = _pre;
-                        activated[i + 1] = _post;
+                        x = _x;
+                    }
+                    feedback::Accumulation::Mean => {
+                        x.mean_inplace(&_x);
                     }
                     #[allow(unreachable_patterns)]
                     _ => unimplemented!("Accumulation method not implemented."),
                 }
             }
+
+            // Perform the forward pass of the current layer.
+            let (mut pre, mut post, mut max) = self._forward(&x, i, i + 1);
+
+            // Store the outputs of the current layer.
+            unactivated.append(&mut pre);
+            activated.append(&mut post);
+            maxpools.append(&mut max);
 
             // Check if the layer output should be fed back to a previous layer.
             if self.loopbacks.contains_key(&i) {
@@ -773,7 +773,7 @@ impl Network {
                 });
 
                 // Add the original input for of the fed-back layer to the latent representation.
-                current.add_inplace(&activated[self.loopbacks[&i]]);
+                // current.add_inplace(&activated[self.loopbacks[&i]]);
 
                 // Perform the forward pass of the feedback loop.
                 let (fpre, fpost, fmax) = self._forward(&current, self.loopbacks[&i], i + 1);
@@ -781,9 +781,22 @@ impl Network {
                 // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
                     match self.accumulation {
-                        feedback::Accumulation::Sum => {
+                        feedback::Accumulation::Add => {
                             unactivated[j].add_inplace(&fpre[idx]);
                             activated[j + 1].add_inplace(&fpost[idx]);
+
+                            // Extend the maxpool indices.
+                            if let Some(Some(max)) = maxpools.get_mut(j) {
+                                if let Some(fmax) = &fmax[idx] {
+                                    max.extend(&fmax);
+                                } else {
+                                    panic!("Maxpool indices are missing.");
+                                }
+                            }
+                        }
+                        feedback::Accumulation::Sub => {
+                            unactivated[j].sub_inplace(&fpre[idx]);
+                            activated[j + 1].sub_inplace(&fpost[idx]);
 
                             // Extend the maxpool indices.
                             if let Some(Some(max)) = maxpools.get_mut(j) {
@@ -815,6 +828,19 @@ impl Network {
                             if let Some(Some(max)) = maxpools.get_mut(j) {
                                 if let Some(fmax) = &fmax[idx] {
                                     *max = fmax.clone();
+                                } else {
+                                    panic!("Maxpool indices are missing.");
+                                }
+                            }
+                        }
+                        feedback::Accumulation::Mean => {
+                            unactivated[j].mean_inplace(&fpre[idx]);
+                            activated[j + 1].mean_inplace(&fpost[idx]);
+
+                            // Extend the maxpool indices.
+                            if let Some(Some(max)) = maxpools.get_mut(j) {
+                                if let Some(fmax) = &fmax[idx] {
+                                    max.extend(&fmax);
                                 } else {
                                     panic!("Maxpool indices are missing.");
                                 }
@@ -913,9 +939,10 @@ impl Network {
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
         let mut bias_gradient: Vec<Option<tensor::Tensor>> = Vec::new();
 
-        let mut skips = HashMap::new();
-        for (key, value) in self.skips.iter() {
-            skips.insert(value, key);
+        let mut connect = HashMap::new();
+        for (key, value) in self.connect.iter() {
+            // {to: from} -> {from: to}
+            connect.insert(value, key);
         }
 
         self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
@@ -926,10 +953,31 @@ impl Network {
 
             // Check for skip connections.
             // Add the gradient of the skip connection to the current gradient.
-            if skips.contains_key(&idx) {
-                let gradient = gradients[i].clone();
+            if connect.contains_key(&idx) {
+                let gradient = gradients[self.layers.len() - connect[&idx] + 1].clone();
 
                 gradients.last_mut().unwrap().add_inplace(&gradient);
+
+                // TODO: Handle accumulation methods.
+                // match self.accumulation {
+                //     feedback::Accumulation::Add => {
+                //         gradients.last_mut().unwrap().add_inplace(&gradient);
+                //     }
+                //     feedback::Accumulation::Sub => {
+                //         gradients.last_mut().unwrap().sub_inplace(&gradient);
+                //     }
+                //     feedback::Accumulation::Multiply => {
+                //         gradients.last_mut().unwrap().mul_inplace(&gradient);
+                //     }
+                //     feedback::Accumulation::Overwrite => {
+                //         {};
+                //     }
+                //     feedback::Accumulation::Mean => {
+                //         gradients.last_mut().unwrap().mean_inplace(&gradient);
+                //     }
+                //     #[allow(unreachable_patterns)]
+                //     _ => unimplemented!("Accumulation method not implemented."),
+                // }
             }
 
             let (gradient, wg, bg) = match layer {

@@ -243,7 +243,7 @@ fn main() {
 
     Combines operations to single-loop instead of repeadedly iterating over the `tensor::Tensor`'s.
 
-    Benchmarking `examples/example_benchmark.rs` (mnist version):
+    Benchmarking `benches/benchmark.rs` (mnist version):
 
     v2.0.1: 16.504570304s (1.05x speedup)
     v2.0.0: 17.268632412s
