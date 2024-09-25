@@ -29,49 +29,49 @@ impl std::fmt::Display for Function {
         match self {
             Function::AE(parameters) => write!(
                 f,
-                "AE(gradient_clamp={:?})",
+                "\t\tAE(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MAE(parameters) => write!(
                 f,
-                "MAE(gradient_clamp={:?})",
+                "\t\tMAE(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MSE(parameters) => write!(
                 f,
-                "MSE(gradient_clamp={:?})",
+                "\t\tMSE(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::RMSE(parameters) => write!(
                 f,
-                "RMSE(gradient_clamp={:?})",
+                "\t\tRMSE(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::CrossEntropy(parameters) => write!(
                 f,
-                "CrossEntropy(gradient_clamp={:?})",
+                "\t\tCrossEntropy(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::BinaryCrossEntropy(parameters) => write!(
                 f,
-                "BinaryCrossEntropy(gradient_clamp={:?})",
+                "\t\tBinaryCrossEntropy(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::KLDivergence(parameters) => write!(
                 f,
-                "KLDivergence(gradient_clamp={:?})",
+                "\t\tKLDivergence(gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))

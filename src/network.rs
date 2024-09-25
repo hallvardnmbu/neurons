@@ -68,8 +68,8 @@ impl std::fmt::Display for Network {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Network (\n")?;
 
-        write!(f, "\toptimizer: (\n{}\n", self.optimizer)?;
-        write!(f, "\tobjective: {}\n", self.objective)?;
+        write!(f, "\toptimizer: (\n{}\n\t)\n", self.optimizer)?;
+        write!(f, "\tobjective: (\n{}\n\t)\n", self.objective)?;
 
         write!(f, "\tlayers: (\n")?;
         for (i, layer) in self.layers.iter().enumerate() {

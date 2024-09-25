@@ -16,14 +16,14 @@ impl std::fmt::Display for Optimizer {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self {
             Optimizer::SGD(structure) => {
-                write!(f, "\t\tSGD (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
-                write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
-                write!(f, "\t\t)")
+                write!(f, "\t\tSGD (")?;
+                write!(f, "learning rate: {} ", structure.learning_rate)?;
+                write!(f, "decay: {}", structure.decay.unwrap_or(0.0))?;
+                write!(f, ")")
             }
             Optimizer::SGDM(structure) => {
                 write!(f, "\t\tSGDM (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tlearning rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tmomentum: {}\n", structure.momentum)?;
                 write!(f, "\t\t\tdampening: {}\n", structure.dampening)?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
@@ -31,7 +31,7 @@ impl std::fmt::Display for Optimizer {
             }
             Optimizer::Adam(structure) => {
                 write!(f, "\t\tAdam (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tlearning rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
                 write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;
@@ -40,7 +40,7 @@ impl std::fmt::Display for Optimizer {
             }
             Optimizer::AdamW(structure) => {
                 write!(f, "\t\tAdamW (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tlearning rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\tbeta1: {}\n", structure.beta1)?;
                 write!(f, "\t\t\tbeta2: {}\n", structure.beta2)?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay)?;
@@ -49,7 +49,7 @@ impl std::fmt::Display for Optimizer {
             }
             Optimizer::RMSprop(structure) => {
                 write!(f, "\t\tRMSprop (\n")?;
-                write!(f, "\t\t\tlearning_rate: {}\n", structure.learning_rate)?;
+                write!(f, "\t\t\tlearning rate: {}\n", structure.learning_rate)?;
                 write!(f, "\t\t\talpha: {}\n", structure.alpha)?;
                 write!(f, "\t\t\tepsilon: {}\n", structure.epsilon)?;
                 write!(f, "\t\t\tdecay: {}\n", structure.decay.unwrap_or(0.0))?;

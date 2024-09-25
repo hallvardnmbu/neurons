@@ -58,7 +58,16 @@ impl std::fmt::Display for Feedback {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Feedback(\n")?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
-        write!(f, "\t\t\toptimizer: (\n{}\n", self.optimizer)?;
+
+        // let optimizer: String = self
+        //     .optimizer
+        //     .to_string()
+        //     .lines()
+        //     .map(|line| format!("\t\t{}", line))
+        //     .collect::<Vec<String>>()
+        //     .join("\n");
+        // write!(f, "\t\t\toptimizer: (\n{}\n", optimizer)?;
+
         write!(f, "\t\t\tlayers: (\n")?;
         for (i, layer) in self.layers.iter().enumerate() {
             match layer {
