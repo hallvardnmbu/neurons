@@ -29,49 +29,49 @@ impl std::fmt::Display for Function {
         match self {
             Function::AE(parameters) => write!(
                 f,
-                "\t\tAE(gradient clamp={:?})",
+                "\t\tAE (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MAE(parameters) => write!(
                 f,
-                "\t\tMAE(gradient clamp={:?})",
+                "\t\tMAE (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::MSE(parameters) => write!(
                 f,
-                "\t\tMSE(gradient clamp={:?})",
+                "\t\tMSE (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::RMSE(parameters) => write!(
                 f,
-                "\t\tRMSE(gradient clamp={:?})",
+                "\t\tRMSE (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::CrossEntropy(parameters) => write!(
                 f,
-                "\t\tCrossEntropy(gradient clamp={:?})",
+                "\t\tCrossEntropy (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::BinaryCrossEntropy(parameters) => write!(
                 f,
-                "\t\tBinaryCrossEntropy(gradient clamp={:?})",
+                "\t\tBinaryCrossEntropy (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
             ),
             Function::KLDivergence(parameters) => write!(
                 f,
-                "\t\tKLDivergence(gradient clamp={:?})",
+                "\t\tKLDivergence (gradient clamp={:?})",
                 parameters
                     .clamp
                     .unwrap_or((f32::NEG_INFINITY, f32::INFINITY))
@@ -847,34 +847,34 @@ mod tests {
     fn test_function_display() {
         assert_eq!(
             format!("{}", Function::create(Objective::AE, None)),
-            "AE (gradient clamp=(-inf, inf))"
+            "\t\tAE (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::MAE, Some((-1.0, 1.0)))),
-            "MAE (gradient clamp=(-1.0, 1.0))"
+            "\t\tMAE (gradient clamp=(-1.0, 1.0))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::MSE, None)),
-            "MSE (gradient clamp=(-inf, inf))"
+            "\t\tMSE (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::RMSE, Some((-0.5, 0.5)))),
-            "RMSE (gradient clamp=(-0.5, 0.5))"
+            "\t\tRMSE (gradient clamp=(-0.5, 0.5))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::CrossEntropy, None)),
-            "CrossEntropy (gradient clamp=(-inf, inf))"
+            "\t\tCrossEntropy (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!(
                 "{}",
                 Function::create(Objective::BinaryCrossEntropy, Some((-2.0, 2.0)))
             ),
-            "BinaryCrossEntropy (gradient clamp=(-2.0, 2.0))"
+            "\t\tBinaryCrossEntropy (gradient clamp=(-2.0, 2.0))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::KLDivergence, None)),
-            "KLDivergence (gradient clamp=(-inf, inf))"
+            "\t\tKLDivergence (gradient clamp=(-inf, inf))"
         );
     }
 }
