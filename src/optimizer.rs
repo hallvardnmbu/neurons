@@ -3,6 +3,7 @@
 use crate::tensor;
 
 /// The optimizer function.
+#[derive(Clone)]
 pub enum Optimizer {
     SGD(SGD),
     SGDM(SGDM),
@@ -164,6 +165,7 @@ impl Optimizer {
 ///
 /// * `learning_rate` - The learning rate of the optimizer.
 /// * `decay` - The decay of the optimizer.
+#[derive(Clone)]
 pub struct SGD {
     learning_rate: f32,
     decay: Option<f32>,
@@ -237,6 +239,7 @@ impl SGD {
 /// * `dampening` - The dampening of the optimizer.
 /// * `decay` - The decay of the optimizer.
 /// * `velocity` - The velocity of the optimizer.
+#[derive(Clone)]
 pub struct SGDM {
     learning_rate: f32,
     momentum: f32,
@@ -375,6 +378,7 @@ impl SGDM {
 /// * `decay` - The decay of the optimizer.
 /// * `velocity` - The velocity of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
+#[derive(Clone)]
 pub struct Adam {
     learning_rate: f32,
     beta1: f32,
@@ -519,6 +523,7 @@ impl Adam {
 /// * `decay` - The decay of the optimizer.
 /// * `velocity` - The velocity of the optimizer.
 /// * `momentum` - The momentum of the optimizer.
+#[derive(Clone)]
 pub struct AdamW {
     learning_rate: f32,
     beta1: f32,
@@ -659,6 +664,7 @@ impl AdamW {
 /// * `velocity` - The velocity of the optimizer.
 /// * `gradient` - The gradient of the optimizer.
 /// * `buffer` - The buffer of the optimizer.
+#[derive(Clone)]
 pub struct RMSprop {
     learning_rate: f32,
     alpha: f32,

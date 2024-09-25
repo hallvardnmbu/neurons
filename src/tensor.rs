@@ -14,6 +14,8 @@ pub enum Shape {
     Triple(usize, usize, usize),
     Quadruple(usize, usize, usize, usize),
     Quintuple(usize, usize, usize, usize, usize),
+
+    Nested(usize),
 }
 
 impl std::fmt::Display for Shape {
@@ -24,6 +26,7 @@ impl std::fmt::Display for Shape {
             Shape::Triple(ch, he, wi) => write!(f, "{}x{}x{}", ch, he, wi),
             Shape::Quadruple(ch, fi, he, wi) => write!(f, "{}x{}x{}x{}", ch, fi, he, wi),
             Shape::Quintuple(ba, ch, fi, he, wi) => write!(f, "{}x{}x{}x{}x{}", ba, ch, fi, he, wi),
+            Shape::Nested(size) => write!(f, "Nested({})", size),
         }
     }
 }
@@ -42,6 +45,7 @@ impl PartialEq for Shape {
             (Shape::Quintuple(ab, ac, af, ah, aw), Shape::Quintuple(bb, bc, bf, bh, bw)) => {
                 ab == bb && ac == bc && af == bf && ah == bh && aw == bw
             }
+            (Shape::Nested(a), Shape::Nested(b)) => a == b,
             _ => false,
         }
     }
@@ -70,6 +74,9 @@ pub enum Data {
     Triple(Vec<Vec<Vec<f32>>>),
     Quadruple(Vec<Vec<Vec<Vec<f32>>>>),
     Quintuple(Vec<Vec<Vec<Vec<Vec<(usize, usize)>>>>>),
+
+    Nested(Vec<Tensor>),
+    NestedOptional(Vec<Option<Tensor>>),
 }
 
 impl PartialEq for Data {
@@ -262,6 +269,18 @@ impl std::fmt::Display for Data {
                     }
                 }
             }
+            Data::Nested(tensors) => {
+                for tensor in tensors.iter() {
+                    write!(f, "{}", tensor)?;
+                }
+            }
+            Data::NestedOptional(tensors) => {
+                for tensor in tensors.iter() {
+                    if let Some(tensor) = tensor {
+                        write!(f, "{}", tensor)?;
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -273,7 +292,7 @@ impl std::fmt::Display for Data {
 ///
 /// * `shape` - The `Shape` of the Tensor.
 /// * `data` - The `Data` of the Tensor.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Tensor {
     pub shape: Shape,
     pub data: Data,
@@ -500,6 +519,38 @@ impl Tensor {
         Tensor {
             shape,
             data: Data::Quintuple(data),
+        }
+    }
+
+    /// Convert a vector of Tensors into a single nested Tensor.
+    pub fn nested(tensors: Vec<Tensor>) -> Self {
+        Tensor {
+            shape: Shape::Nested(tensors.len()),
+            data: Data::Nested(tensors),
+        }
+    }
+
+    /// Convert a vector of Tensors into a single nested Tensor.
+    pub fn nestedoptional(tensors: Vec<Option<Tensor>>) -> Self {
+        Tensor {
+            shape: Shape::Nested(tensors.len()),
+            data: Data::NestedOptional(tensors),
+        }
+    }
+
+    /// Convert a single nested Tensor into a vector of Tensors.
+    pub fn unnested(&self) -> Vec<Tensor> {
+        match &self.data {
+            Data::Nested(tensors) => tensors.clone(),
+            _ => panic!("Cannot unnest a non-nested Tensor."),
+        }
+    }
+
+    /// Convert a single nested Tensor into a vector of Tensors.
+    pub fn unnestedoptional(&self) -> Vec<Option<Tensor>> {
+        match &self.data {
+            Data::NestedOptional(tensors) => tensors.clone(),
+            _ => panic!("Cannot unnest a non-nested Tensor."),
         }
     }
 
@@ -774,6 +825,18 @@ impl Tensor {
                     });
                 });
             }
+            (Data::Nested(data1), Data::Nested(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(t1, t2)| {
+                    t1.add_inplace(t2);
+                });
+            }
+            (Data::NestedOptional(data1), Data::NestedOptional(data2)) => {
+                data1.iter_mut().zip(data2.iter()).for_each(|(t1, t2)| {
+                    if let (Some(t1), Some(t2)) = (t1.as_mut(), t2.as_ref()) {
+                        t1.add_inplace(t2);
+                    }
+                });
+            }
             _ => panic!("Invalid add."),
         }
     }
@@ -861,6 +924,36 @@ impl Tensor {
                 });
             }
             _ => panic!("Invalid mul."),
+        }
+    }
+
+    pub fn div_scalar_inplace(&mut self, scalar: f32) {
+        match &mut self.data {
+            Data::Single(data) => {
+                data.iter_mut().for_each(|a| *a /= scalar);
+            }
+            Data::Double(data) => {
+                data.iter_mut()
+                    .for_each(|r| r.iter_mut().for_each(|a| *a /= scalar));
+            }
+            Data::Triple(data) => {
+                data.iter_mut().for_each(|c| {
+                    c.iter_mut()
+                        .for_each(|r| r.iter_mut().for_each(|a| *a /= scalar));
+                });
+            }
+            Data::Quadruple(data) => {
+                data.iter_mut().for_each(|f| {
+                    f.iter_mut().for_each(|c| {
+                        c.iter_mut()
+                            .for_each(|r| r.iter_mut().for_each(|a| *a /= scalar));
+                    });
+                });
+            }
+            Data::Nested(data) => {
+                data.iter_mut().for_each(|t| t.div_scalar_inplace(scalar));
+            }
+            _ => panic!("Invalid div_scalar."),
         }
     }
 

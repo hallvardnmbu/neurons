@@ -464,7 +464,6 @@ impl Network {
     /// * `optimizer` - The new `optimizer::Optimizer` function to be used.
     pub fn set_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
         // Create the placeholder vector used for various optimizer functions.
-        // See the `match optimizer` below.
         let mut vectors: Vec<Vec<Vec<tensor::Tensor>>> = Vec::new();
         for layer in self.layers.iter().rev() {
             match layer {
@@ -496,7 +495,9 @@ impl Network {
                     ]);
                 }
                 Layer::Maxpool(_) => vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]]),
-                _ => unimplemented!("Feedback blocks not yet implemented."),
+                Layer::Feedback(_) => {
+                    vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]])
+                }
             }
         }
 
@@ -505,6 +506,13 @@ impl Network {
         optimizer.validate(vectors);
 
         self.optimizer = optimizer;
+
+        for layer in self.layers.iter_mut() {
+            match layer {
+                Layer::Feedback(block) => block.copy_optimizer(self.optimizer.clone()),
+                _ => (),
+            }
+        }
     }
 
     /// Set the `objective::Objective` function of the network.
@@ -600,11 +608,17 @@ impl Network {
                 let results: Vec<_> = batch
                     .into_par_iter()
                     .map(|(input, target)| {
-                        let (unactivated, activated, maxpools) = self.forward(input);
+                        let (unactivated, activated, maxpools, feedbacks) = self.forward(input);
                         let (loss, gradient) =
                             self.objective.loss(&activated.last().unwrap(), target);
 
-                        let (wg, bg) = self.backward(gradient, &unactivated, &activated, &maxpools);
+                        let (wg, bg) = self.backward(
+                            gradient,
+                            &unactivated,
+                            &activated,
+                            &maxpools,
+                            &feedbacks,
+                        );
 
                         (wg, bg, loss)
                     })
@@ -711,7 +725,7 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of each layer.
+    /// TODO
     pub fn forward(
         &self,
         input: &tensor::Tensor,
@@ -719,10 +733,12 @@ impl Network {
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
         Vec<Option<tensor::Tensor>>,
+        Vec<Vec<tensor::Tensor>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
         let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
+        let mut feedbacks: Vec<Vec<tensor::Tensor>> = Vec::new();
 
         for i in 0..self.layers.len() {
             let mut x = activated.last().unwrap().clone();
@@ -753,12 +769,13 @@ impl Network {
             }
 
             // Perform the forward pass of the current layer.
-            let (mut pre, mut post, mut max) = self._forward(&x, i, i + 1);
+            let (mut pre, mut post, mut max, fbs) = self._forward(&x, i, i + 1);
 
             // Store the outputs of the current layer.
             unactivated.append(&mut pre);
             activated.append(&mut post);
             maxpools.append(&mut max);
+            feedbacks.extend(fbs);
 
             // Check if the layer output should be fed back to a previous layer.
             if self.loopbacks.contains_key(&i) {
@@ -776,7 +793,7 @@ impl Network {
                 // current.add_inplace(&activated[self.loopbacks[&i]]);
 
                 // Perform the forward pass of the feedback loop.
-                let (fpre, fpost, fmax) = self._forward(&current, self.loopbacks[&i], i + 1);
+                let (fpre, fpost, fmax, ffbs) = self._forward(&current, self.loopbacks[&i], i + 1);
 
                 // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
@@ -853,7 +870,7 @@ impl Network {
             }
         }
 
-        (unactivated, activated, maxpools)
+        (unactivated, activated, maxpools, feedbacks)
     }
 
     /// Compute the forward pass for the specified range of layers.
@@ -866,7 +883,7 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of each layer inbetween.
+    /// TODO
     fn _forward(
         &self,
         input: &tensor::Tensor,
@@ -876,10 +893,12 @@ impl Network {
         Vec<tensor::Tensor>,
         Vec<tensor::Tensor>,
         Vec<Option<tensor::Tensor>>,
+        Vec<Vec<tensor::Tensor>>,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
         let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
+        let mut feedbacks: Vec<Vec<tensor::Tensor>> = Vec::new();
 
         for layer in &self.layers[from..to] {
             let x = activated.last().unwrap();
@@ -905,7 +924,14 @@ impl Network {
                     activated.push(post);
                     maxpools.push(Some(max));
                 }
-                _ => unimplemented!("Feedback blocks not yet implemented."),
+                Layer::Feedback(block) => {
+                    assert_eq_shape!(block.inputs, x.shape);
+                    let (pre, post, max, fbpre, fbpost) = block.forward(x);
+                    unactivated.push(pre);
+                    activated.push(post);
+                    maxpools.push(Some(max));
+                    feedbacks.push(vec![fbpre, fbpost]);
+                }
             };
         }
 
@@ -913,7 +939,7 @@ impl Network {
         // As this is present in the `forward` function.
         activated.remove(0);
 
-        (unactivated, activated, maxpools)
+        (unactivated, activated, maxpools, feedbacks)
     }
 
     /// Compute the backward pass of the network for the given output gradient.
@@ -934,6 +960,7 @@ impl Network {
         unactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
         maxpools: &Vec<Option<tensor::Tensor>>,
+        feedbacks: &Vec<Vec<tensor::Tensor>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut gradients: Vec<tensor::Tensor> = vec![gradient];
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
@@ -955,29 +982,8 @@ impl Network {
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
                 let gradient = gradients[self.layers.len() - connect[&idx] + 1].clone();
-
                 gradients.last_mut().unwrap().add_inplace(&gradient);
-
                 // TODO: Handle accumulation methods.
-                // match self.accumulation {
-                //     feedback::Accumulation::Add => {
-                //         gradients.last_mut().unwrap().add_inplace(&gradient);
-                //     }
-                //     feedback::Accumulation::Sub => {
-                //         gradients.last_mut().unwrap().sub_inplace(&gradient);
-                //     }
-                //     feedback::Accumulation::Multiply => {
-                //         gradients.last_mut().unwrap().mul_inplace(&gradient);
-                //     }
-                //     feedback::Accumulation::Overwrite => {
-                //         {};
-                //     }
-                //     feedback::Accumulation::Mean => {
-                //         gradients.last_mut().unwrap().mean_inplace(&gradient);
-                //     }
-                //     #[allow(unreachable_patterns)]
-                //     _ => unimplemented!("Accumulation method not implemented."),
-                // }
             }
 
             let (gradient, wg, bg) = match layer {
@@ -997,13 +1003,16 @@ impl Network {
                     tensor::Tensor::single(vec![0.0; 0]),
                     None,
                 ),
-                _ => unimplemented!("Feedback blocks not yet implemented."),
+                Layer::Feedback(block) => {
+                    block.backward(&gradients.last().unwrap(), feedbacks.last().unwrap())
+                }
             };
 
             gradients.push(gradient);
             weight_gradient.push(wg);
             bias_gradient.push(bg);
         });
+
         (weight_gradient, bias_gradient)
     }
 
@@ -1058,7 +1067,11 @@ impl Network {
                     }
                 }
                 Layer::Maxpool(_) => {}
-                _ => unimplemented!("Feedback blocks not yet implemented."),
+                Layer::Feedback(block) => block.update(
+                    stepnr,
+                    &mut weight_gradients[i],
+                    &mut bias_gradients[i].as_mut().unwrap(),
+                ),
             });
     }
 
@@ -1201,7 +1214,10 @@ impl Network {
                     let (_, out, _) = layer.forward(&output);
                     output = out;
                 }
-                _ => unimplemented!("Feedback blocks not yet implemented."),
+                Layer::Feedback(block) => {
+                    let (_, out, _, _, _) = block.forward(&output);
+                    output = out;
+                }
             }
         }
         output
@@ -1256,7 +1272,7 @@ mod tests {
             vec![7.0, 8.0, 9.0],
         ]]);
 
-        let (pre, post, _) = network.forward(&input);
+        let (pre, post, _, _) = network.forward(&input);
 
         assert_eq_data!(pre.last().unwrap().data, input.data);
         assert_eq_data!(post.last().unwrap().data, input.data);
@@ -1350,7 +1366,7 @@ mod tests {
             tensor::Tensor::single(vec![603.0, 0.0, 125.0, 846.0, 1255.0]),
         ];
 
-        let (pre, post, max) = network.forward(&input);
+        let (pre, post, max, _) = network.forward(&input);
 
         assert_eq_data!(pre[0].data, output[0].data);
         assert_eq_data!(post[1].data, output[1].data);
@@ -1361,7 +1377,8 @@ mod tests {
         // let gradient = tensor::Tensor::from(vec![vec![vec![1.0; 3]; 3]; 3]);
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
-        let (weight_gradient, bias_gradient) = network.backward(gradient, &pre, &post, &max);
+        let (weight_gradient, bias_gradient) =
+            network.backward(gradient, &pre, &post, &max, &Vec::new());
 
         let _weight_gradient = vec![
             tensor::Tensor::quadruple(vec![
@@ -1468,11 +1485,12 @@ mod tests {
             ],
         ]);
 
-        let (pre, post, max) = network.forward(&input);
+        let (pre, post, max, _) = network.forward(&input);
 
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
-        let (weight_gradients, bias_gradients) = network.backward(gradient, &pre, &post, &max);
+        let (weight_gradients, bias_gradients) =
+            network.backward(gradient, &pre, &post, &max, &Vec::new());
 
         network.update(0, weight_gradients, bias_gradients);
 

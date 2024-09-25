@@ -54,6 +54,10 @@ name = "mnist-looping"
 path = "examples/mnist/looping.rs"
 
 [[example]]
+name = "mnist-feedback"
+path = "examples/mnist/feedback.rs"
+
+[[example]]
 name = "cifar10-plain"
 path = "examples/cifar10/plain.rs"
 

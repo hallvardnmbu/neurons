@@ -131,7 +131,7 @@ fn main() {
         &train_loss,
         &val_loss,
         "Loss per epoch",
-        "./static/cifar10.png",
+        "./static/cifar10-skip.png",
     );
 
     // Validate the network

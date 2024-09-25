@@ -1,6 +1,8 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use crate::{assert_eq_shape, network, tensor};
+use std::collections::HashMap;
+
+use crate::{assert_eq_shape, network, optimizer, tensor};
 
 pub enum Accumulation {
     Add,
@@ -31,8 +33,10 @@ impl std::fmt::Display for Accumulation {
 ///
 /// * `inputs` - The number of inputs to the block.
 /// * `outputs` - The number of outputs from the block.
+/// * `optimizer` - The optimizer used for training the block.
 /// * `flatten` - Whether the block should flatten the output.
 /// * `layers` - The layers of the block.
+/// * `connect` - The (skip) connections between layers.
 /// * `coupled` - The coupled layers of the block.
 ///
 /// # Notes
@@ -43,8 +47,10 @@ impl std::fmt::Display for Accumulation {
 pub struct Feedback {
     pub(crate) inputs: tensor::Shape,
     pub(crate) outputs: tensor::Shape,
+    pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) flatten: bool,
     pub(crate) layers: Vec<network::Layer>,
+    pub(crate) connect: HashMap<usize, usize>,
     pub(crate) coupled: Vec<Vec<usize>>,
 }
 
@@ -52,6 +58,7 @@ impl std::fmt::Display for Feedback {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Feedback(\n")?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
+        write!(f, "\t\t\toptimizer: (\n{}\n", self.optimizer)?;
         write!(f, "\t\t\tlayers: (\n")?;
         for (i, layer) in self.layers.iter().enumerate() {
             match layer {
@@ -130,14 +137,66 @@ impl Feedback {
         Feedback {
             inputs,
             outputs,
+            optimizer: optimizer::SGD::create(0.1, None),
             flatten: false,
             layers,
+            connect: HashMap::new(),
             coupled,
         }
     }
 
+    /// Set the `optimizer::Optimizer` function of the network.
+    ///
+    /// # Arguments
+    ///
+    /// * `optimizer` - The reference to the network optimizer, to copy the values from.
+    pub fn copy_optimizer(&mut self, mut optimizer: optimizer::Optimizer) {
+        let mut vectors: Vec<Vec<Vec<tensor::Tensor>>> = Vec::new();
+        for layer in self.layers.iter().rev() {
+            match layer {
+                network::Layer::Dense(layer) => {
+                    let (output, input) = match &layer.weights.shape {
+                        tensor::Shape::Double(output, input) => (*output, *input),
+                        _ => panic!("Expected Dense shape"),
+                    };
+                    vectors.push(vec![vec![
+                        tensor::Tensor::double(vec![vec![0.0; input]; output]),
+                        if layer.bias.is_some() {
+                            tensor::Tensor::single(vec![0.0; output])
+                        } else {
+                            tensor::Tensor::single(vec![])
+                        },
+                    ]]);
+                }
+                network::Layer::Convolution(layer) => {
+                    let (ch, kh, kw) = match layer.kernels[0].shape {
+                        tensor::Shape::Triple(ch, he, wi) => (ch, he, wi),
+                        _ => panic!("Expected Convolution shape"),
+                    };
+                    vectors.push(vec![
+                        vec![
+                            tensor::Tensor::triple(vec![vec![vec![0.0; kw]; kh]; ch]),
+                            // TODO: Add bias term here.
+                        ];
+                        layer.kernels.len()
+                    ]);
+                }
+                network::Layer::Maxpool(_) => {
+                    vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]])
+                }
+                _ => unimplemented!("Feedback blocks not yet implemented."),
+            }
+        }
+
+        // Validate the optimizers' parameters.
+        // Override to default values if wrongly set.
+        optimizer.validate(vectors);
+
+        self.optimizer = optimizer;
+    }
+
     // Count the number of parameters.
-    // Only counts the parameters of the first loop, as the rest are identical.
+    // Only counts the parameters of the first loop, as the rest are identical (coupled).
     pub fn parameters(&self) -> usize {
         let mut parameters = 0;
         for idx in 0..self.coupled.len() {
@@ -155,7 +214,7 @@ impl Feedback {
         self.layers.iter_mut().for_each(|layer| match layer {
             network::Layer::Dense(layer) => layer.training = train,
             network::Layer::Convolution(layer) => layer.training = train,
-            network::Layer::Maxpool(_) => (),
+            network::Layer::Maxpool(_) => {}
             network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
         });
     }
@@ -169,48 +228,246 @@ impl Feedback {
     ///
     /// # Returns
     ///
-    /// A tuple containing the pre- and post-activation values and the maxpool indices (if any) of
-    /// each layer.
+    /// TODO
     pub fn forward(
         &self,
         input: &tensor::Tensor,
     ) -> (
-        Vec<tensor::Tensor>,
-        Vec<tensor::Tensor>,
-        Vec<Option<tensor::Tensor>>,
+        tensor::Tensor,
+        tensor::Tensor,
+        tensor::Tensor,
+        tensor::Tensor,
+        tensor::Tensor,
     ) {
         let mut unactivated: Vec<tensor::Tensor> = Vec::new();
         let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
         let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
 
+        // TODO: Handle `self.connect` and `self.flatten`.
+
         for layer in self.layers.iter() {
+            let x = activated.last().unwrap();
             match layer {
                 network::Layer::Dense(layer) => {
-                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
                     maxpools.push(None);
                 }
                 network::Layer::Convolution(layer) => {
-                    let (pre, post) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
                     maxpools.push(None);
                 }
                 network::Layer::Maxpool(layer) => {
-                    let (pre, post, max) = layer.forward(activated.last().unwrap());
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post, max) = layer.forward(x);
                     unactivated.push(pre);
                     activated.push(post);
-                    maxpools.push(Some(max))
+                    maxpools.push(Some(max));
                 }
                 network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
             };
         }
 
-        (unactivated, activated, maxpools)
+        (
+            // Return the first unactivated and last activated tensors.
+            // Used for the backward pass of the network.
+            // TODO: Which of these makes most sense to return?
+            // unactivated[unactivated.len() - 1].clone(),
+            unactivated[0].clone(),
+            activated[activated.len() - 1].clone(),
+            tensor::Tensor::nestedoptional(maxpools),
+            tensor::Tensor::nested(unactivated),
+            tensor::Tensor::nested(activated),
+        )
     }
 
-    pub fn backward(&self, _input: &tensor::Tensor, _output: &tensor::Tensor) -> tensor::Tensor {
-        panic!("TODO!")
+    /// Applies the backward pass of the layer to the gradient vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `gradient` - The gradient tensor::Tensor to the layer.
+    /// * `inbetween` - The intermediate tensors of the forward pass.
+    ///
+    /// # Returns
+    ///
+    /// The input-, weight- and bias gradient of the layer.
+    pub fn backward(
+        &self,
+        gradient: &tensor::Tensor,
+        inbetween: &Vec<tensor::Tensor>,
+    ) -> (tensor::Tensor, tensor::Tensor, Option<tensor::Tensor>) {
+        // We need to un-nest the input and output tensors (see `forward`).
+        let unactivated = inbetween[0].unnested();
+        let activated = inbetween[1].unnested();
+
+        let mut gradients: Vec<tensor::Tensor> = vec![gradient.clone()];
+        let mut weight_gradients: Vec<tensor::Tensor> = Vec::new();
+        let mut bias_gradients: Vec<Option<tensor::Tensor>> = Vec::new();
+
+        let mut connect = HashMap::new();
+        for (key, value) in self.connect.iter() {
+            // {to: from} -> {from: to}
+            connect.insert(value, key);
+        }
+
+        self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
+            let idx = self.layers.len() - i - 1;
+
+            let input: &tensor::Tensor = &activated[idx];
+            let output: &tensor::Tensor = &unactivated[idx];
+
+            // Check for skip connections.
+            // Add the gradient of the skip connection to the current gradient.
+            if connect.contains_key(&idx) {
+                let gradient = gradients[self.layers.len() - connect[&idx] + 1].clone();
+
+                gradients.last_mut().unwrap().add_inplace(&gradient);
+
+                // TODO: Handle accumulation methods.
+            }
+
+            let (gradient, wg, bg) = match layer {
+                network::Layer::Dense(layer) => {
+                    layer.backward(&gradients.last().unwrap(), input, output)
+                }
+                network::Layer::Convolution(layer) => {
+                    layer.backward(&gradients.last().unwrap(), input, output)
+                }
+                _ => panic!("Unsupported layer type."),
+            };
+
+            gradients.push(gradient);
+            weight_gradients.push(wg);
+            bias_gradients.push(bg);
+        });
+
+        return (
+            gradients.last().unwrap().clone(),
+            tensor::Tensor::nested(weight_gradients),
+            Some(tensor::Tensor::nestedoptional(bias_gradients)),
+        );
+    }
+
+    pub fn update(
+        &mut self,
+        stepnr: i32,
+        weight_gradients: &mut tensor::Tensor,
+        bias_gradients: &mut tensor::Tensor,
+    ) {
+        let mut weight_gradients = weight_gradients.unnested();
+        let mut bias_gradients = bias_gradients.unnestedoptional();
+
+        // Update the weights and biases of the layers.
+        self.layers
+            .iter_mut()
+            .rev()
+            .enumerate()
+            .for_each(|(i, layer)| match layer {
+                network::Layer::Dense(layer) => {
+                    self.optimizer.update(
+                        i,
+                        0,
+                        false,
+                        stepnr,
+                        &mut layer.weights,
+                        &mut weight_gradients[i],
+                    );
+
+                    if let Some(bias) = &mut layer.bias {
+                        self.optimizer.update(
+                            i,
+                            0,
+                            true,
+                            stepnr,
+                            bias,
+                            &mut bias_gradients[i].as_mut().unwrap(),
+                        )
+                    }
+                }
+                network::Layer::Convolution(layer) => {
+                    for (f, (filter, gradient)) in layer
+                        .kernels
+                        .iter_mut()
+                        .zip(weight_gradients[i].quadruple_to_vec_triple().iter_mut())
+                        .enumerate()
+                    {
+                        self.optimizer.update(i, f, false, stepnr, filter, gradient);
+                        // TODO: Add bias term here.
+                    }
+                }
+                network::Layer::Maxpool(_) => {}
+                network::Layer::Feedback(_) => panic!("Feedback layers are not supported."),
+            });
+
+        // Couple respective layers.
+        // Iterates through `self.coupled` and updates the weights and biases to match.
+        for couple in self.coupled.iter() {
+            let mut count: f32 = 0.0;
+            let mut weights: Option<tensor::Tensor> = None;
+            let mut biases: Option<tensor::Tensor> = None;
+
+            // Add the weights and biases of the coupled layers.
+            for (idx, i) in couple.iter().enumerate() {
+                match &self.layers[*i] {
+                    network::Layer::Dense(layer) => {
+                        if idx == 0 {
+                            weights = Some(layer.weights.clone());
+                            if let Some(bias) = &layer.bias {
+                                biases = Some(bias.clone());
+                            }
+                        } else {
+                            if let Some(ref mut w) = weights {
+                                w.add_inplace(&layer.weights);
+                            }
+                            if let Some(ref mut b) = biases {
+                                if let Some(bias) = &layer.bias {
+                                    b.add_inplace(&bias);
+                                }
+                            }
+                        }
+                    }
+                    network::Layer::Convolution(layer) => {
+                        if idx == 0 {
+                            weights = Some(tensor::Tensor::nested(layer.kernels.clone()));
+                        } else {
+                            if let Some(ref mut w) = weights {
+                                w.add_inplace(&tensor::Tensor::nested(layer.kernels.clone()));
+                            }
+                        }
+                    }
+                    _ => continue,
+                }
+                count += 1.0;
+            }
+
+            // Average the weights and biases.
+            if let Some(ref mut weights) = weights {
+                weights.div_scalar_inplace(count);
+            }
+            if let Some(ref mut biases) = biases {
+                biases.div_scalar_inplace(count);
+            }
+
+            // Update the weights and biases of the coupled layers.
+            for i in couple.iter() {
+                match &mut self.layers[*i] {
+                    network::Layer::Dense(layer) => {
+                        layer.weights = weights.as_ref().unwrap().clone();
+                        if let Some(bias) = &mut layer.bias {
+                            *bias = biases.as_ref().unwrap().clone();
+                        }
+                    }
+                    network::Layer::Convolution(layer) => {
+                        layer.kernels = weights.as_ref().unwrap().unnested();
+                    }
+                    _ => continue,
+                }
+            }
+        }
     }
 }

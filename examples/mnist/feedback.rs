@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, plot, tensor};
+use neurons::{activation, convolution, network, objective, optimizer, plot, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
@@ -68,7 +68,6 @@ fn main() {
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
-
     network.convolution(
         1,
         (3, 3),
@@ -77,18 +76,31 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.convolution(
-        1,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
+    network.feedback(
+        vec![
+            network::Layer::Convolution(convolution::Convolution::create(
+                tensor::Shape::Triple(1, 14, 14),
+                2,
+                &activation::Activation::ReLU,
+                (3, 3),
+                (1, 1),
+                (1, 1),
+                None,
+            )),
+            network::Layer::Convolution(convolution::Convolution::create(
+                tensor::Shape::Triple(2, 14, 14),
+                1,
+                &activation::Activation::ReLU,
+                (3, 3),
+                (1, 1),
+                (1, 1),
+                None,
+            )),
+        ],
+        2,
     );
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
-
-    network.connect(0, 2);
 
     network.set_optimizer(optimizer::SGD::create(
         0.001, // Learning rate
@@ -114,7 +126,7 @@ fn main() {
         &train_loss,
         &val_loss,
         "Loss per epoch",
-        "./static/mnist-skip.png",
+        "./static/mnist-feedback.png",
     );
 
     // Validate the network
