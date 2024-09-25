@@ -725,7 +725,10 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// TODO
+    /// * A vector of unactivated tensors.
+    /// * A vector of activated tensors.
+    /// * A vector of maxpool tensors.
+    /// * A nested vector of intermediate feedback block tensors.
     pub fn forward(
         &self,
         input: &tensor::Tensor,
@@ -883,7 +886,10 @@ impl Network {
     ///
     /// # Returns
     ///
-    /// TODO
+    /// * A vector of unactivated tensors.
+    /// * A vector of activated tensors.
+    /// * A vector of maxpool tensors.
+    /// * A nested vector of intermediate feedback block tensors.
     fn _forward(
         &self,
         input: &tensor::Tensor,

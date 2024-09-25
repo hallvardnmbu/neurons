@@ -228,7 +228,11 @@ impl Feedback {
     ///
     /// # Returns
     ///
-    /// TODO
+    /// * Unactivated tensor to be used for neighbouring layers when backpropagating.
+    /// * Activated tensor to be used for neighbouring layers when backpropagating.
+    /// * Maxpool tensor to be used for neighbouring layers when backpropagating.
+    /// * Intermediate unactivated tensors (nested).
+    /// * Intermediate activated tensors (nested).
     pub fn forward(
         &self,
         input: &tensor::Tensor,
@@ -325,9 +329,7 @@ impl Feedback {
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
                 let gradient = gradients[self.layers.len() - connect[&idx] + 1].clone();
-
                 gradients.last_mut().unwrap().add_inplace(&gradient);
-
                 // TODO: Handle accumulation methods.
             }
 
