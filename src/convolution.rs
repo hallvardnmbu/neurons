@@ -40,7 +40,7 @@ pub struct Convolution {
 
 impl std::fmt::Display for Convolution {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Convolution{}(\n", self.activation)?;
+        write!(f, "Convolution{} (\n", self.activation)?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(
             f,

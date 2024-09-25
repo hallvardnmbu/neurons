@@ -77,14 +77,6 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.convolution(
-        1,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 

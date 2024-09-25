@@ -36,7 +36,7 @@ pub struct Dense {
 
 impl std::fmt::Display for Dense {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Dense{}(\n", self.activation)?;
+        write!(f, "Dense{} (\n", self.activation)?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tbias: {}\n", self.bias.is_some())?;
         if self.dropout.is_some() {

@@ -26,7 +26,7 @@ pub struct Maxpool {
 
 impl std::fmt::Display for Maxpool {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Maxpool(\n")?;
+        write!(f, "Maxpool (\n")?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
         write!(f, "\t\t\tkernel: {:?}\n", self.kernel)?;
         write!(f, "\t\t\tstride: {:?}\n", self.stride)?;

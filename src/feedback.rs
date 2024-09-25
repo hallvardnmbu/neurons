@@ -56,7 +56,7 @@ pub struct Feedback {
 
 impl std::fmt::Display for Feedback {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Feedback(\n")?;
+        write!(f, "Feedback (\n")?;
         write!(f, "\t\t\t{} -> {}\n", self.inputs, self.outputs)?;
 
         // let optimizer: String = self
@@ -74,21 +74,21 @@ impl std::fmt::Display for Feedback {
                 network::Layer::Dense(layer) => {
                     write!(
                         f,
-                        "\t\t\t\t{}: Dense{}({} -> {})\n",
+                        "\t\t\t\t{}: Dense{} ({} -> {})\n",
                         i, layer.activation, layer.inputs, layer.outputs
                     )?;
                 }
                 network::Layer::Convolution(layer) => {
                     write!(
                         f,
-                        "\t\t\t\t{}: Convolution{}({} -> {})\n",
+                        "\t\t\t\t{}: Convolution{} ({} -> {})\n",
                         i, layer.activation, layer.inputs, layer.outputs
                     )?;
                 }
                 network::Layer::Maxpool(layer) => {
                     write!(
                         f,
-                        "\t\t\t\t{}: Maxpool({} -> {})\n",
+                        "\t\t\t\t{}: Maxpool ({} -> {})\n",
                         i, layer.inputs, layer.outputs
                     )?;
                 }

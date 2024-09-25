@@ -68,35 +68,19 @@ fn main() {
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
-    network.convolution(
-        1,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
+
     network.feedback(
-        vec![
-            network::Layer::Convolution(convolution::Convolution::create(
+        vec![network::Layer::Convolution(
+            convolution::Convolution::create(
                 tensor::Shape::Triple(1, 14, 14),
-                2,
-                &activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                None,
-            )),
-            network::Layer::Convolution(convolution::Convolution::create(
-                tensor::Shape::Triple(2, 14, 14),
                 1,
                 &activation::Activation::ReLU,
                 (3, 3),
                 (1, 1),
                 (1, 1),
                 None,
-            )),
-        ],
+            ),
+        )],
         2,
     );
     network.maxpool((2, 2), (2, 2));
