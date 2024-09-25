@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::{assert_eq_shape, network, optimizer, tensor};
+use crate::{activation, assert_eq_shape, network, optimizer, tensor};
 
 pub enum Accumulation {
     Add,
@@ -25,6 +25,41 @@ impl std::fmt::Display for Accumulation {
             _ => unimplemented!("Accumulation method not implemented."),
         }
     }
+}
+
+/// A simplified layer definition used for defining feedback blocks.
+///
+/// # Dense
+///
+/// * `nodes` - The number of nodes in the layer.
+/// * `activation` - The activation function of the layer.
+/// * `bias` - Whether the layer should include a bias.
+/// * `dropout` - The dropout rate of the layer.
+///
+/// # Convolution
+///
+/// * `filters` - The number of filters in the layer.
+/// * `activation` - The activation function of the layer.
+/// * `kernel` - The kernel size of the layer.
+/// * `stride` - The stride of the layer.
+/// * `padding` - The padding of the layer.
+/// * `dropout` - The dropout rate of the layer.
+///
+/// # Maxpool
+///
+/// * `kernel` - The pool size of the layer.
+/// * `stride` - The stride of the layer.
+pub enum Layer {
+    Dense(usize, activation::Activation, bool, Option<f32>),
+    Convolution(
+        usize,
+        activation::Activation,
+        (usize, usize),
+        (usize, usize),
+        (usize, usize),
+        Option<f32>,
+    ),
+    Maxpool((usize, usize), (usize, usize)),
 }
 
 /// A feedback block.

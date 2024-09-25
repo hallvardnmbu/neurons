@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, convolution, network, objective, optimizer, plot, tensor};
+use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
@@ -70,16 +70,13 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.feedback(
-        vec![network::Layer::Convolution(
-            convolution::Convolution::create(
-                tensor::Shape::Triple(1, 14, 14),
-                1,
-                &activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                None,
-            ),
+        vec![feedback::Layer::Convolution(
+            1,
+            activation::Activation::ReLU,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            None,
         )],
         2,
     );

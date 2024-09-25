@@ -315,25 +315,68 @@ impl Network {
     /// * The feedback block must have at least one layer.
     /// * The input and output shapes of the feedback block must match.
     ///   - To allow for loops.
-    pub fn feedback(&mut self, layers: Vec<Layer>, loops: usize) {
+    pub fn feedback(&mut self, layers: Vec<feedback::Layer>, loops: usize) {
         assert!(
             !layers.is_empty(),
             "Feedback block must have at least one layer."
         );
-        if self.layers.is_empty() {
-            let inputs = match layers.first().unwrap() {
-                Layer::Dense(layer) => layer.inputs.clone(),
-                Layer::Convolution(layer) => layer.inputs.clone(),
-                Layer::Maxpool(layer) => layer.inputs.clone(),
-                Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
+
+        // Convert `feedback::Layer` to `Layer`.
+        let mut _layers: Vec<Layer> = Vec::new();
+
+        let mut input: tensor::Shape = {
+            if self.layers.is_empty() {
+                self.input.clone()
+            } else {
+                match self.layers.last().unwrap() {
+                    Layer::Dense(layer) => layer.outputs.clone(),
+                    Layer::Convolution(layer) => layer.outputs.clone(),
+                    Layer::Maxpool(layer) => layer.outputs.clone(),
+                    Layer::Feedback(layer) => layer.outputs.clone(),
+                }
+            }
+        };
+        for layer in layers.iter() {
+            _layers.push(match layer {
+                feedback::Layer::Dense(outputs, activation, bias, dropout) => {
+                    Layer::Dense(dense::Dense::create(
+                        input.clone(),
+                        tensor::Shape::Single(*outputs),
+                        activation,
+                        *bias,
+                        *dropout,
+                    ))
+                }
+                feedback::Layer::Convolution(
+                    filters,
+                    activation,
+                    kernel,
+                    stride,
+                    padding,
+                    dropout,
+                ) => Layer::Convolution(convolution::Convolution::create(
+                    input.clone(),
+                    *filters,
+                    activation,
+                    *kernel,
+                    *stride,
+                    *padding,
+                    *dropout,
+                )),
+                feedback::Layer::Maxpool(kernel, stride) => {
+                    Layer::Maxpool(maxpool::Maxpool::create(input.clone(), *kernel, *stride))
+                }
+            });
+            input = match _layers.last().unwrap() {
+                Layer::Dense(layer) => layer.outputs.clone(),
+                Layer::Convolution(layer) => layer.outputs.clone(),
+                Layer::Maxpool(layer) => layer.outputs.clone(),
+                Layer::Feedback(layer) => layer.outputs.clone(),
             };
-            assert_eq_shape!(self.input, inputs);
-            self.layers
-                .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
-            return;
         }
+
         self.layers
-            .push(Layer::Feedback(feedback::Feedback::create(layers, loops)));
+            .push(Layer::Feedback(feedback::Feedback::create(_layers, loops)));
     }
 
     /// Add a loop connection between two layers.
