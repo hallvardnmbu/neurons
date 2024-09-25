@@ -204,8 +204,8 @@ impl Feedback {
         self.optimizer = optimizer;
     }
 
-    // Count the number of parameters.
-    // Only counts the parameters of the first loop, as the rest are identical (coupled).
+    /// Count the number of parameters.
+    /// Only counts the parameters of the first loop, as the rest are identical (coupled).
     pub fn parameters(&self) -> usize {
         let mut parameters = 0;
         for idx in 0..self.coupled.len() {

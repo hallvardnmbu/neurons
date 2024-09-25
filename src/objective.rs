@@ -847,34 +847,34 @@ mod tests {
     fn test_function_display() {
         assert_eq!(
             format!("{}", Function::create(Objective::AE, None)),
-            "AE(gradient_clamp=(-inf, inf))"
+            "AE (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::MAE, Some((-1.0, 1.0)))),
-            "MAE(gradient_clamp=(-1.0, 1.0))"
+            "MAE (gradient clamp=(-1.0, 1.0))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::MSE, None)),
-            "MSE(gradient_clamp=(-inf, inf))"
+            "MSE (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::RMSE, Some((-0.5, 0.5)))),
-            "RMSE(gradient_clamp=(-0.5, 0.5))"
+            "RMSE (gradient clamp=(-0.5, 0.5))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::CrossEntropy, None)),
-            "CrossEntropy(gradient_clamp=(-inf, inf))"
+            "CrossEntropy (gradient clamp=(-inf, inf))"
         );
         assert_eq!(
             format!(
                 "{}",
                 Function::create(Objective::BinaryCrossEntropy, Some((-2.0, 2.0)))
             ),
-            "BinaryCrossEntropy(gradient_clamp=(-2.0, 2.0))"
+            "BinaryCrossEntropy (gradient clamp=(-2.0, 2.0))"
         );
         assert_eq!(
             format!("{}", Function::create(Objective::KLDivergence, None)),
-            "KLDivergence(gradient_clamp=(-inf, inf))"
+            "KLDivergence (gradient clamp=(-inf, inf))"
         );
     }
 }
