@@ -84,6 +84,8 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
+    // Note: Weight coupling uses the network's accumulator.
+    // For (presumably) best results, `Mean` should be used.
     network.set_accumulation(feedback::Accumulation::Mean);
 
     network.set_optimizer(optimizer::SGD::create(

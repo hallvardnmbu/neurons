@@ -34,6 +34,9 @@
 > * Inferred input shapes when adding layers.
 > * Easily specify activation functions, biases, and dropout.
 > * Customizable objective functions and optimization techniques.
+> * Feedback loops and -blocks for more advanced architectures.
+> * Skip connections with simple accumulation specification.
+> * Much more!
 >
 > ### Fast
 > * Leveraging Rust's performance and parallelization capabilities.
@@ -44,6 +47,7 @@
 >
 > ### Various examples showcasing the capabilities
 > * Located in the `examples/` directory.
+> With subdirectories for various tasks, showcasing the different architectures and techniques.
 
 ## The package
 
@@ -53,11 +57,17 @@ The package is divided into separate modules, each containing different parts of
 >
 > #### tensor.rs
 > > Describes the custom tensor struct and its operations.<br>
-> > A tensor is here divided into four different types:
+> > A tensor is here divided into four main types:
 > > * `Single`: One-dimensional data (`Vec<_>`).
 > > * `Double`: Two-dimensional data (`Vec<Vec<_>>`).
 > > * `Triple`: Three-dimensional data (`Vec<Vec<Vec<_>>>`).
 > > * `Quadruple`: Four-dimensional data (`Vec<Vec<Vec<Vec<_>>>>`).
+> >
+> > And further into two additional helper-types:
+> > * `Quintuple`: Five-dimensional data (`Vec<Vec<Vec<Vec<Vec<(usize, usize)>>>>>`).
+> > Used to hold maxpool indices.
+> > * `Nested`: A nested tensor (`Vec<Tensor>`).
+> > Used through feedback blocks.
 > >
 > > Each shape following the same pattern of operations, but with increasing dimensions.<br>
 > > Thus, every tensor contains information about its shape and data.<br>
@@ -85,6 +95,9 @@ The package is divided into separate modules, each containing different parts of
 > #### maxpool.rs
 > >  Describes the maxpool layer and its operations.<br>
 > >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
+>
+> #### feedback.rs
+> >  Describe the feedback block and its operations.<br>
 
 ### Functions
 >
@@ -96,6 +109,11 @@ The package is divided into separate modules, each containing different parts of
 >
 > #### optimizer.rs
 > > Contains all the possible optimization techniques to be used.
+
+### Examples
+>
+> #### plot.rs
+> > Contains the plotting functionality for the examples.
 
 
 ## Quickstart
@@ -151,46 +169,70 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.4.0 – Feedback blocks.</summary>
+
+  Thorough expansion of the feedback module.
+  Feedback blocks automatically handle weight coupling and skip connections.
+
+  When defining a feedback block in the network's layers, the following syntax is used:
+
+  ```rs
+  network.feedback(
+      vec![feedback::Layer::Convolution(
+          1,
+          activation::Activation::ReLU,
+          (3, 3),
+          (1, 1),
+          (1, 1),
+          None,
+      )],
+      2,
+      true,
+  );
+  ```
+</details>
+
+<details>
   <summary>v2.3.0 – Skip connection.</summary>
 
-    Add possibility of skip connections.
+  Add possibility of skip connections.
 
-    Limitations:
-    * Only works between equal shapes.
-    * Backward pass assumes an identity mapping (gradients are simply added).
+  Limitations:
+  * Only works between equal shapes.
+  * Backward pass assumes an identity mapping (gradients are simply added).
 </details>
 
 <details>
   <summary>v2.2.0 – Selectable scaling wrt. loopbacks.</summary>
 
-    Add possibility of selecting the scaling function.
-    * `tensor::Scale`
-    * `feedback::Accumulation`
-    See implementations of the above for more information.
+  Add possibility of selecting the scaling function.
+  * `tensor::Scale`
+  * `feedback::Accumulation`
+  See implementations of the above for more information.
 </details>
 
 <details>
   <summary>v2.1.0 – Maxpool tensor consistency.</summary>
 
-    Update maxpool logic to ensure consistency wrt. other layers.
-    Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
-    This will lead to consistency when implementing maxpool for `feedback` blocks.
+  Update maxpool logic to ensure consistency wrt. other layers.
+  Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
+  This will lead to consistency when implementing maxpool for `feedback` blocks.
 </details>
 
 <details>
   <summary>v2.0.5 – Bug fixes and renaming.</summary>
 
-    Minor bug fixes to feedback connections.
-    Rename simple feedback connections to `loopback` connections for consistency.
+  Minor bug fixes to feedback connections.
+  Rename simple feedback connections to `loopback` connections for consistency.
 </details>
 
 <details>
   <summary>v2.0.4 – Initial feedback block structure.</summary>
 
-    Add skeleton for feedback block structure.
-    Missing correct handling of backward pass.
+  Add skeleton for feedback block structure.
+  Missing correct handling of backward pass.
 
-    How should the optimizer be handled (wrt. buffer, etc.)?
+  How should the optimizer be handled (wrt. buffer, etc.)?
 </details>
 
 <details>
@@ -231,94 +273,94 @@ fn main() {
 <details>
   <summary>v2.0.2 – Improved compatability of differing layers.</summary>
 
-    Layers now automatically reshape input tensors to the correct shape.
-    I.e., your network could be conv->dense->conv etc.
-    Earlier versions only allowed conv/maxpool->dense connections.
+  Layers now automatically reshape input tensors to the correct shape.
+  I.e., your network could be conv->dense->conv etc.
+  Earlier versions only allowed conv/maxpool->dense connections.
 
-    Note: While this is now possible, some testing proved this to be suboptimal in terms of performance.
+  Note: While this is now possible, some testing proved this to be suboptimal in terms of performance.
 </details>
 
 <details>
   <summary>v2.0.1 – Optimized optimizer step.</summary>
 
-    Combines operations to single-loop instead of repeadedly iterating over the `tensor::Tensor`'s.
+  Combines operations to single-loop instead of repeadedly iterating over the `tensor::Tensor`'s.
 
-    Benchmarking `benches/benchmark.rs` (mnist version):
+  Benchmarking `benches/benchmark.rs` (mnist version):
 
-    v2.0.1: 16.504570304s (1.05x speedup)
-    v2.0.0: 17.268632412s
+  v2.0.1: 16.504570304s (1.05x speedup)
+  v2.0.0: 17.268632412s
 </details>
 
 <details>
   <summary>v2.0.0 – Fix batched weight updates.</summary>
 
-    Weight updates are now batched correctly.
-    See `network::Network::learn` for details.
+  Weight updates are now batched correctly.
+  See `network::Network::learn` for details.
 
-    Benchmarking examples/example_benchmark.rs (mnist version):
+  Benchmarking examples/example_benchmark.rs (mnist version):
 
-    batched (128): 17.268632412s (4.82x speedup)
-    unbatched (1): 83.347593292s
+  batched (128): 17.268632412s (4.82x speedup)
+  unbatched (1): 83.347593292s
 </details>
 
 <details>
   <summary>v1.1.0 – Improved optimizer step.</summary>
 
-    Optimizer step more intuitive and easy to read.
-    Using `tensor::Tensor` instead of manually handing vectors.
+  Optimizer step more intuitive and easy to read.
+  Using `tensor::Tensor` instead of manually handing vectors.
 </details>
 
 <details>
   <summary>v1.0.0 – Fully working integrated network.</summary>
 
-    Network of convolutional and dense layers works.
+  Network of convolutional and dense layers works.
 </details>
 
 <details>
   <summary>v0.3.0 – Batched training; parallelization.</summary>
 
-    Batched training (`network::Network::learn`).
-    Parallelization of batches (`rayon`).
+  Batched training (`network::Network::learn`).
+  Parallelization of batches (`rayon`).
 
-    Benchmarking `examples/example_benchmark.rs` (iris version):
+  Benchmarking `examples/example_benchmark.rs` (iris version):
 
-    v0.3.0: 0.318811179s (6.95x speedup)
-    v0.2.2: 2.218362758s
+  v0.3.0: 0.318811179s (6.95x speedup)
+  v0.2.2: 2.218362758s
 </details>
 
 <details>
   <summary>v0.2.2 – Convolution.</summary>
 
-    Convolutional layer.
-    Improved documentation.
+  Convolutional layer.
+  Improved documentation.
 </details>
 
 <details>
   <summary>v0.2.0 – Feedback.</summary>
 
-    Initial feedback connection implementation.
+  Initial feedback connection implementation.
 </details>
 
 <details>
   <summary>v0.1.5 – Improved documentation.</summary>
 
-    Improved documentation.
+  Improved documentation.
 </details>
 
 <details>
   <summary>v0.1.1 – Custom tensor struct.</summary>
 
-    Custom tensor struct.
-    Unit tests.
+  Custom tensor struct.
+  Unit tests.
 </details>
 
 <details>
   <summary>v0.1.0 – Dense.</summary>
 
-    Dense feedforward network.
-    Activation functions.
-    Objective functions.
-    Optimization techniques.
+  Dense feedforward network.
+  Activation functions.
+  Objective functions.
+  Optimization techniques.
 </details>
 
 ## Progress
@@ -336,8 +378,9 @@ fn main() {
       - [x] Padding
       - [x] Stride
       - [ ] Dilation
-    - [x] Max pooling
-    - [ ] Feedback
+    - [ ] Transposed convolution (#24)
+  - [x] Max pooling
+  - [x] Feedback
 </details>
 
 <details>
@@ -380,8 +423,8 @@ fn main() {
   - [x] Feedforward (dubbed `Network`)
   - [x] Feedback loops
   - [x] Skip connections
+  - [x] Feedback blocks
   - [ ] Recurrent
-  - [ ] Feedback blocks
 </details>
 
 <details>
@@ -390,7 +433,8 @@ fn main() {
   - [x] Feedback connection
   - [x] Selectable gradient scaling
   - [x] Selectable gradient accumulation
-  - [ ] Feedback block
+  - [x] Feedback block
+    - [x] Selectable weight coupling
 </details>
 
 <details>
@@ -446,7 +490,7 @@ fn main() {
     - [x] CNN
     - [x] CNN + Skip
     - [x] CNN + Looping
-    - [ ] CNN + Feedback
+    - [x] CNN + Feedback
   - [ ] CIFAR-10
     - [x] CNN
     - [ ] CNN + Skip
