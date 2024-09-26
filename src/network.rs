@@ -315,7 +315,7 @@ impl Network {
     /// * The feedback block must have at least one layer.
     /// * The input and output shapes of the feedback block must match.
     ///   - To allow for loops.
-    pub fn feedback(&mut self, layers: Vec<feedback::Layer>, loops: usize) {
+    pub fn feedback(&mut self, layers: Vec<feedback::Layer>, loops: usize, skips: bool) {
         assert!(
             !layers.is_empty(),
             "Feedback block must have at least one layer."
@@ -375,8 +375,12 @@ impl Network {
             };
         }
 
-        self.layers
-            .push(Layer::Feedback(feedback::Feedback::create(_layers, loops)));
+        self.layers.push(Layer::Feedback(feedback::Feedback::create(
+            _layers,
+            loops,
+            skips,
+            self.accumulation.clone(),
+        )));
     }
 
     /// Add a loop connection between two layers.
@@ -473,6 +477,13 @@ impl Network {
     /// Note that this is only relevant for loopback- and skip connections.
     pub fn set_accumulation(&mut self, accumulation: feedback::Accumulation) {
         self.accumulation = accumulation;
+
+        for layer in self.layers.iter_mut() {
+            match layer {
+                Layer::Feedback(ref mut layer) => layer.accumulation = self.accumulation.clone(),
+                _ => (),
+            }
+        }
     }
 
     /// Set the `activation::Activation` function of a layer.

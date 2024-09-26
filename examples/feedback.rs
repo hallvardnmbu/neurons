@@ -14,6 +14,7 @@ fn main() {
             feedback::Layer::Dense(256, activation::Activation::ReLU, false, None),
         ],
         2,
+        true,
     );
 
     network.dense(10, activation::Activation::Sigmoid, false, None);

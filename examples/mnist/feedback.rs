@@ -79,6 +79,7 @@ fn main() {
             None,
         )],
         2,
+        true,
     );
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
