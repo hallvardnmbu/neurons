@@ -22,12 +22,13 @@ pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, title: &str, path: &str) {
         .fold(f32::NEG_INFINITY, f32::max)
         .max(validation.iter().copied().fold(f32::NEG_INFINITY, f32::max))
         + 0.2;
-    let min = train
-        .iter()
-        .copied()
-        .fold(f32::INFINITY, f32::min)
-        .min(validation.iter().copied().fold(f32::INFINITY, f32::min))
-        - 0.2;
+    // let min = train
+    //     .iter()
+    //     .copied()
+    //     .fold(f32::INFINITY, f32::min)
+    //     .min(validation.iter().copied().fold(f32::INFINITY, f32::min))
+    //     - 0.2;
+    let min = 0.0;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(5)
@@ -108,7 +109,7 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
         let data = &x[0];
         for (y, row) in data.iter().enumerate() {
             for (x, &value) in row.iter().enumerate() {
-                let gray = (value * 255.0) as u8;
+                let gray = 255 - (value * 255.0) as u8;
                 let color = RGBColor(gray, gray, gray);
                 chart
                     .draw_series(std::iter::once(Rectangle::new(
@@ -123,8 +124,14 @@ pub fn heatmap(data: &tensor::Tensor, title: &str, path: &str) {
         let data_r = &x[0];
         let data_g = &x[1];
         let data_b = &x[2];
-        for (y, (row_r, (row_g, row_b))) in data_r.iter().zip(data_g.iter().zip(data_b.iter())).enumerate() {
-            for (x, (&value_r, (&value_g, &value_b))) in row_r.iter().zip(row_g.iter().zip(row_b.iter())).enumerate() {
+        for (y, (row_r, (row_g, row_b))) in data_r
+            .iter()
+            .zip(data_g.iter().zip(data_b.iter()))
+            .enumerate()
+        {
+            for (x, (&value_r, (&value_g, &value_b))) in
+                row_r.iter().zip(row_g.iter().zip(row_b.iter())).enumerate()
+            {
                 let r = (value_r * 255.0) as u8;
                 let g = (value_g * 255.0) as u8;
                 let b = (value_b * 255.0) as u8;
