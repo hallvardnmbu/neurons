@@ -808,7 +808,7 @@ impl Network {
                     feedback::Accumulation::Add => {
                         x.add_inplace(&_x);
                     }
-                    feedback::Accumulation::Sub => {
+                    feedback::Accumulation::Subtract => {
                         x.sub_inplace(&_x);
                     }
                     feedback::Accumulation::Multiply => {
@@ -868,7 +868,7 @@ impl Network {
                                 }
                             }
                         }
-                        feedback::Accumulation::Sub => {
+                        feedback::Accumulation::Subtract => {
                             unactivated[j].sub_inplace(&fpre[idx]);
                             activated[j + 1].sub_inplace(&fpost[idx]);
 

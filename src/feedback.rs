@@ -7,7 +7,7 @@ use crate::{activation, assert_eq_shape, network, optimizer, tensor};
 #[derive(Clone)]
 pub enum Accumulation {
     Add,
-    Sub,
+    Subtract,
     Multiply,
     Overwrite,
     Mean,
@@ -18,7 +18,7 @@ impl std::fmt::Display for Accumulation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Accumulation::Add => write!(f, "additive"),
-            Accumulation::Sub => write!(f, "subtractive"),
+            Accumulation::Subtract => write!(f, "subtractive"),
             Accumulation::Multiply => write!(f, "multiplicative"),
             Accumulation::Overwrite => write!(f, "overwrite"),
             Accumulation::Mean => write!(f, "mean"),
@@ -338,7 +338,7 @@ impl Feedback {
                     Accumulation::Add => {
                         x.add_inplace(&_x);
                     }
-                    Accumulation::Sub => {
+                    Accumulation::Subtract => {
                         x.sub_inplace(&_x);
                     }
                     Accumulation::Multiply => {
@@ -522,62 +522,93 @@ impl Feedback {
         // Iterates through `self.coupled` and updates the weights and biases to match.
         for couple in self.coupled.iter() {
             let mut count: f32 = 0.0;
-            let mut weights: Option<tensor::Tensor> = None;
-            let mut biases: Option<tensor::Tensor> = None;
+            let mut weights: Vec<tensor::Tensor> = Vec::new();
+            let mut biases: Vec<tensor::Tensor> = Vec::new();
 
             // Add the weights and biases of the coupled layers.
-            for (idx, i) in couple.iter().enumerate() {
-                match &self.layers[*i] {
+            for idx in couple.iter() {
+                match &self.layers[*idx] {
                     network::Layer::Dense(layer) => {
-                        if idx == 0 {
-                            weights = Some(layer.weights.clone());
-                            if let Some(bias) = &layer.bias {
-                                biases = Some(bias.clone());
-                            }
-                        } else {
-                            if let Some(ref mut w) = weights {
-                                w.add_inplace(&layer.weights);
-                            }
-                            if let Some(ref mut b) = biases {
-                                if let Some(bias) = &layer.bias {
-                                    b.add_inplace(&bias);
-                                }
-                            }
+                        weights.push(layer.weights.clone());
+                        if let Some(bias) = &layer.bias {
+                            biases.push(bias.clone());
                         }
                     }
                     network::Layer::Convolution(layer) => {
-                        if idx == 0 {
-                            weights = Some(tensor::Tensor::nested(layer.kernels.clone()));
-                        } else {
-                            if let Some(ref mut w) = weights {
-                                w.add_inplace(&tensor::Tensor::nested(layer.kernels.clone()));
-                            }
-                        }
+                        weights.push(tensor::Tensor::nested(layer.kernels.clone()));
                     }
                     _ => continue,
                 }
                 count += 1.0;
             }
 
-            // Average the weights and biases.
-            if let Some(ref mut weights) = weights {
-                weights.div_scalar_inplace(count);
-            }
-            if let Some(ref mut biases) = biases {
-                biases.div_scalar_inplace(count);
+            let mut weight: tensor::Tensor = weights.remove(0);
+            let mut bias: Option<tensor::Tensor> = if biases.is_empty() {
+                None
+            } else {
+                Some(biases.remove(0))
+            };
+            match self.accumulation {
+                Accumulation::Add => {
+                    for w in weights.iter() {
+                        weight.add_inplace(w);
+                    }
+                    if let Some(bias) = &mut bias {
+                        for b in biases.iter() {
+                            bias.add_inplace(b);
+                        }
+                    }
+                }
+                Accumulation::Multiply => {
+                    for w in weights.iter() {
+                        weight.mul_inplace(w);
+                    }
+                    if let Some(bias) = &mut bias {
+                        for b in biases.iter() {
+                            bias.mul_inplace(b);
+                        }
+                    }
+                }
+                Accumulation::Subtract => {
+                    for w in weights.iter() {
+                        weight.sub_inplace(w);
+                    }
+                    if let Some(bias) = &mut bias {
+                        for b in biases.iter() {
+                            bias.sub_inplace(b);
+                        }
+                    }
+                }
+                Accumulation::Mean => {
+                    for w in weights.iter() {
+                        weight.add_inplace(w);
+                    }
+                    if let Some(bias) = &mut bias {
+                        for b in biases.iter() {
+                            bias.add_inplace(b);
+                        }
+                    }
+                    weight.div_scalar_inplace(count);
+                    if let Some(b) = &mut bias {
+                        b.div_scalar_inplace(count);
+                    }
+                }
+                Accumulation::Overwrite => {
+                    // Do nothing?
+                }
             }
 
             // Update the weights and biases of the coupled layers.
             for i in couple.iter() {
                 match &mut self.layers[*i] {
                     network::Layer::Dense(layer) => {
-                        layer.weights = weights.as_ref().unwrap().clone();
+                        layer.weights = weight.clone();
                         if let Some(bias) = &mut layer.bias {
-                            *bias = biases.as_ref().unwrap().clone();
+                            *bias = bias.clone();
                         }
                     }
                     network::Layer::Convolution(layer) => {
-                        layer.kernels = weights.as_ref().unwrap().unnested();
+                        layer.kernels = weight.unnested();
                     }
                     _ => continue,
                 }
