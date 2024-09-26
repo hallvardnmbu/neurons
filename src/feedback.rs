@@ -190,8 +190,9 @@ impl Feedback {
         let length = layers.len();
 
         // Extend the layers `loops` times.
+        let _layers = layers.clone();
         for _ in 1..loops {
-            layers.extend(layers.clone());
+            layers.extend(_layers.clone());
         }
 
         // Define the coupled layers.

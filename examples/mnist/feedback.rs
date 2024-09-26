@@ -69,6 +69,14 @@ fn main() {
 
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
+    network.convolution(
+        1,
+        (3, 3),
+        (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        None,
+    );
     network.feedback(
         vec![feedback::Layer::Convolution(
             1,
@@ -78,7 +86,7 @@ fn main() {
             (1, 1),
             None,
         )],
-        2,
+        3,
         true,
     );
     network.maxpool((2, 2), (2, 2));
@@ -89,8 +97,8 @@ fn main() {
     network.set_accumulation(feedback::Accumulation::Mean);
 
     network.set_optimizer(optimizer::SGD::create(
-        0.001, // Learning rate
-        None,  // Decay
+        0.0001, // Learning rate
+        None,   // Decay
     ));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
