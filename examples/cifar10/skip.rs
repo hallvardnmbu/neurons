@@ -88,10 +88,17 @@ fn main() {
 
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
 
-    // Adding 20 convolutional layers.
-    for _ in 0..21 {
+    network.convolution(
+        32,
+        (5, 5),
+        (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        None,
+    );
+    for _ in 0..3 {
         network.convolution(
-            4,
+            32,
             (3, 3),
             (1, 1),
             (1, 1),
@@ -99,18 +106,15 @@ fn main() {
             None,
         );
     }
+    network.maxpool((2, 2), (2, 2));
+    network.dense(128, activation::Activation::ReLU, true, None);
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    // Adding skip connections between every `skip` layer.
-    let skip: usize = 4;
-    for i in 0..(20 / skip) {
-        network.connect(i * skip + 1, i * skip + skip);
-    }
+    // Adding a skip connection.
+    network.connect(1, 4);
     network.set_accumulation(feedback::Accumulation::Add);
 
-    network.set_optimizer(optimizer::RMSprop::create(
-        0.01, 0.9, 1e-7, None, None, false,
-    ));
+    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
         None,                               // Gradient clipping

@@ -531,6 +531,9 @@ fn main() {
 * [convolution 1](https://deeplearning.cs.cmu.edu/F21/document/recitation/Recitation5/CNN_Backprop_Recitation_5_F21.pdf)
 * [convolution 2](https://www.jefkine.com/general/2016/09/05/backpropagation-in-convolutional-neural-networks/)
 * [convolution 3](https://sites.cc.gatech.edu/classes/AY2021/cs7643_spring/assets/L11_CNNs.pdf)
+* [skip connection](https://arxiv.org/abs/1512.03385)
+* [feedback 1](https://arxiv.org/abs/1604.03640)
+* [feedback 2](https://cs231n.stanford.edu/reports/2016/pdfs/110_Report.pdf)
 
 #### Tools used
 

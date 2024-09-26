@@ -16,7 +16,6 @@ static/
 .DS_Store
 .idea/
 Icon?
-**/*.py
 
 # Datasets.
 examples/datasets/mnist/*

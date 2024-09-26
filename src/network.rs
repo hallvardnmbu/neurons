@@ -6,6 +6,7 @@ use crate::{
 };
 
 use rayon::prelude::*;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -850,7 +851,8 @@ impl Network {
                 // current.add_inplace(&activated[self.loopbacks[&i]]);
 
                 // Perform the forward pass of the feedback loop.
-                let (fpre, fpost, fmax, ffbs) = self._forward(&current, self.loopbacks[&i], i + 1);
+                // TODO: Handle feedback blocks inside loopbacks. Or; panic?
+                let (fpre, fpost, fmax, _) = self._forward(&current, self.loopbacks[&i], i + 1);
 
                 // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
