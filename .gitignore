@@ -19,5 +19,6 @@ Icon?
 
 # Datasets.
 examples/datasets/mnist/*
+examples/datasets/mnist-fashion/*
 examples/datasets/cifar10/*
 documentation/validation/datasets/*

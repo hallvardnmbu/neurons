@@ -58,6 +58,22 @@ name = "mnist-feedback"
 path = "examples/mnist/feedback.rs"
 
 [[example]]
+name = "fashion-plain"
+path = "examples/mnist-fashion/plain.rs"
+
+[[example]]
+name = "fashion-skip"
+path = "examples/mnist-fashion/skip.rs"
+
+[[example]]
+name = "fashion-looping"
+path = "examples/mnist-fashion/looping.rs"
+
+[[example]]
+name = "fashion-feedback"
+path = "examples/mnist-fashion/feedback.rs"
+
+[[example]]
 name = "cifar10-plain"
 path = "examples/cifar10/plain.rs"
 

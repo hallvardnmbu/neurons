@@ -472,27 +472,18 @@ fn main() {
 
   - [x] XOR
   - [x] Iris
-    - [x] MLP
-    - [ ] MLP + Looping
-    - [ ] MLP + Feedback
-  - [ ] Linear regression
-    - [ ] MLP
-    - [ ] MLP + Looping
-    - [ ] MLP + Feedback
-  - [ ] Classification TBA.
-    - [ ] MLP
-    - [ ] MLP + Looping
-    - [ ] MLP + Feedback
-  - [ ] MNIST
-    - [ ] MLP
-    - [ ] MLP + Looping
-    - [ ] MLP + Feedback
+  - [x] MNIST
+    - [x] CNN
+    - [x] CNN + Skip
+    - [x] CNN + Looping
+    - [x] CNN + Feedback
+  - [x] Fashion-MNIST
     - [x] CNN
     - [x] CNN + Skip
     - [x] CNN + Looping
     - [x] CNN + Feedback
   - [ ] CIFAR-10
-    - [x] CNN
+    - [ ] CNN
     - [ ] CNN + Skip
     - [ ] CNN + Looping
     - [ ] CNN + Feedback
