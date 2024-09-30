@@ -10,42 +10,47 @@ use plotters::prelude::*;
 ///
 /// * `train` - The training loss.
 /// * `validation` - The validation loss.
+/// * `accuracy` - The validation accuracy.
 /// * `title` - The title of the plot.
 /// * `path` - The path to save the plot.
-pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, title: &str, path: &str) {
+pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, accuracy: &Vec<f32>, title: &str, path: &str) {
     let root = BitMapBackend::new(path, (800, 800)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
-    let max = train
+    let min_loss = 0.0;
+    let max_loss = train
         .iter()
         .copied()
         .fold(f32::NEG_INFINITY, f32::max)
         .max(validation.iter().copied().fold(f32::NEG_INFINITY, f32::max))
         + 0.2;
-    // let min = train
-    //     .iter()
-    //     .copied()
-    //     .fold(f32::INFINITY, f32::min)
-    //     .min(validation.iter().copied().fold(f32::INFINITY, f32::min))
-    //     - 0.2;
-    let min = 0.0;
 
     let mut chart = ChartBuilder::on(&root)
         .margin(5)
-        .caption(title, ("monospace", 40).into_font().color(&BLACK))
+        .caption(title, ("monospace", 26).into_font().color(&BLACK))
         .x_label_area_size(50)
         .y_label_area_size(50)
-        .build_cartesian_2d(0..train.len() - 1, min..max)
-        .unwrap();
+        .right_y_label_area_size(50)
+        .build_cartesian_2d(0..train.len() - 1, min_loss..max_loss)
+        .unwrap()
+        .set_secondary_coord(0..train.len() - 1, 0.0..1.0);
 
     chart
         .configure_mesh()
-        .x_desc("Epoch")
-        .y_desc("Loss")
+        .x_desc("EPOCH")
+        .y_desc("LOSS")
         .axis_desc_style(("monospace", 20).into_font().color(&BLACK))
         .label_style(("monospace", 15).into_font().color(&BLACK))
         .light_line_style(&BLACK.mix(0.3))
         .disable_mesh()
+        .draw()
+        .unwrap();
+
+    chart
+        .configure_secondary_axes()
+        .y_desc("ACCURACY")
+        .axis_desc_style(("monospace", 20).into_font().color(&BLACK))
+        .label_style(("monospace", 15).into_font().color(&BLACK))
         .draw()
         .unwrap();
 
@@ -55,17 +60,44 @@ pub fn loss(train: &Vec<f32>, validation: &Vec<f32>, title: &str, path: &str) {
             ShapeStyle::from(&BLACK).stroke_width(1),
         ))
         .unwrap()
-        .label("Train")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLACK));
+        .label("TRAIN LOSS")
+        .legend(|(x, y)| {
+            PathElement::new(
+                vec![(x, y), (x + 20, y)],
+                ShapeStyle::from(&full_palette::BLACK).stroke_width(3),
+            )
+        });
 
     chart
         .draw_series(LineSeries::new(
             validation.iter().enumerate().map(|(i, &value)| (i, value)),
-            ShapeStyle::from(&RED).stroke_width(1),
+            ShapeStyle::from(&full_palette::AMBER_800).stroke_width(1),
         ))
         .unwrap()
-        .label("Validation")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+        .label("VALIDATION LOSS")
+        .legend(|(x, y)| {
+            PathElement::new(
+                vec![(x, y), (x + 20, y)],
+                ShapeStyle::from(&full_palette::AMBER_800).stroke_width(3),
+            )
+        });
+
+    chart
+        .draw_secondary_series(LineSeries::new(
+            accuracy
+                .iter()
+                .enumerate()
+                .map(|(i, &value)| (i, value as f64)),
+            ShapeStyle::from(&full_palette::LIGHTGREEN_700).stroke_width(1),
+        ))
+        .unwrap()
+        .label("VALIDATION ACCURACY")
+        .legend(|(x, y)| {
+            PathElement::new(
+                vec![(x, y), (x + 20, y)],
+                ShapeStyle::from(&full_palette::LIGHTGREEN_700).stroke_width(3),
+            )
+        });
 
     chart
         .configure_series_labels()

@@ -617,8 +617,7 @@ impl Network {
         batch: usize,
         epochs: i32,
         print: Option<i32>,
-    ) -> (Vec<f32>, Vec<f32>) {
-        let mut val_acc: Option<f32> = None;
+    ) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
         let mut threshold: Option<i32> = None;
         if let Some((_, _, limit)) = validation {
             threshold = Some(limit);
@@ -648,6 +647,7 @@ impl Network {
 
         let mut train_loss = Vec::new();
         let mut val_loss = Vec::new();
+        let mut val_acc = Vec::new();
 
         // Split the input data into batches.
         let batches: Vec<(&[&tensor::Tensor], &[&tensor::Tensor])> = inputs
@@ -722,17 +722,17 @@ impl Network {
             if let Some((val_inputs, val_targets, _)) = validation {
                 let (_val_loss, _val_acc) = self.validate(val_inputs, val_targets, 1e-6);
                 val_loss.push(_val_loss);
-                val_acc = Some(_val_acc);
+                val_acc.push(_val_acc);
             }
 
             if let Some(print) = print {
-                if epoch % print == 0 && val_acc.is_some() {
+                if epoch % print == 0 && !val_acc.is_empty() {
                     println!(
                         "{:>5} \t {:>10.5} | {:<10.5} \t {:>8.2} %",
                         epoch,
                         val_loss.last().unwrap(),
                         train_loss.last().unwrap(),
-                        val_acc.unwrap() * 100.0
+                        val_acc.last().unwrap() * 100.0
                     );
                 } else if epoch % print == 0 {
                     println!("{:>5} \t {:>10.5}", epoch, train_loss.last().unwrap(),);
@@ -768,7 +768,7 @@ impl Network {
             }
         }
 
-        (train_loss, val_loss)
+        (train_loss, val_loss, val_acc)
     }
 
     /// Compute the forward pass of the network for the given input, including all intermediate

@@ -123,7 +123,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) = network.learn(
+    let (train_loss, val_loss, val_acc) = network.learn(
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 5)),
@@ -134,7 +134,8 @@ fn main() {
     plot::loss(
         &train_loss,
         &val_loss,
-        "Loss per epoch",
+        &val_acc,
+        "SKIP : CIFAR-10",
         "./static/cifar10-skip.png",
     );
 

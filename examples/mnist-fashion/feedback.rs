@@ -78,7 +78,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        6,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -87,7 +87,7 @@ fn main() {
     );
     network.feedback(
         vec![feedback::Layer::Convolution(
-            6,
+            1,
             activation::Activation::ReLU,
             (3, 3),
             (1, 1),
@@ -98,7 +98,7 @@ fn main() {
         true,
     );
     network.convolution(
-        6,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -124,7 +124,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) = network.learn(
+    let (train_loss, val_loss, val_acc) = network.learn(
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 10)),
@@ -135,7 +135,8 @@ fn main() {
     plot::loss(
         &train_loss,
         &val_loss,
-        "Loss per epoch",
+        &val_acc,
+        "FEEDBACK : Fashion-MNIST",
         "./static/fashion-feedback.png",
     );
 

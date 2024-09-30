@@ -50,7 +50,7 @@ name = "mnist-skip"
 path = "examples/mnist/skip.rs"
 
 [[example]]
-name = "mnist-looping"
+name = "mnist-loop"
 path = "examples/mnist/looping.rs"
 
 [[example]]
@@ -66,7 +66,7 @@ name = "fashion-skip"
 path = "examples/mnist-fashion/skip.rs"
 
 [[example]]
-name = "fashion-looping"
+name = "fashion-loop"
 path = "examples/mnist-fashion/looping.rs"
 
 [[example]]
@@ -82,5 +82,5 @@ name = "cifar10-skip"
 path = "examples/cifar10/skip.rs"
 
 [[example]]
-name = "cifar10-looping"
+name = "cifar10-loop"
 path = "examples/cifar10/looping.rs"

@@ -93,7 +93,7 @@ fn main() {
         );
 
         // Train the network
-        let (train_loss, _) = network.learn(&x_train, &y_train, None, 128, 10, None);
+        let (train_loss, _, _) = network.learn(&x_train, &y_train, None, 128, 10, None);
 
         println!("Iteration: {}, Loss: {:?}", iteration, train_loss);
 

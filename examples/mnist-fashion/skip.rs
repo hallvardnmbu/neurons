@@ -78,7 +78,7 @@ fn main() {
     let mut network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
 
     network.convolution(
-        6,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -86,7 +86,7 @@ fn main() {
         None,
     );
     network.convolution(
-        6,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -94,7 +94,7 @@ fn main() {
         None,
     );
     network.convolution(
-        6,
+        1,
         (3, 3),
         (1, 1),
         (1, 1),
@@ -104,7 +104,7 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.connect(1, 3);
+    network.connect(0, 3);
 
     network.set_optimizer(optimizer::SGD::create(
         0.0001, // Learning rate
@@ -118,7 +118,7 @@ fn main() {
     println!("{}", network);
 
     // Train the network
-    let (train_loss, val_loss) = network.learn(
+    let (train_loss, val_loss, val_acc) = network.learn(
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 10)),
@@ -129,7 +129,8 @@ fn main() {
     plot::loss(
         &train_loss,
         &val_loss,
-        "Loss per epoch",
+        &val_acc,
+        "SKIP : Fashion-MNIST",
         "./static/fashion-skip.png",
     );
 

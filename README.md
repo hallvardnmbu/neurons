@@ -162,7 +162,7 @@ fn main() {
   let batch = 32;                // Minibatch size
   let epochs = 100;              // Number of epochs
   let print = Some(10);          // Print every 10th epoch
-  let (train_loss, val_loss) = network.learn(x, y, validation, batch, epochs, print);
+  let (train_loss, val_loss, val_acc) = network.learn(x, y, validation, batch, epochs, print);
 }
 ```
 

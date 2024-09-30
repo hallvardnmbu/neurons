@@ -95,7 +95,7 @@ fn main() {
     );
 
     // Train the network
-    let (_train_loss, _val_loss) = network.learn(
+    let (_train_loss, _val_loss, _val_acc) = network.learn(
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 5)),
