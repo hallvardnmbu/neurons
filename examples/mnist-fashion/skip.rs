@@ -104,7 +104,7 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.connect(0, 3);
+    network.connect(0, 2);
 
     network.set_optimizer(optimizer::SGD::create(
         0.0001, // Learning rate

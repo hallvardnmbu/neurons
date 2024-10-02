@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, plot, tensor};
+use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
 
 use std::{
     fs::File,
@@ -123,10 +123,21 @@ fn main() {
 
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(571));
-
-    network.dense(192, activation::Activation::ReLU, false, None);
+    network.dense(96, activation::Activation::ReLU, false, None);
+    network.feedback(
+        vec![feedback::Layer::Dense(
+            96,
+            activation::Activation::ReLU,
+            false,
+            None,
+        )],
+        3,
+        true,
+    );
     network.dense(96, activation::Activation::ReLU, false, None);
     network.dense(28, activation::Activation::Softmax, false, None);
+
+    network.set_accumulation(feedback::Accumulation::Mean);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
@@ -138,7 +149,7 @@ fn main() {
         &x_train,
         &class_train,
         Some((&x_val, &class_val, 50)),
-        40,
+        16,
         500,
         Some(100),
     );
@@ -146,8 +157,8 @@ fn main() {
         &train_loss,
         &val_loss,
         &val_acc,
-        "PLAIN : FTIR",
-        "./static/ftir.png",
+        "FEEDBACK : FTIR",
+        "./static/ftir-feedback.png",
     );
 
     // Validate the network

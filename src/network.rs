@@ -49,7 +49,7 @@ impl Layer {
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
 /// * `loopbacks` - The looped connections of the network.
-/// * `skips` - The skip connections of the network.
+/// * `connect` - The skip connections of the network.
 /// * `accumulation` - The accumulation type of the network for looped- and skip connections.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
@@ -127,7 +127,7 @@ impl Network {
             layers: Vec::new(),
             loopbacks: HashMap::new(),
             connect: HashMap::new(),
-            accumulation: feedback::Accumulation::Add,
+            accumulation: feedback::Accumulation::Mean,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -1059,7 +1059,7 @@ impl Network {
             // Check for skip connections.
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
-                let gradient = gradients[self.layers.len() - connect[&idx] + 1].clone();
+                let gradient = gradients[self.layers.len() - connect[&idx]].clone();
                 gradients.last_mut().unwrap().add_inplace(&gradient);
                 // TODO: Handle accumulation methods.
             }
