@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: neurons
+message: 'Modular neural networks from scratch, in Rust.'
+type: software
+authors:
+  - given-names: Hallvard Høyland
+    family-names: Lavik
+    email: hallvardlavik@outlook.com
+repository-code: 'https://github.com/hallvardnmbu/neurons'
+url: 'https://docs.rs/neurons/latest/neurons/'
+abstract: >-
+  NEURONS is a neural network library written from scratch
+  in Rust. It provides a flexible and efficient way to
+  build, train, and evaluate neural networks. The library is
+  designed to be modular, allowing for easy customization of
+  network architectures, activation functions, objective
+  functions, and optimization techniques.
+keywords:
+  - Rust
+  - Neural network
+  - Deep learning
+license: AGPL-3.0
+version: 2.4.1
+date-released: '2024-10-02'

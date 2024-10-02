@@ -169,6 +169,12 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.4.1 – Bug-fixes.</summary>
+
+  Minor bug-fixes and example expansion.
+</details>
+
+<details>
   <summary>v2.4.0 – Feedback blocks.</summary>
 
   Thorough expansion of the feedback module.
