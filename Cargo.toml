@@ -30,6 +30,10 @@ name = "feedback"
 path = "examples/feedback.rs"
 
 [[example]]
+name = "benchmark"
+path = "examples/benchmark.rs"
+
+[[example]]
 name = "xor"
 path = "examples/xor.rs"
 
@@ -38,8 +42,8 @@ name = "iris"
 path = "examples/iris.rs"
 
 [[example]]
-name = "benchmark"
-path = "examples/benchmark.rs"
+name = "ftir-plain"
+path = "examples/ftir/plain.rs"
 
 [[example]]
 name = "mnist-plain"

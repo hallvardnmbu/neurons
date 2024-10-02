@@ -472,6 +472,17 @@ fn main() {
 
   - [x] XOR
   - [x] Iris
+  - [ ] FTIR
+    - [ ] MLP
+      - [x] Plain
+      - [ ] Skip
+      - [ ] Looping
+      - [ ] Feedback
+    - [ ] CNN
+      - [ ] Plain
+      - [ ] Skip
+      - [ ] Looping
+      - [ ] Feedback
   - [x] MNIST
     - [x] CNN
     - [x] CNN + Skip

@@ -847,8 +847,24 @@ impl Network {
                     _ => panic!("Feedback not implemented for this layer type."),
                 });
 
-                // Add the original input for of the fed-back layer to the latent representation.
-                // current.add_inplace(&activated[self.loopbacks[&i]]);
+                // Add the original input of the fed-back layer to the latent representation.
+                match self.accumulation {
+                    feedback::Accumulation::Add => {
+                        current.add_inplace(&activated[self.loopbacks[&i]]);
+                    }
+                    feedback::Accumulation::Subtract => {
+                        current.sub_inplace(&activated[self.loopbacks[&i]]);
+                    }
+                    feedback::Accumulation::Multiply => {
+                        current.mul_inplace(&activated[self.loopbacks[&i]]);
+                    }
+                    feedback::Accumulation::Overwrite => {
+                        ();
+                    }
+                    feedback::Accumulation::Mean => {
+                        current.mean_inplace(&activated[self.loopbacks[&i]])
+                    }
+                }
 
                 // Perform the forward pass of the feedback loop.
                 // TODO: Handle feedback blocks inside loopbacks. Or; panic?
