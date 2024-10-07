@@ -173,7 +173,7 @@ fn main() {
 ## Releases
 
 <details>
-  <summary>v2.4.2 – Initial deconvolution layer.</summary>
+  <summary>v2.5.0 – Deconvolution layer.</summary>
 
   Initial implementation of the deconvolution layer.
   Created with the good help of the GitHub Copilot.
