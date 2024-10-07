@@ -2,7 +2,6 @@
 
 use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
 
-use std::sync::Arc;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -125,16 +124,21 @@ fn main() {
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(571));
 
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
+    network.dense(100, activation::Activation::ReLU, false, None);
+    network.convolution(
+        1,
+        (3, 3),
+        (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        None,
+    );
     network.dense(28, activation::Activation::Softmax, false, None);
+
+    network.connect(1, 3);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
-
-    network.loopback(2, 1, Arc::new(|_| 1.0));
-    network.set_accumulation(feedback::Accumulation::Mean);
 
     println!("{}", network);
 
@@ -151,8 +155,8 @@ fn main() {
         &train_loss,
         &val_loss,
         &val_acc,
-        "LOOP : FTIR",
-        "./static/ftir-mlp-loop.png",
+        "SKIP : FTIR",
+        "./static/ftir-cnn-skip.png",
     );
 
     // Validate the network

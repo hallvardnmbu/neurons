@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
+use neurons::{activation, network, objective, optimizer, plot, tensor};
 
 use std::fs::File;
 use std::io::{BufReader, Read, Result};
@@ -52,18 +52,10 @@ fn load_labels(file_path: &str, numbers: usize) -> Result<Vec<tensor::Tensor>> {
 }
 
 fn main() {
-    let x_train = load_mnist("./examples/datasets/mnist-fashion/train-images-idx3-ubyte").unwrap();
-    let y_train = load_labels(
-        "./examples/datasets/mnist-fashion/train-labels-idx1-ubyte",
-        10,
-    )
-    .unwrap();
-    let x_test = load_mnist("./examples/datasets/mnist-fashion/t10k-images-idx3-ubyte").unwrap();
-    let y_test = load_labels(
-        "./examples/datasets/mnist-fashion/t10k-labels-idx1-ubyte",
-        10,
-    )
-    .unwrap();
+    let x_train = load_mnist("./examples/datasets/mnist/train-images-idx3-ubyte").unwrap();
+    let y_train = load_labels("./examples/datasets/mnist/train-labels-idx1-ubyte", 10).unwrap();
+    let x_test = load_mnist("./examples/datasets/mnist/t10k-images-idx3-ubyte").unwrap();
+    let y_test = load_labels("./examples/datasets/mnist/t10k-labels-idx1-ubyte", 10).unwrap();
     println!(
         "Train: {} images, Test: {} images",
         x_train.len(),
@@ -81,36 +73,29 @@ fn main() {
         1,
         (3, 3),
         (1, 1),
-        (1, 1),
+        (0, 0),
         activation::Activation::ReLU,
         None,
     );
-    network.feedback(
-        vec![feedback::Layer::Convolution(
-            1,
-            activation::Activation::ReLU,
-            (3, 3),
-            (1, 1),
-            (1, 1),
-            None,
-        )],
-        4,
-        true,
-    );
+    network.maxpool((2, 2), (2, 2));
     network.convolution(
-        1,
+        4,
         (3, 3),
         (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.deconvolution(
+        4,
+        (3, 3),
         (1, 1),
+        (0, 0),
         activation::Activation::ReLU,
         None,
     );
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
-
-    // Note: Weight coupling uses the network's accumulator.
-    // For (presumably) best results, `Mean` should be used.
-    network.set_accumulation(feedback::Accumulation::Mean);
 
     network.set_optimizer(optimizer::SGD::create(
         0.0001, // Learning rate
@@ -136,8 +121,8 @@ fn main() {
         &train_loss,
         &val_loss,
         &val_acc,
-        "FEEDBACK : Fashion-MNIST",
-        "./static/fashion-feedback.png",
+        "PLAIN : MNIST",
+        "./static/mnist-deconvolution.png",
     );
 
     // Validate the network
@@ -156,8 +141,10 @@ fn main() {
         prediction.argmax()
     );
 
-    // let x = x_test.get(5).unwrap();
-    // let y = y_test.get(5).unwrap();
+    let x = x_test.get(5).unwrap();
+    let y = y_test.get(5).unwrap();
+    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
+
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);
     // for (i, (i_pre, i_post)) in pre.iter().zip(post.iter()).enumerate() {

@@ -148,7 +148,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "PLAIN : FTIR",
-        "./static/ftir.png",
+        "./static/ftir-mlp.png",
     );
 
     // Validate the network

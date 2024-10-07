@@ -92,6 +92,10 @@ The package is divided into separate modules, each containing different parts of
 > >  Describes the convolutional layer and its operations.<br>
 > >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
 >
+> #### deconvolution.rs
+> >  Describes the deconvolutional layer and its operations.<br>
+> >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
+>
 > #### maxpool.rs
 > >  Describes the maxpool layer and its operations.<br>
 > >  If the input is a tensor of shape `Single`, the layer will automatically reshape it into a `Triple` tensor.
@@ -167,6 +171,15 @@ fn main() {
 ```
 
 ## Releases
+
+<details>
+  <summary>v2.4.2 – Initial deconvolution layer.</summary>
+
+  Initial implementation of the deconvolution layer.
+  Created with the good help of the GitHub Copilot.
+  Validated against corresponding PyTorch implementation;
+  * `documentation/validation/deconvolution.py`
+</details>
 
 <details>
   <summary>v2.4.1 – Bug-fixes.</summary>
@@ -375,7 +388,7 @@ fn main() {
   <summary>Layer types</summary>
 
   - [x] Dense
-  - [x] Convolutional
+  - [x] Convolution
     - [x] Forward pass
       - [x] Padding
       - [x] Stride
@@ -384,7 +397,15 @@ fn main() {
       - [x] Padding
       - [x] Stride
       - [ ] Dilation
-    - [ ] Transposed convolution (#24)
+  - [x] Deconvolution (#22)
+    - [x] Forward pass
+      - [x] Padding
+      - [x] Stride
+      - [ ] Dilation
+    - [x] Backward pass
+      - [x] Padding
+      - [x] Stride
+      - [ ] Dilation
   - [x] Max pooling
   - [x] Feedback
 </details>

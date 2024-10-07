@@ -1324,6 +1324,28 @@ pub fn pad3d(data: &Vec<Vec<Vec<f32>>>, into: (usize, usize)) -> Vec<Vec<Vec<f32
     padded
 }
 
+pub fn upsample3d(
+    input: &Vec<Vec<Vec<f32>>>,
+    into: (usize, usize),
+    stride: (usize, usize),
+) -> Vec<Vec<Vec<f32>>> {
+    let mut upsampled = vec![vec![vec![0.0; into.1]; into.0]; input.len()];
+
+    for (c, channel) in input.iter().enumerate() {
+        for (i, row) in channel.iter().enumerate() {
+            for (j, &val) in row.iter().enumerate() {
+                let h = i * stride.0;
+                let w = j * stride.1;
+                if h < into.0 && w < into.1 {
+                    upsampled[c][h][w] = val;
+                }
+            }
+        }
+    }
+
+    upsampled
+}
+
 /// Element-wise multiplication of two tensors.
 /// For performance reasons, this function does not validate the length of the tensors.
 /// It is assumed that the tensors have the same length.

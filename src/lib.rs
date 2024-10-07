@@ -15,6 +15,7 @@ pub mod objective;
 pub mod optimizer;
 
 pub mod convolution;
+pub mod deconvolution;
 pub mod dense;
 pub mod feedback;
 pub mod maxpool;

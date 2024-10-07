@@ -111,7 +111,7 @@ fn main() {
         Arc::new(|loops| 1.0 / loops), // Gradient scaling.
     );
     network.set_accumulation(
-        feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
+        feedback::Accumulation::Mean, // How the pre- and post-activations are accumulated.
     );
 
     network.set_optimizer(optimizer::SGD::create(

@@ -209,7 +209,9 @@ impl Convolution {
                             for w in 0..kw {
                                 let _h = height * self.stride.0 + h;
                                 let _w = width * self.stride.1 + w;
-                                sum += kernels[filter][c][h][w] * x[c][_h][_w];
+                                if _h < ih && _w < iw {
+                                    sum += kernels[filter][c][h][w] * x[c][_h][_w];
+                                }
                             }
                         }
                     }
@@ -265,7 +267,9 @@ impl Convolution {
                             for n in 0..bw {
                                 let _h = m * self.stride.0 + k;
                                 let _w = n * self.stride.1 + l;
-                                sum += a[j][_h][_w] * b[i][m][n];
+                                if _h < ah && _w < aw {
+                                    sum += a[j][_h][_w] * b[i][m][n];
+                                }
                             }
                         }
                         y[i][j][k][l] = sum;

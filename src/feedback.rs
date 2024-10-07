@@ -60,6 +60,14 @@ pub enum Layer {
         (usize, usize),
         Option<f32>,
     ),
+    Deconvolution(
+        usize,
+        activation::Activation,
+        (usize, usize),
+        (usize, usize),
+        (usize, usize),
+        Option<f32>,
+    ),
     Maxpool((usize, usize), (usize, usize)),
 }
 
@@ -122,6 +130,13 @@ impl std::fmt::Display for Feedback {
                         i, layer.activation, layer.inputs, layer.outputs
                     )?;
                 }
+                network::Layer::Deconvolution(layer) => {
+                    write!(
+                        f,
+                        "\t\t\t\t{}: Decovolution{} ({} -> {})\n",
+                        i, layer.activation, layer.inputs, layer.outputs
+                    )?;
+                }
                 network::Layer::Maxpool(layer) => {
                     write!(
                         f,
@@ -176,12 +191,14 @@ impl Feedback {
         let inputs = match layers.first().unwrap() {
             network::Layer::Dense(dense) => dense.inputs.clone(),
             network::Layer::Convolution(convolution) => convolution.inputs.clone(),
+            network::Layer::Deconvolution(deconvolution) => deconvolution.inputs.clone(),
             network::Layer::Maxpool(maxpool) => maxpool.inputs.clone(),
             network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
         };
         let outputs = match layers.last().unwrap() {
             network::Layer::Dense(dense) => dense.outputs.clone(),
             network::Layer::Convolution(convolution) => convolution.outputs.clone(),
+            network::Layer::Deconvolution(deconvolution) => deconvolution.outputs.clone(),
             network::Layer::Maxpool(maxpool) => maxpool.outputs.clone(),
             network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
         };
@@ -262,6 +279,19 @@ impl Feedback {
                         layer.kernels.len()
                     ]);
                 }
+                network::Layer::Deconvolution(layer) => {
+                    let (ch, kh, kw) = match layer.kernels[0].shape {
+                        tensor::Shape::Triple(ch, he, wi) => (ch, he, wi),
+                        _ => panic!("Expected Convolution shape"),
+                    };
+                    vectors.push(vec![
+                        vec![
+                            tensor::Tensor::triple(vec![vec![vec![0.0; kw]; kh]; ch]),
+                            // TODO: Add bias term here.
+                        ];
+                        layer.kernels.len()
+                    ]);
+                }
                 network::Layer::Maxpool(_) => {
                     vectors.push(vec![vec![tensor::Tensor::single(vec![0.0; 0])]])
                 }
@@ -284,6 +314,7 @@ impl Feedback {
             parameters += match &self.layers[idx] {
                 network::Layer::Dense(dense) => dense.parameters(),
                 network::Layer::Convolution(convolution) => convolution.parameters(),
+                network::Layer::Deconvolution(deconvolution) => deconvolution.parameters(),
                 network::Layer::Maxpool(_) => 0,
                 network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
             };
@@ -295,6 +326,7 @@ impl Feedback {
         self.layers.iter_mut().for_each(|layer| match layer {
             network::Layer::Dense(layer) => layer.training = train,
             network::Layer::Convolution(layer) => layer.training = train,
+            network::Layer::Deconvolution(layer) => layer.training = train,
             network::Layer::Maxpool(_) => {}
             network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
         });
@@ -365,6 +397,13 @@ impl Feedback {
                     maxpools.push(None);
                 }
                 network::Layer::Convolution(layer) => {
+                    assert_eq_shape!(layer.inputs, x.shape);
+                    let (pre, post) = layer.forward(&x);
+                    unactivated.push(pre);
+                    activated.push(post);
+                    maxpools.push(None);
+                }
+                network::Layer::Deconvolution(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(&x);
                     unactivated.push(pre);
@@ -453,6 +492,9 @@ impl Feedback {
                 network::Layer::Convolution(layer) => {
                     layer.backward(&gradients.last().unwrap(), input, output)
                 }
+                network::Layer::Deconvolution(layer) => {
+                    layer.backward(&gradients.last().unwrap(), input, output)
+                }
                 _ => panic!("Unsupported layer type."),
             };
 
@@ -515,6 +557,17 @@ impl Feedback {
                         // TODO: Add bias term here.
                     }
                 }
+                network::Layer::Deconvolution(layer) => {
+                    for (f, (filter, gradient)) in layer
+                        .kernels
+                        .iter_mut()
+                        .zip(weight_gradients[i].quadruple_to_vec_triple().iter_mut())
+                        .enumerate()
+                    {
+                        self.optimizer.update(i, f, false, stepnr, filter, gradient);
+                        // TODO: Add bias term here.
+                    }
+                }
                 network::Layer::Maxpool(_) => {}
                 network::Layer::Feedback(_) => panic!("Feedback layers are not supported."),
             });
@@ -536,6 +589,9 @@ impl Feedback {
                         }
                     }
                     network::Layer::Convolution(layer) => {
+                        weights.push(tensor::Tensor::nested(layer.kernels.clone()));
+                    }
+                    network::Layer::Deconvolution(layer) => {
                         weights.push(tensor::Tensor::nested(layer.kernels.clone()));
                     }
                     _ => continue,
@@ -596,6 +652,7 @@ impl Feedback {
                 }
                 Accumulation::Overwrite => {
                     // Do nothing?
+                    unimplemented!("Overwrite accumulation is not implemented.")
                 }
             }
 
@@ -609,6 +666,9 @@ impl Feedback {
                         }
                     }
                     network::Layer::Convolution(layer) => {
+                        layer.kernels = weight.unnested();
+                    }
+                    network::Layer::Deconvolution(layer) => {
                         layer.kernels = weight.unnested();
                     }
                     _ => continue,

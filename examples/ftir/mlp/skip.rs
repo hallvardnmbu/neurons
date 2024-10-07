@@ -150,7 +150,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "SKIP : FTIR",
-        "./static/ftir-skip.png",
+        "./static/ftir-mlp-skip.png",
     );
 
     // Validate the network

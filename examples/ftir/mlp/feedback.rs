@@ -158,7 +158,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "FEEDBACK : FTIR",
-        "./static/ftir-feedback.png",
+        "./static/ftir-mlp-feedback.png",
     );
 
     // Validate the network

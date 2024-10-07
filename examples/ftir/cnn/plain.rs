@@ -2,7 +2,6 @@
 
 use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
 
-use std::sync::Arc;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -111,7 +110,7 @@ fn main() {
     let class_train: Vec<&tensor::Tensor> = class_train.iter().collect();
 
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
-    let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
+    let _y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
     let class_test: Vec<&tensor::Tensor> = class_test.iter().collect();
 
     let x_val: Vec<&tensor::Tensor> = x_val.iter().collect();
@@ -124,17 +123,36 @@ fn main() {
 
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(571));
-
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
+    network.dense(100, activation::Activation::ReLU, false, None);
+    network.convolution(
+        1,
+        (3, 3),
+        (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.convolution(
+        1,
+        (3, 3),
+        (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.convolution(
+        1,
+        (3, 3),
+        (1, 1),
+        (0, 0),
+        activation::Activation::ReLU,
+        None,
+    );
+    network.dense(100, activation::Activation::ReLU, false, None);
     network.dense(28, activation::Activation::Softmax, false, None);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
-
-    network.loopback(2, 1, Arc::new(|_| 1.0));
-    network.set_accumulation(feedback::Accumulation::Mean);
 
     println!("{}", network);
 
@@ -143,16 +161,16 @@ fn main() {
         &x_train,
         &class_train,
         Some((&x_val, &class_val, 50)),
-        40,
+        16,
         500,
-        Some(100),
+        Some(50),
     );
     plot::loss(
         &train_loss,
         &val_loss,
         &val_acc,
-        "LOOP : FTIR",
-        "./static/ftir-mlp-loop.png",
+        "PLAIN : FTIR",
+        "./static/ftir-cnn.png",
     );
 
     // Validate the network

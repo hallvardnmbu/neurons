@@ -58,8 +58,28 @@ name = "ftir-mlp-feedback"
 path = "examples/ftir/mlp/feedback.rs"
 
 [[example]]
+name = "ftir-cnn-plain"
+path = "examples/ftir/cnn/plain.rs"
+
+[[example]]
+name = "ftir-cnn-skip"
+path = "examples/ftir/cnn/skip.rs"
+
+[[example]]
+name = "ftir-cnn-loop"
+path = "examples/ftir/cnn/looping.rs"
+
+[[example]]
+name = "ftir-cnn-feedback"
+path = "examples/ftir/cnn/feedback.rs"
+
+[[example]]
 name = "mnist-plain"
 path = "examples/mnist/plain.rs"
+
+[[example]]
+name = "mnist-deconvolution"
+path = "examples/mnist/deconvolution.rs"
 
 [[example]]
 name = "mnist-skip"
