@@ -563,6 +563,7 @@ fn main() {
 * [skip connection](https://arxiv.org/abs/1512.03385)
 * [feedback 1](https://arxiv.org/abs/1604.03640)
 * [feedback 2](https://cs231n.stanford.edu/reports/2016/pdfs/110_Report.pdf)
+* [transposed convolution](https://d2l.ai/chapter_computer-vision/transposed-conv.html)
 
 #### Tools used
 

@@ -475,29 +475,28 @@ impl Network {
     }
 
     /// Add a loop connection between two layers.
-    ///
-    /// INCOMPLETE: Currently only supports loop connections for identical shapes.
+    /// Only supports loop connections for identical shapes.
     ///
     /// # Arguments
     ///
-    /// * `from` - The index of the layer to connect from.
-    /// * `to` - The index of the layer to connect to.
+    /// * `outof` - The index of the layer to connect from (output).
+    /// * `into` - The index of the layer to connect to (input).
     /// * `scale` - The scaling function of the loop connection wrt. gradients.
-    pub fn loopback(&mut self, from: usize, to: usize, scale: tensor::Scale) {
-        if from > self.layers.len() || to >= self.layers.len() || from < to {
+    pub fn loopback(&mut self, outof: usize, into: usize, scale: tensor::Scale) {
+        if outof > self.layers.len() || into >= self.layers.len() || outof < into {
             panic!("Invalid layer indices for loop connection.");
-        } else if self.loopbacks.contains_key(&from) {
-            panic!("Loop connection already exists for layer {}", from);
+        } else if self.loopbacks.contains_key(&outof) {
+            panic!("Loop connection already exists for layer {}", outof);
         }
 
-        let inputs = match &self.layers[to] {
+        let inputs = match &self.layers[into] {
             Layer::Dense(layer) => &layer.inputs,
             Layer::Convolution(layer) => &layer.inputs,
             Layer::Deconvolution(layer) => &layer.inputs,
             Layer::Maxpool(layer) => &layer.inputs,
             Layer::Feedback(feedback) => &feedback.inputs,
         };
-        let outputs = match &self.layers[from] {
+        let outputs = match &self.layers[outof] {
             Layer::Dense(layer) => &layer.outputs,
             Layer::Convolution(layer) => &layer.outputs,
             Layer::Deconvolution(layer) => &layer.outputs,
@@ -506,8 +505,8 @@ impl Network {
         };
         assert_eq_shape!(inputs, outputs);
 
-        // Loop through layers to -> from and add +1 to its loopback count.
-        for k in to..from + 1 {
+        // Loop through layers into -> outof and add +1 to its loopback count.
+        for k in into..outof + 1 {
             match &mut self.layers[k] {
                 Layer::Dense(layer) => {
                     layer.scale = Arc::clone(&scale);
@@ -527,44 +526,43 @@ impl Network {
         }
 
         // Store the loop connection for use in the forward pass.
-        self.loopbacks.insert(from, to);
+        self.loopbacks.insert(outof, into);
     }
 
     /// Add a skip connection between two layers.
-    /// Note: The `from` and `to` refer to their inputs.
-    /// I.e., `from = 0` means the input to the network.
-    ///
-    /// INCOMPLETE: Currently only supports skip connections for identical shapes.
+    /// Note: The `infrom` and `into` refer to their inputs.
+    /// I.e., `infrom = 0` means the input to the network.
+    /// Only supports skip connections for identical shapes.
     ///
     /// # Arguments
     ///
-    /// * `from` - The index of the layer to connect from (input).
-    /// * `to` - The index of the layer to connect to (input).
-    pub fn connect(&mut self, from: usize, to: usize) {
-        if from > self.layers.len() || to >= self.layers.len() || from > to {
+    /// * `infrom` - The index of the layer to connect from (input).
+    /// * `into` - The index of the layer to connect to (input).
+    pub fn connect(&mut self, infrom: usize, into: usize) {
+        if infrom > self.layers.len() || into >= self.layers.len() || infrom > into {
             panic!("Invalid layer indices for skip connection.");
-        } else if self.connect.contains_key(&from) {
-            panic!("Skip connection already exists for layer {}", from);
+        } else if self.connect.contains_key(&infrom) {
+            panic!("Skip connection already exists for layer {}", infrom);
         }
 
-        let outof = match &self.layers[from] {
+        let from = match &self.layers[infrom] {
             Layer::Dense(layer) => &layer.inputs,
             Layer::Convolution(layer) => &layer.inputs,
             Layer::Deconvolution(layer) => &layer.inputs,
             Layer::Maxpool(_) => panic!("Skip connection from Maxpool layer not supported."),
             Layer::Feedback(feedback) => &feedback.inputs,
         };
-        let into = match &self.layers[to] {
+        let to = match &self.layers[into] {
             Layer::Dense(layer) => &layer.inputs,
             Layer::Convolution(layer) => &layer.inputs,
             Layer::Deconvolution(layer) => &layer.inputs,
             Layer::Maxpool(layer) => &layer.inputs,
             Layer::Feedback(feedback) => &feedback.inputs,
         };
-        assert_eq_shape!(outof, into);
+        assert_eq_shape!(from, to);
 
         // Store the skip connection for use in the propagation.
-        self.connect.insert(to, from);
+        self.connect.insert(into, infrom);
     }
 
     /// Extract the total number of parameters in the network.
@@ -585,7 +583,7 @@ impl Network {
         }
     }
 
-    /// Set the `activation::Activation` function of a layer.
+    /// Modify the `activation::Activation` function of a layer.
     ///
     /// # Arguments
     ///

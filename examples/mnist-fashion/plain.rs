@@ -120,14 +120,8 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.set_optimizer(optimizer::SGD::create(
-        0.0001, // Learning rate
-        None,   // Decay
-    ));
-    network.set_objective(
-        objective::Objective::CrossEntropy, // Objective function
-        None,                               // Gradient clipping
-    );
+    network.set_optimizer(optimizer::SGD::create(0.0001, None));
+    network.set_objective(objective::Objective::CrossEntropy, None);
 
     println!("{}", network);
 

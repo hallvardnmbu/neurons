@@ -112,14 +112,8 @@ fn main() {
     // For (presumably) best results, `Mean` should be used.
     network.set_accumulation(feedback::Accumulation::Mean);
 
-    network.set_optimizer(optimizer::SGD::create(
-        0.0001, // Learning rate
-        None,   // Decay
-    ));
-    network.set_objective(
-        objective::Objective::CrossEntropy, // Objective function
-        None,                               // Gradient clipping
-    );
+    network.set_optimizer(optimizer::SGD::create(0.0001, None));
+    network.set_objective(objective::Objective::CrossEntropy, None);
 
     println!("{}", network);
 
