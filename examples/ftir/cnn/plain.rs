@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
+use neurons::{activation, network, objective, optimizer, plot, tensor};
 
 use std::{
     fs::File,
@@ -129,6 +129,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
         None,
     );
@@ -137,6 +138,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
         None,
     );
@@ -145,6 +147,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
         None,
     );

@@ -470,7 +470,7 @@ mod tests {
             vec![4.9, 5.0, 5.1, 5.2, 5.3, 5.4, 5.5],
         ]]);
 
-        let (pre, post) = layer.forward(&input);
+        let (_pre, post) = layer.forward(&input);
         let (igrad, wgrad, _) = layer.backward(&grad, &input, &post);
 
         assert_eq!(igrad.shape, input_shape);

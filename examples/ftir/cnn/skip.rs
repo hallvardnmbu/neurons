@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
+use neurons::{activation, network, objective, optimizer, plot, tensor};
 
 use std::{
     fs::File,
@@ -110,7 +110,7 @@ fn main() {
     let class_train: Vec<&tensor::Tensor> = class_train.iter().collect();
 
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
-    let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
+    let _y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
     let class_test: Vec<&tensor::Tensor> = class_test.iter().collect();
 
     let x_val: Vec<&tensor::Tensor> = x_val.iter().collect();
@@ -128,6 +128,7 @@ fn main() {
     network.convolution(
         1,
         (3, 3),
+        (1, 1),
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,

@@ -234,6 +234,7 @@ impl Network {
     /// * `kernel` - The size of the kernel.
     /// * `stride` - The stride of the kernel.
     /// * `padding` - The padding of the input.
+    /// * `dilation` - The dilation of the kernel.
     /// * `activation` - The `activation::Activation` function of the layer.
     /// * `dropout` - The dropout rate of the layer (applied during training).
     pub fn convolution(
@@ -242,6 +243,7 @@ impl Network {
         kernel: (usize, usize),
         stride: (usize, usize),
         padding: (usize, usize),
+        dilation: (usize, usize),
         activation: activation::Activation,
         dropout: Option<f32>,
     ) {
@@ -260,6 +262,7 @@ impl Network {
                     kernel,
                     stride,
                     padding,
+                    dilation,
                     dropout,
                 )));
             return;
@@ -278,6 +281,7 @@ impl Network {
                 kernel,
                 stride,
                 padding,
+                dilation,
                 dropout,
             )));
     }
@@ -427,6 +431,7 @@ impl Network {
                     kernel,
                     stride,
                     padding,
+                    dilation,
                     dropout,
                 ) => Layer::Convolution(convolution::Convolution::create(
                     input.clone(),
@@ -435,6 +440,7 @@ impl Network {
                     *kernel,
                     *stride,
                     *padding,
+                    *dilation,
                     *dropout,
                 )),
                 feedback::Layer::Deconvolution(
@@ -1472,6 +1478,7 @@ mod tests {
             (3, 3),
             (1, 1),
             (1, 1),
+            (1, 1),
             activation::Activation::Linear,
             None,
         );
@@ -1510,6 +1517,7 @@ mod tests {
             (2, 2),
             (1, 1),
             (0, 0),
+            (1, 1),
             activation::Activation::ReLU,
             None,
         );
@@ -1653,6 +1661,7 @@ mod tests {
             (2, 2),
             (1, 1),
             (0, 0),
+            (1, 1),
             activation::Activation::ReLU,
             None,
         );

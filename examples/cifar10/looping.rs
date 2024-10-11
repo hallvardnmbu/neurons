@@ -94,6 +94,7 @@ fn main() {
         (5, 5),
         (1, 1),
         (1, 1),
+        (1, 1),
         activation::Activation::ReLU,
         None,
     );
@@ -101,6 +102,7 @@ fn main() {
         network.convolution(
             32,
             (3, 3),
+            (1, 1),
             (1, 1),
             (1, 1),
             activation::Activation::ReLU,

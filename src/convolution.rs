@@ -15,6 +15,7 @@ use std::sync::Arc;
 /// * `kernels` - The kernels of the layer.
 /// * `stride` - The stride of the filter.
 /// * `padding` - The padding applied to the input before convolving.
+/// * `dilation` - The dilation of the filter.
 /// * `activation` - The `activation::Function` of the layer.
 /// * `dropout` - The dropout rate of the layer (when training).
 /// * `flatten` - Whether the output should be flattened.
@@ -30,6 +31,7 @@ pub struct Convolution {
     pub(crate) kernels: Vec<tensor::Tensor>,
     stride: (usize, usize),
     padding: (usize, usize),
+    dilation: (usize, usize),
 
     pub(crate) activation: activation::Function,
 
@@ -50,6 +52,7 @@ impl std::fmt::Display for Convolution {
         )?;
         write!(f, "\t\t\tstride: {:?}\n", self.stride)?;
         write!(f, "\t\t\tpadding: {:?}\n", self.padding)?;
+        write!(f, "\t\t\tdilation: {:?}\n", self.dilation)?;
         if self.dropout.is_some() {
             write!(f, "\t\t\tdropout: {}\n", self.dropout.unwrap().to_string())?;
         }
@@ -76,28 +79,36 @@ impl Convolution {
     /// * `kernel` - The size of each filter.
     /// * `stride` - The stride of the filter.
     /// * `padding` - The padding applied to the input before convolving.
+    /// * `dilation` - The dilation of the filter.
     ///
     /// # Returns
     ///
     /// The `tensor::Shape` of the output from the layer.
+    ///
+    /// # Formula
+    ///
+    /// out = (in + 2 * pad - dilation * (kernel - 1) - 1) / stride
+    ///
+    /// [Source](https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html#torch.nn.Conv2d).
     fn calculate_output_size(
         input: &tensor::Shape,
         channels: &usize,
         kernel: &(usize, usize),
         stride: &(usize, usize),
         padding: &(usize, usize),
+        dilation: &(usize, usize),
     ) -> tensor::Shape {
-        let input: &(usize, usize, usize) = match input {
+        let input: &(usize, usize) = match input {
             tensor::Shape::Single(size) => {
                 let root = (*size as f32).sqrt() as usize;
-                &(1, root, root)
+                &(root, root)
             }
-            tensor::Shape::Triple(ch, he, wi) => &(*ch, *he, *wi),
+            tensor::Shape::Triple(_, he, wi) => &(*he, *wi),
             _ => panic!("Incorrect input shape."),
         };
 
-        let height = (input.1 + 2 * padding.0 - kernel.0) / stride.0 + 1;
-        let width = (input.2 + 2 * padding.1 - kernel.1) / stride.1 + 1;
+        let height = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
+        let width = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
 
         tensor::Shape::Triple(*channels, height, width)
     }
@@ -112,6 +123,7 @@ impl Convolution {
     /// * `kernel` - The size of each filter.
     /// * `stride` - The stride of the filter.
     /// * `padding` - The padding applied to the input before convolving.
+    /// * `dilation` - The dilation of the filter.
     /// * `dropout` - The dropout rate of the layer (when training).
     ///
     /// # Returns
@@ -124,6 +136,7 @@ impl Convolution {
         kernel: (usize, usize),
         stride: (usize, usize),
         padding: (usize, usize),
+        dilation: (usize, usize),
         dropout: Option<f32>,
     ) -> Self {
         let (inputs, ic) = match &inputs {
@@ -138,8 +151,9 @@ impl Convolution {
             tensor::Shape::Triple(ic, _, _) => (inputs.clone(), *ic),
             _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
         };
-        let outputs =
-            Convolution::calculate_output_size(&inputs, &filters, &kernel, &stride, &padding);
+        let outputs = Convolution::calculate_output_size(
+            &inputs, &filters, &kernel, &stride, &padding, &dilation,
+        );
         Convolution {
             inputs,
             outputs,
@@ -152,6 +166,7 @@ impl Convolution {
             dropout,
             stride,
             padding,
+            dilation,
             training: false,
             flatten: false,
             loops: 1.0,
@@ -195,8 +210,10 @@ impl Convolution {
         );
 
         // Defining the output dimensions and vector.
-        let oh = (ih - kh) / self.stride.0 + 1;
-        let ow = (iw - kw) / self.stride.1 + 1;
+        // let oh = (ih - kh) / self.stride.0 + 1;
+        // let ow = (iw - kw) / self.stride.1 + 1;
+        let oh = (ih - (kh - 1) * self.dilation.0 - 1) / self.stride.0 + 1;
+        let ow = (iw - (kw - 1) * self.dilation.1 - 1) / self.stride.1 + 1;
         let mut y = vec![vec![vec![0.0; ow]; oh]; kf];
 
         // Convolving the input with the kernels.
@@ -207,8 +224,10 @@ impl Convolution {
                     for c in 0..kc {
                         for h in 0..kh {
                             for w in 0..kw {
-                                let _h = height * self.stride.0 + h;
-                                let _w = width * self.stride.1 + w;
+                                // let _h = height * self.stride.0 + h;
+                                // let _w = width * self.stride.1 + w;
+                                let _h = height * self.stride.0 + h * self.dilation.0;
+                                let _w = width * self.stride.1 + w * self.dilation.1;
                                 if _h < ih && _w < iw {
                                     sum += kernels[filter][c][h][w] * x[c][_h][_w];
                                 }
@@ -229,6 +248,7 @@ impl Convolution {
     ///
     /// * `a` - The first three-dimensional vector.
     /// * `b` - The second three-dimensional vector.
+    /// * `kernel` - The kernel dimensions.
     ///
     /// # Returns
     ///
@@ -238,35 +258,30 @@ impl Convolution {
     ///
     /// The outputted vector will have the shape:
     ///
-    /// * `[a_channels, b_channels, height, width]`
-    ///
-    /// Where `height` and `width` are calculated as:
-    ///
-    /// * `height = (a_height - b_height) / stride.0 + 1`
-    /// * `width = (a_width - b_width) / stride.1 + 1`
+    /// * `[a_channels, b_channels, kernel_height, kernel_width]`
     fn convolve_gradients(
         &self,
         a: &Vec<Vec<Vec<f32>>>,
         b: &Vec<Vec<Vec<f32>>>,
+        kernel: &(usize, usize),
     ) -> Vec<Vec<Vec<Vec<f32>>>> {
         let (ac, ah, aw) = (a.len(), a[0].len(), a[0][0].len());
         let (bc, bh, bw) = (b.len(), b[0].len(), b[0][0].len());
 
-        // Defining the output shapes and vector.
-        let oh = ((ah - bh) / self.stride.0) + 1;
-        let ow = ((aw - bw) / self.stride.1) + 1;
-        let mut y = vec![vec![vec![vec![0.0; ow]; oh]; ac]; bc];
+        let mut y = vec![vec![vec![vec![0.0; kernel.1]; kernel.0]; ac]; bc];
 
         // Convolving `a` with `b`.
         for i in 0..bc {
             for j in 0..ac {
-                for k in 0..oh {
-                    for l in 0..ow {
+                for k in 0..kernel.0 {
+                    for l in 0..kernel.1 {
                         let mut sum = 0.0;
                         for m in 0..bh {
                             for n in 0..bw {
-                                let _h = m * self.stride.0 + k;
-                                let _w = n * self.stride.1 + l;
+                                // let _h = m * self.stride.0 + k;
+                                // let _w = n * self.stride.1 + l;
+                                let _h = k * self.stride.0 + m * self.dilation.0;
+                                let _w = l * self.stride.1 + n * self.dilation.1;
                                 if _h < ah && _w < aw {
                                     sum += a[j][_h][_w] * b[i][m][n];
                                 }
@@ -389,7 +404,7 @@ impl Convolution {
         let input = tensor::pad3d(&input, (ph, pw));
 
         // dL/dF = Conv(X, dL/dY)
-        let kgradient = self.convolve_gradients(&input, &delta);
+        let kgradient = self.convolve_gradients(&input, &delta, &(kh, kw));
 
         // Flipping the kernels.
         let mut kernels: Vec<Vec<Vec<Vec<f32>>>> = self
@@ -466,9 +481,11 @@ mod tests {
         let kernel = (3, 3);
         let stride = (1, 1);
         let padding = (0, 0);
+        let dilation = (1, 1);
 
-        let output_size =
-            Convolution::calculate_output_size(&input, &channels, &kernel, &stride, &padding);
+        let output_size = Convolution::calculate_output_size(
+            &input, &channels, &kernel, &stride, &padding, &dilation,
+        );
 
         assert_eq!(output_size, tensor::Shape::Triple(1, 3, 3));
     }
@@ -482,6 +499,7 @@ mod tests {
             (3, 3),
             (1, 1),
             (0, 0),
+            (1, 1),
             None,
         );
 
@@ -504,6 +522,7 @@ mod tests {
             1,
             &activation::Activation::Linear,
             (3, 3),
+            (1, 1),
             (1, 1),
             (1, 1),
             None,
@@ -535,6 +554,7 @@ mod tests {
             (2, 2),
             (1, 1),
             (0, 0),
+            (1, 1),
             None,
         );
         conv.kernels[0] = tensor::Tensor::triple(vec![
@@ -616,6 +636,7 @@ mod tests {
             (3, 3),
             (1, 1),
             (1, 1),
+            (1, 1),
             None,
         );
 
@@ -659,6 +680,7 @@ mod tests {
             (3, 3),
             (1, 1),
             (1, 1),
+            (1, 1),
             None,
         );
         conv.kernels[0] = tensor::Tensor::triple(vec![vec![
@@ -686,6 +708,7 @@ mod tests {
             (3, 3),
             (1, 1),
             (0, 0),
+            (1, 1),
             None,
         );
         conv.kernels[0] = tensor::Tensor::triple(vec![vec![
@@ -726,6 +749,7 @@ mod tests {
             &activation::Activation::Linear,
             (3, 3),
             (2, 2),
+            (1, 1),
             (1, 1),
             None,
         );

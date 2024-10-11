@@ -44,6 +44,7 @@ impl std::fmt::Display for Accumulation {
 /// * `kernel` - The kernel size of the layer.
 /// * `stride` - The stride of the layer.
 /// * `padding` - The padding of the layer.
+/// * `dilation` - The dilation of the layer.
 /// * `dropout` - The dropout rate of the layer.
 ///
 /// # Maxpool
@@ -55,6 +56,7 @@ pub enum Layer {
     Convolution(
         usize,
         activation::Activation,
+        (usize, usize),
         (usize, usize),
         (usize, usize),
         (usize, usize),

@@ -130,8 +130,8 @@ fn main() {
   // New feedforward network with input shape (1, 28, 28)
   let mut network = network::Network::new(tensor::Shape::Triple(1, 28, 28));
 
-  // Convolution(filters, kernel, stride, padding, activation, Some(dropout))
-  network.convolution(5, (3, 3), (1, 1), (1, 1), activation::Activation::ReLU, None);
+  // Convolution(filters, kernel, stride, padding, dilation, activation, Some(dropout))
+  network.convolution(5, (3, 3), (1, 1), (1, 1), (1, 1), activation::Activation::ReLU, None);
 
   // Maxpool(kernel, stride)
   network.maxpool((2, 2), (2, 2));
@@ -171,6 +171,12 @@ fn main() {
 ```
 
 ## Releases
+
+<details>
+  <summary>v2.5.1 – Convolution dilation.</summary>
+
+  Add dilation to the convolution layer.
+</details>
 
 <details>
   <summary>v2.5.0 – Deconvolution layer.</summary>
@@ -392,11 +398,11 @@ fn main() {
     - [x] Forward pass
       - [x] Padding
       - [x] Stride
-      - [ ] Dilation
+      - [x] Dilation
     - [x] Backward pass
       - [x] Padding
       - [x] Stride
-      - [ ] Dilation
+      - [x] Dilation
   - [x] Deconvolution (#22)
     - [x] Forward pass
       - [x] Padding

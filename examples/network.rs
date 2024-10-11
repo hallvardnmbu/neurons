@@ -12,6 +12,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (1, 1),
+        (1, 1),
         activation::Activation::ReLU,
         None,
     );

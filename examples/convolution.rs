@@ -10,6 +10,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
         Some(0.1),
     );
@@ -18,6 +19,7 @@ fn main() {
         (3, 3),
         (1, 1),
         (0, 0),
+        (1, 1),
         activation::Activation::ReLU,
         Some(0.1),
     );
