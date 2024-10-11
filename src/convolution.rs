@@ -210,8 +210,6 @@ impl Convolution {
         );
 
         // Defining the output dimensions and vector.
-        // let oh = (ih - kh) / self.stride.0 + 1;
-        // let ow = (iw - kw) / self.stride.1 + 1;
         let oh = (ih - (kh - 1) * self.dilation.0 - 1) / self.stride.0 + 1;
         let ow = (iw - (kw - 1) * self.dilation.1 - 1) / self.stride.1 + 1;
         let mut y = vec![vec![vec![0.0; ow]; oh]; kf];
@@ -225,7 +223,6 @@ impl Convolution {
                         for h in 0..kh {
                             for w in 0..kw {
                                 // let _h = height * self.stride.0 + h;
-                                // let _w = width * self.stride.1 + w;
                                 let _h = height * self.stride.0 + h * self.dilation.0;
                                 let _w = width * self.stride.1 + w * self.dilation.1;
                                 if _h < ih && _w < iw {
@@ -278,8 +275,6 @@ impl Convolution {
                         let mut sum = 0.0;
                         for m in 0..bh {
                             for n in 0..bw {
-                                // let _h = m * self.stride.0 + k;
-                                // let _w = n * self.stride.1 + l;
                                 let _h = k * self.stride.0 + m * self.dilation.0;
                                 let _w = l * self.stride.1 + n * self.dilation.1;
                                 if _h < ah && _w < aw {
