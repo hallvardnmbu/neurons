@@ -665,8 +665,8 @@ impl Feedback {
                 match &mut self.layers[*i] {
                     network::Layer::Dense(layer) => {
                         layer.weights = weight.clone();
-                        if let Some(bias) = &mut layer.bias {
-                            *bias = bias.clone();
+                        if let Some(b) = &mut layer.bias {
+                            *b = bias.clone().unwrap();
                         }
                     }
                     network::Layer::Convolution(layer) => {
@@ -677,6 +677,207 @@ impl Feedback {
                     }
                     _ => continue,
                 }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{activation, assert_eq_data, assert_eq_shape, dense, network, optimizer, tensor};
+
+    #[test]
+    fn test_feedback_create() {
+        let layers = vec![
+            network::Layer::Dense(dense::Dense::create(
+                tensor::Shape::Single(2),
+                tensor::Shape::Single(2),
+                &activation::Activation::ReLU,
+                false,
+                None,
+            )),
+            network::Layer::Dense(dense::Dense::create(
+                tensor::Shape::Single(2),
+                tensor::Shape::Single(2),
+                &activation::Activation::ReLU,
+                false,
+                None,
+            )),
+        ];
+        let feedback = Feedback::create(layers.clone(), 2, true, Accumulation::Add);
+
+        assert_eq!(feedback.inputs, tensor::Shape::Single(2));
+        assert_eq!(feedback.outputs, tensor::Shape::Single(2));
+        assert_eq!(feedback.layers.len(), 4); // 2 loops of 2 layers each
+        assert_eq!(feedback.coupled.len(), 2);
+        assert_eq!(feedback.connect.len(), 1);
+    }
+
+    // #[test]
+    // fn test_feedback_copy_optimizer() {
+    //     let layers = vec![network::Layer::Dense(dense::Dense::create(
+    //         tensor::Shape::Single(2),
+    //         tensor::Shape::Single(2),
+    //         &activation::Activation::ReLU,
+    //         false,
+    //         None,
+    //     ))];
+    //     let mut feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+    //     let optimizer = optimizer::SGD::create(0.1, None);
+    //     feedback.copy_optimizer(optimizer.clone());
+
+    //     assert_eq!(feedback.optimizer, optimizer);
+    // }
+
+    #[test]
+    fn test_feedback_parameters() {
+        let layers = vec![network::Layer::Dense(dense::Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(3),
+            &activation::Activation::ReLU,
+            true,
+            None,
+        ))];
+        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+
+        assert_eq!(feedback.parameters(), 12); // 9 weights + 3 biases
+    }
+
+    #[test]
+    fn test_feedback_training() {
+        let layers = vec![network::Layer::Dense(dense::Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(3),
+            &activation::Activation::ReLU,
+            true,
+            None,
+        ))];
+        let mut feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        feedback.training(true);
+
+        for layer in feedback.layers.iter() {
+            if let network::Layer::Dense(layer) = layer {
+                assert!(layer.training);
+            }
+        }
+    }
+
+    #[test]
+    fn test_feedback_forward() {
+        let layers = vec![network::Layer::Dense(dense::Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(3),
+            &activation::Activation::ReLU,
+            true,
+            None,
+        ))];
+        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
+
+        let (unactivated, activated, maxpool, intermediate_unactivated, intermediate_activated) =
+            feedback.forward(&input);
+
+        assert_eq_shape!(unactivated.shape, tensor::Shape::Single(3));
+        assert_eq_shape!(activated.shape, tensor::Shape::Single(3));
+        assert_eq_shape!(maxpool.shape, tensor::Shape::Nested(1));
+        assert_eq_shape!(
+            intermediate_unactivated.shape,
+            tensor::Tensor::nested(vec![tensor::Tensor::single(vec![1.0; 3]),]).shape
+        );
+        assert_eq_shape!(
+            intermediate_activated.shape,
+            tensor::Tensor::nested(vec![
+                tensor::Tensor::single(vec![1.0; 3]),
+                tensor::Tensor::single(vec![1.0; 3]),
+            ])
+            .shape
+        );
+    }
+
+    #[test]
+    fn test_feedback_backward() {
+        let layers = vec![network::Layer::Dense(dense::Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(3),
+            &activation::Activation::ReLU,
+            true,
+            None,
+        ))];
+        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
+        let (_, activated, _, intermediate_unactivated, intermediate_activated) =
+            feedback.forward(&input);
+        let gradient = tensor::Tensor::single(vec![0.1, 0.2, 0.3]);
+
+        let (input_gradient, weight_gradient, bias_gradient) = feedback.backward(
+            &gradient,
+            &vec![intermediate_unactivated, intermediate_activated],
+        );
+
+        assert_eq_shape!(input_gradient.shape, tensor::Shape::Single(3));
+        assert_eq!(
+            weight_gradient.shape,
+            tensor::Tensor::nested(vec![tensor::Tensor::double(vec![vec![1.0; 3]; 2]),]).shape
+        );
+        assert_eq!(
+            bias_gradient.unwrap().shape,
+            tensor::Tensor::nested(vec![tensor::Tensor::single(vec![1.0; 3]),]).shape
+        );
+    }
+
+    #[test]
+    fn test_feedback_update() {
+        let layers = vec![network::Layer::Dense(dense::Dense::create(
+            tensor::Shape::Single(3),
+            tensor::Shape::Single(3),
+            &activation::Activation::ReLU,
+            true,
+            None,
+        ))];
+        let mut feedback = Feedback::create(layers.clone(), 3, false, Accumulation::Add);
+        let mut weight_gradient = tensor::Tensor::nested(vec![
+            tensor::Tensor::double(vec![
+                vec![0.1, 0.2, 0.3],
+                vec![0.4, 0.5, 0.6],
+                vec![0.7, 0.8, 0.9],
+            ]),
+            tensor::Tensor::double(vec![
+                vec![0.1, 0.2, 0.3],
+                vec![0.7, 0.8, 0.9],
+                vec![0.4, 0.5, 0.6],
+            ]),
+            tensor::Tensor::double(vec![
+                vec![0.7, 0.8, 0.9],
+                vec![0.1, 0.2, 0.3],
+                vec![0.4, 0.5, 0.6],
+            ]),
+        ]);
+        let mut bias_gradient = tensor::Tensor::nestedoptional(vec![
+            Some(tensor::Tensor::single(vec![0.1, 0.2, 0.3])),
+            Some(tensor::Tensor::single(vec![0.5, 0.7, 1.0])),
+            Some(tensor::Tensor::single(vec![1.1, 1.2, 0.3])),
+        ]);
+
+        feedback.update(1, &mut weight_gradient, &mut bias_gradient);
+
+        let (weight, bias) = match &feedback.layers[0] {
+            network::Layer::Dense(layer) => (layer.weights.clone(), layer.bias.clone()),
+            _ => panic!("Invalid layer type"),
+        };
+
+        // Check if weights and biases have been updated
+        for i in 0..3 {
+            match &feedback.layers[i] {
+                network::Layer::Dense(layer) => {
+                    assert_eq_data!(layer.weights.data, weight.data);
+                    if let Some(bias) = &bias {
+                        assert_eq_data!(layer.bias.clone().unwrap().data, bias.data);
+                    } else {
+                        panic!("Should have bias!");
+                    }
+                }
+                _ => panic!("Invalid layer type"),
             }
         }
     }
