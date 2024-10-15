@@ -386,13 +386,22 @@ impl Network {
     ///
     /// * `layers` - The layers of the feedback block.
     /// * `loops` - The number of loops in the feedback block.
+    /// * `skips` - Whether to use skip connections inside the feedback block.
+    /// * `accumulation` - The accumulation method of the feedback block.
+    ///  - `feedback::Accumulation::Mean` is assumed to be the best choice.
     ///
     /// # Notes
     ///
     /// * The feedback block must have at least one layer.
     /// * The input and output shapes of the feedback block must match.
     ///   - To allow for loops.
-    pub fn feedback(&mut self, layers: Vec<feedback::Layer>, loops: usize, skips: bool) {
+    pub fn feedback(
+        &mut self,
+        layers: Vec<feedback::Layer>,
+        loops: usize,
+        skips: bool,
+        accumulation: feedback::Accumulation,
+    ) {
         assert!(
             !layers.is_empty(),
             "Feedback block must have at least one layer."
@@ -476,7 +485,7 @@ impl Network {
             _layers,
             loops,
             skips,
-            self.accumulation.clone(),
+            accumulation,
         )));
     }
 
@@ -580,13 +589,6 @@ impl Network {
     /// Note that this is only relevant for loopback- and skip connections.
     pub fn set_accumulation(&mut self, accumulation: feedback::Accumulation) {
         self.accumulation = accumulation;
-
-        for layer in self.layers.iter_mut() {
-            match layer {
-                Layer::Feedback(ref mut layer) => layer.accumulation = self.accumulation.clone(),
-                _ => (),
-            }
-        }
     }
 
     /// Modify the `activation::Activation` function of a layer.
@@ -1185,7 +1187,7 @@ impl Network {
             // Check for skip connections.
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
-                let gradient = gradients[self.layers.len() - connect[&idx]].clone();
+                let gradient = gradients[i].clone();
                 gradients.last_mut().unwrap().add_inplace(&gradient);
                 // TODO: Handle accumulation methods.
             }
@@ -1422,32 +1424,8 @@ impl Network {
     ///
     /// The output of the network for the given input.
     pub fn predict(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let mut output = input.clone();
-        for layer in &self.layers {
-            match layer {
-                Layer::Dense(layer) => {
-                    let (_, out) = layer.forward(&output);
-                    output = out;
-                }
-                Layer::Convolution(layer) => {
-                    let (_, out) = layer.forward(&output);
-                    output = out;
-                }
-                Layer::Deconvolution(layer) => {
-                    let (_, out) = layer.forward(&output);
-                    output = out;
-                }
-                Layer::Maxpool(layer) => {
-                    let (_, out, _) = layer.forward(&output);
-                    output = out;
-                }
-                Layer::Feedback(block) => {
-                    let (_, out, _, _, _) = block.forward(&output);
-                    output = out;
-                }
-            }
-        }
-        output
+        let (_, outputs, _, _) = self.forward(input);
+        outputs.last().unwrap().clone()
     }
 
     /// Predict the output of the network for the given two-dimensional inputs.

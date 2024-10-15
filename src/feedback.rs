@@ -155,6 +155,7 @@ impl std::fmt::Display for Feedback {
             for coupled in self.coupled.iter() {
                 write!(f, "\t\t\t\t{:?}\n", coupled)?;
             }
+            write!(f, "\t\t\t\taccumulation: {}\n", self.accumulation)?;
             write!(f, "\t\t\t)\n")?;
         }
         if !self.connect.is_empty() {
