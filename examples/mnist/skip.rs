@@ -126,7 +126,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "SKIP : MNIST",
-        "./static/mnist-skip.png",
+        "./static/mnist/skip.png",
     );
 
     // Validate the network
@@ -147,7 +147,11 @@ fn main() {
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
+    plot::heatmap(
+        &x,
+        &format!("Target: {}", y.argmax()),
+        "./static/mnist/input.png",
+    );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);

@@ -142,7 +142,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "PLAIN : Fashion-MNIST",
-        "./static/fashion.png",
+        "./static/mnist-fashion/plain.png",
     );
 
     // Validate the network
@@ -166,7 +166,7 @@ fn main() {
     plot::heatmap(
         &x,
         &format!("{}", &labels[&(y.argmax() as u8)]),
-        "./static/input.png",
+        "./static/mnist-fashion/input.png",
     );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.

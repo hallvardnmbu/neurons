@@ -185,7 +185,7 @@ fn main() {
                 &val_loss,
                 &val_acc,
                 &format!("FEEDBACK : FTIR : {}", method),
-                &format!("./static/ftir-mlp-feedback-{}.png", method.to_lowercase()),
+                &format!("./static/ftir/mlp-{}-feedback.png", method.to_lowercase()),
             );
 
             if method == &"REGRESSION" {

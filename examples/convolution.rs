@@ -33,11 +33,15 @@ fn main() {
     println!("pre-activation: {}", &pre[pre.len() - 1].shape);
     println!("post-activation: {}", &post[post.len() - 1].shape);
 
-    plot::heatmap(&x, "Input", "./static/input.png");
-    plot::heatmap(&pre[pre.len() - 1], "Pre-activation", "./static/pre.png");
+    plot::heatmap(&x, "Input", "./static/convolution-input.png");
+    plot::heatmap(
+        &pre[pre.len() - 1],
+        "Pre-activation",
+        "./static/convolution-pre.png",
+    );
     plot::heatmap(
         &post[post.len() - 1],
         "Post-activation",
-        "./static/post.png",
+        "./static/convolution-post.png",
     );
 }

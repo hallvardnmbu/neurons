@@ -83,7 +83,7 @@ fn main() {
     plot::heatmap(
         &x_train[0],
         &format!("{}", &labels[&(y_train[0].argmax() as u8)]),
-        "./static/input.png",
+        "./static/cifar/input.png",
     );
 
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
@@ -138,7 +138,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "SKIP : CIFAR-10",
-        "./static/cifar10-skip.png",
+        "./static/cifar/skip.png",
     );
 
     // Validate the network

@@ -84,7 +84,7 @@ fn main() {
     plot::heatmap(
         &x_train[0],
         &format!("{}", &labels[&(y_train[0].argmax() as u8)]),
-        "./static/input.png",
+        "./static/cifar/input.png",
     );
 
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
@@ -144,7 +144,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "LOOP : CIFAR-10",
-        "./static/cifar10-looping.png",
+        "./static/cifar/looping.png",
     );
 
     // Validate the network
@@ -165,7 +165,11 @@ fn main() {
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
+    plot::heatmap(
+        &x,
+        &format!("Target: {}", y.argmax()),
+        "./static/cifar/input.png",
+    );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);

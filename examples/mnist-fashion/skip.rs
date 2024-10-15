@@ -128,7 +128,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "SKIP : Fashion-MNIST",
-        "./static/fashion-skip.png",
+        "./static/mnist-fashion/skip.png",
     );
 
     // Validate the network

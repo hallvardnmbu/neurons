@@ -123,8 +123,8 @@ fn main() {
         &train_loss,
         &val_loss,
         &val_acc,
-        "PLAIN : MNIST",
-        "./static/mnist-deconvolution.png",
+        "DECONV : MNIST",
+        "./static/mnist/deconvolution.png",
     );
 
     // Validate the network
@@ -145,7 +145,11 @@ fn main() {
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
+    plot::heatmap(
+        &x,
+        &format!("Target: {}", y.argmax()),
+        "./static/ftir/input.png",
+    );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);

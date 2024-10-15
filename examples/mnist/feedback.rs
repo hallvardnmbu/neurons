@@ -89,7 +89,7 @@ fn main() {
             None,
         )],
         3,
-        true,
+        false,
         feedback::Accumulation::Mean,
     );
     network.convolution(
@@ -104,9 +104,9 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    // Note: Weight coupling uses the network's accumulator.
-    // For (presumably) best results, `Mean` should be used.
-    network.set_accumulation(feedback::Accumulation::Mean);
+    // Include skip connection bypassing the feedback block
+    network.connect(1, 2);
+    network.set_accumulation(feedback::Accumulation::Add);
 
     network.set_optimizer(optimizer::SGD::create(
         0.0001, // Learning rate
@@ -133,7 +133,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "FEEDBACK : MNIST",
-        "./static/mnist-feedback.png",
+        "./static/mnist/feedback.png",
     );
 
     // Validate the network
@@ -154,7 +154,11 @@ fn main() {
 
     let x = x_test.get(5).unwrap();
     let y = y_test.get(5).unwrap();
-    plot::heatmap(&x, &format!("Target: {}", y.argmax()), "./static/input.png");
+    plot::heatmap(
+        &x,
+        &format!("Target: {}", y.argmax()),
+        "./static/mnist/input.png",
+    );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);
