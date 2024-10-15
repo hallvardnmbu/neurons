@@ -3,6 +3,7 @@
 use crate::random;
 
 use std::sync::Arc;
+use std::time;
 
 pub type Scale = Arc<dyn Fn(f32) -> f32 + Send + Sync>;
 
@@ -405,7 +406,12 @@ impl Tensor {
     ///
     /// A new Tensor with the given shape filled with random values.
     pub fn random(shape: Shape, min: f32, max: f32) -> Self {
-        let mut generator = random::Generator::create(12345);
+        let mut generator = random::Generator::create(
+            time::SystemTime::now()
+                .duration_since(time::UNIX_EPOCH)
+                .unwrap()
+                .subsec_micros() as u64,
+        );
         match shape {
             Shape::Single(size) => Tensor {
                 shape,
