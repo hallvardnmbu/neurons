@@ -173,6 +173,15 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.5.2 – Bug extermination and expanded examples.</summary>
+
+  * Fix bug related to skip connections.
+  * Fix bug related to validation forward pass.
+  * Expanded examples.
+  * Improve feedback block.
+</details>
+
+<details>
   <summary>v2.5.1 – Convolution dilation.</summary>
 
   Add dilation to the convolution layer.
