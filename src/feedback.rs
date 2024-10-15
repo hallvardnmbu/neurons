@@ -765,15 +765,18 @@ mod tests {
 
     #[test]
     fn test_feedback_forward() {
-        let layers = vec![network::Layer::Dense(dense::Dense::create(
+        let mut layer = dense::Dense::create(
             tensor::Shape::Single(3),
             tensor::Shape::Single(3),
             &activation::Activation::ReLU,
             true,
             None,
-        ))];
+        );
+        layer.weights = tensor::Tensor::double(vec![vec![1.0; 3]; 3]);
+        layer.bias = Some(tensor::Tensor::single(vec![0.0; 3]));
+        let layers = vec![network::Layer::Dense(layer)];
         let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
-        let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
+        let input = tensor::Tensor::single(vec![-1.0, 2.0, 3.0]);
 
         let (unactivated, activated, maxpool, intermediate_unactivated, intermediate_activated) =
             feedback.forward(&input);
@@ -793,21 +796,29 @@ mod tests {
             ])
             .shape
         );
+
+        // Check actual values
+        let expected_unactivated = tensor::Tensor::single(vec![4.0; 3]);
+        let expected_activated = tensor::Tensor::single(vec![4.0; 3]);
+        assert_eq_data!(unactivated.data, expected_unactivated.data);
+        assert_eq_data!(activated.data, expected_activated.data);
     }
 
     #[test]
     fn test_feedback_backward() {
-        let layers = vec![network::Layer::Dense(dense::Dense::create(
+        let mut layer = dense::Dense::create(
             tensor::Shape::Single(3),
             tensor::Shape::Single(3),
             &activation::Activation::ReLU,
             true,
             None,
-        ))];
+        );
+        layer.weights = tensor::Tensor::double(vec![vec![1.0; 3]; 3]);
+        layer.bias = Some(tensor::Tensor::single(vec![0.0; 3]));
+        let layers = vec![network::Layer::Dense(layer)];
         let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
         let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
-        let (_, activated, _, intermediate_unactivated, intermediate_activated) =
-            feedback.forward(&input);
+        let (_, _, _, intermediate_unactivated, intermediate_activated) = feedback.forward(&input);
         let gradient = tensor::Tensor::single(vec![0.1, 0.2, 0.3]);
 
         let (input_gradient, weight_gradient, bias_gradient) = feedback.backward(
@@ -821,8 +832,30 @@ mod tests {
             tensor::Tensor::nested(vec![tensor::Tensor::double(vec![vec![1.0; 3]; 2]),]).shape
         );
         assert_eq!(
-            bias_gradient.unwrap().shape,
+            bias_gradient.clone().unwrap().shape,
             tensor::Tensor::nested(vec![tensor::Tensor::single(vec![1.0; 3]),]).shape
+        );
+
+        // Check actual values
+        let expected_input_gradient = tensor::Tensor::single(vec![0.6, 0.6, 0.6]);
+        let expected_weight_gradient = tensor::Tensor::nested(vec![tensor::Tensor::double(vec![
+            vec![0.1 * 1.0, 0.1 * 2.0, 0.1 * 3.0],
+            vec![0.2 * 1.0, 0.2 * 2.0, 0.2 * 3.0],
+            vec![0.3 * 1.0, 0.3 * 2.0, 0.3 * 3.0],
+        ])]);
+        let expected_bias_gradient = tensor::Tensor::single(vec![0.1, 0.2, 0.3]);
+
+        assert_eq_data!(input_gradient.data, expected_input_gradient.data);
+        assert_eq_data!(
+            weight_gradient.unnested()[0].data,
+            expected_weight_gradient.unnested()[0].data
+        );
+        assert_eq_data!(
+            bias_gradient.clone().unwrap().unnestedoptional()[0]
+                .clone()
+                .unwrap()
+                .data,
+            expected_bias_gradient.data
         );
     }
 
