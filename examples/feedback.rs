@@ -15,6 +15,7 @@ fn main() {
         ],
         2,
         true,
+        feedback::Accumulation::Mean,
     );
 
     network.dense(10, activation::Activation::Sigmoid, false, None);

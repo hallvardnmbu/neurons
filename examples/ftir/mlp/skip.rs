@@ -1,6 +1,6 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-use neurons::{activation, network, objective, optimizer, plot, tensor};
+use neurons::{activation, feedback, network, objective, optimizer, plot, tensor};
 
 use std::{
     fs::File,
@@ -106,66 +106,102 @@ fn main() {
         data("./examples/datasets/ftir.csv");
 
     let x_train: Vec<&tensor::Tensor> = x_train.iter().collect();
-    let _y_train: Vec<&tensor::Tensor> = y_train.iter().collect();
+    let y_train: Vec<&tensor::Tensor> = y_train.iter().collect();
     let class_train: Vec<&tensor::Tensor> = class_train.iter().collect();
 
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
-    let _y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
+    let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
     let class_test: Vec<&tensor::Tensor> = class_test.iter().collect();
 
     let x_val: Vec<&tensor::Tensor> = x_val.iter().collect();
-    let _y_val: Vec<&tensor::Tensor> = y_val.iter().collect();
+    let y_val: Vec<&tensor::Tensor> = y_val.iter().collect();
     let class_val: Vec<&tensor::Tensor> = class_val.iter().collect();
 
     println!("Train data {}x{}", x_train.len(), x_train[0].shape,);
     println!("Test data {}x{}", x_test.len(), x_test[0].shape,);
     println!("Validation data {}x{}", x_val.len(), x_val[0].shape,);
 
-    // Create the network
-    let mut network = network::Network::new(tensor::Shape::Single(571));
+    vec!["REGRESSION", "CLASSIFICATION"]
+        .iter()
+        .for_each(|method| {
+            // Create the network
+            let mut network = network::Network::new(tensor::Shape::Single(571));
 
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(96, activation::Activation::ReLU, false, None);
-    network.dense(28, activation::Activation::Softmax, false, None);
+            network.dense(128, activation::Activation::ReLU, false, None);
+            network.dense(256, activation::Activation::ReLU, false, None);
+            network.dense(128, activation::Activation::ReLU, false, None);
 
-    network.connect(1, 3);
+            if method == &"REGRESSION" {
+                network.dense(1, activation::Activation::Linear, false, None);
+                network.set_objective(objective::Objective::RMSE, None);
+            } else {
+                network.dense(28, activation::Activation::Softmax, false, None);
+                network.set_objective(objective::Objective::CrossEntropy, None);
+            }
 
-    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
-    network.set_objective(objective::Objective::CrossEntropy, None);
+            network.connect(1, 3);
+            network.set_accumulation(feedback::Accumulation::Add);
 
-    println!("{}", network);
+            network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
 
-    // Train the network
-    let (train_loss, val_loss, val_acc) = network.learn(
-        &x_train,
-        &class_train,
-        Some((&x_val, &class_val, 50)),
-        40,
-        500,
-        Some(100),
-    );
-    plot::loss(
-        &train_loss,
-        &val_loss,
-        &val_acc,
-        "SKIP : FTIR",
-        "./static/ftir-mlp-skip.png",
-    );
+            println!("{}", network);
 
-    // Validate the network
-    let (val_loss, val_acc) = network.validate(&x_test, &class_test, 1e-6);
-    println!(
-        "Final validation accuracy: {:.2} % and loss: {:.5}",
-        val_acc * 100.0,
-        val_loss
-    );
+            // Train the network
+            let (train_loss, val_loss, val_acc);
+            if method == &"REGRESSION" {
+                println!("> Training the network for regression.");
 
-    // Use the network
-    let prediction = network.predict(x_test.get(0).unwrap());
-    println!(
-        "Prediction. Target: {}. Output: {}.",
-        class_test[0].argmax(),
-        prediction.argmax()
-    );
+                (train_loss, val_loss, val_acc) = network.learn(
+                    &x_train,
+                    &y_train,
+                    Some((&x_val, &y_val, 50)),
+                    16,
+                    500,
+                    Some(100),
+                );
+            } else {
+                println!("> Training the network for classification.");
+
+                (train_loss, val_loss, val_acc) = network.learn(
+                    &x_train,
+                    &class_train,
+                    Some((&x_val, &class_val, 50)),
+                    16,
+                    500,
+                    Some(100),
+                );
+            }
+            plot::loss(
+                &train_loss,
+                &val_loss,
+                &val_acc,
+                &format!("SKIP : FTIR : {}", method),
+                &format!("./static/ftir-mlp-skip-{}.png", method.to_lowercase()),
+            );
+
+            if method == &"REGRESSION" {
+                // Use the network
+                let prediction = network.predict(x_test.get(0).unwrap());
+                println!(
+                    "Prediction. Target: {}. Output: {}.",
+                    y_test[0].data, prediction.data
+                );
+            } else {
+                // Validate the network
+                let (val_loss, val_acc) = network.validate(&x_test, &class_test, 1e-6);
+                println!(
+                    "Final validation accuracy: {:.2} % and loss: {:.5}",
+                    val_acc * 100.0,
+                    val_loss
+                );
+
+                // Use the network
+                let prediction = network.predict(x_test.get(0).unwrap());
+                println!(
+                    "Prediction. Target: {}. Output: {}.",
+                    class_test[0].argmax(),
+                    prediction.argmax()
+                );
+            }
+        });
 }

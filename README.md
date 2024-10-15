@@ -213,6 +213,7 @@ fn main() {
       )],
       2,
       true,
+      feedback::Accumulation::Mean,
   );
   ```
 </details>
