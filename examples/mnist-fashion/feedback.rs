@@ -96,8 +96,8 @@ fn main() {
             (1, 1),
             None,
         )],
-        4,
-        true,
+        3,
+        false,
         feedback::Accumulation::Mean,
     );
     network.convolution(
@@ -112,9 +112,9 @@ fn main() {
     network.maxpool((2, 2), (2, 2));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    // Note: Weight coupling uses the network's accumulator.
-    // For (presumably) best results, `Mean` should be used.
-    network.set_accumulation(feedback::Accumulation::Mean);
+    // Include skip connection bypassing the feedback block
+    // network.connect(1, 2);
+    // network.set_accumulation(feedback::Accumulation::Add);
 
     network.set_optimizer(optimizer::SGD::create(0.0001, None));
     network.set_objective(objective::Objective::CrossEntropy, None);

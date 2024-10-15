@@ -101,9 +101,9 @@ fn main() {
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.loopback(
-        2,                             // From layer X's output.
-        0,                             // To layer Y's input.
-        Arc::new(|loops| 1.0 / loops), // Gradient scaling.
+        2,                      // From layer X's output.
+        0,                      // To layer Y's input.
+        Arc::new(|_loops| 1.0), // Gradient scaling.
     );
     network.set_accumulation(
         feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
