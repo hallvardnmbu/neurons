@@ -835,7 +835,6 @@ mod tests {
             true,
             None,
         ))];
-        let mut feedback = Feedback::create(layers.clone(), 3, false, Accumulation::Add);
         let mut weight_gradient = tensor::Tensor::nested(vec![
             tensor::Tensor::double(vec![
                 vec![0.1, 0.2, 0.3],
@@ -859,25 +858,34 @@ mod tests {
             Some(tensor::Tensor::single(vec![1.1, 1.2, 0.3])),
         ]);
 
-        feedback.update(1, &mut weight_gradient, &mut bias_gradient);
+        for accumulation in vec![
+            Accumulation::Add,
+            Accumulation::Subtract,
+            Accumulation::Multiply,
+            // Accumulation::Overwrite,
+            Accumulation::Mean,
+        ] {
+            let mut feedback = Feedback::create(layers.clone(), 3, false, accumulation.clone());
+            feedback.update(1, &mut weight_gradient, &mut bias_gradient);
 
-        let (weight, bias) = match &feedback.layers[0] {
-            network::Layer::Dense(layer) => (layer.weights.clone(), layer.bias.clone()),
-            _ => panic!("Invalid layer type"),
-        };
-
-        // Check if weights and biases have been updated
-        for i in 0..3 {
-            match &feedback.layers[i] {
-                network::Layer::Dense(layer) => {
-                    assert_eq_data!(layer.weights.data, weight.data);
-                    if let Some(bias) = &bias {
-                        assert_eq_data!(layer.bias.clone().unwrap().data, bias.data);
-                    } else {
-                        panic!("Should have bias!");
-                    }
-                }
+            let (weight, bias) = match &feedback.layers[0] {
+                network::Layer::Dense(layer) => (layer.weights.clone(), layer.bias.clone()),
                 _ => panic!("Invalid layer type"),
+            };
+
+            // Check if weights and biases have been updated
+            for i in 0..3 {
+                match &feedback.layers[i] {
+                    network::Layer::Dense(layer) => {
+                        assert_eq_data!(layer.weights.data, weight.data);
+                        if let Some(bias) = &bias {
+                            assert_eq_data!(layer.bias.clone().unwrap().data, bias.data);
+                        } else {
+                            panic!("Should have bias!");
+                        }
+                    }
+                    _ => panic!("Invalid layer type"),
+                }
             }
         }
     }
