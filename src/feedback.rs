@@ -424,13 +424,14 @@ impl Feedback {
             };
         }
 
-        // TODO: Handle `self.flatten`.
+        // Flattening the last output if specified.
+        if self.flatten {
+            let last = activated.last().unwrap().clone();
+            activated.pop();
+            activated.push(last.flatten());
+        }
 
         (
-            // Return the first unactivated and last activated tensors.
-            // Used for the backward pass of the network.
-            // TODO: Which of these makes most sense to return?
-            // unactivated[unactivated.len() - 1].clone(),
             unactivated[0].clone(),
             activated[activated.len() - 1].clone(),
             tensor::Tensor::nestedoptional(maxpools),

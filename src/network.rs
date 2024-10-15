@@ -561,20 +561,50 @@ impl Network {
         }
 
         let from = match &self.layers[infrom] {
-            Layer::Dense(layer) => &layer.inputs,
-            Layer::Convolution(layer) => &layer.inputs,
-            Layer::Deconvolution(layer) => &layer.inputs,
-            Layer::Maxpool(_) => panic!("Skip connection from Maxpool layer not supported."),
-            Layer::Feedback(feedback) => &feedback.inputs,
+            Layer::Dense(layer) => match &layer.inputs {
+                tensor::Shape::Single(nodes) => nodes,
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Convolution(layer) => match &layer.inputs {
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Deconvolution(layer) => match &layer.inputs {
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Maxpool(_) => panic!("Unknown shape!"),
+            Layer::Feedback(feedback) => match &feedback.inputs {
+                tensor::Shape::Single(nodes) => &nodes,
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
         };
         let to = match &self.layers[into] {
-            Layer::Dense(layer) => &layer.inputs,
-            Layer::Convolution(layer) => &layer.inputs,
-            Layer::Deconvolution(layer) => &layer.inputs,
-            Layer::Maxpool(layer) => &layer.inputs,
-            Layer::Feedback(feedback) => &feedback.inputs,
+            Layer::Dense(layer) => match &layer.inputs {
+                tensor::Shape::Single(nodes) => nodes,
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Convolution(layer) => match &layer.inputs {
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Deconvolution(layer) => match &layer.inputs {
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Maxpool(layer) => match &layer.inputs {
+                tensor::Shape::Single(nodes) => &nodes,
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
+            Layer::Feedback(feedback) => match &feedback.inputs {
+                tensor::Shape::Single(nodes) => &nodes,
+                tensor::Shape::Triple(c, h, w) => &(*c * *h * *w),
+                _ => panic!("Unknown shape!"),
+            },
         };
-        assert_eq_shape!(from, to);
+        assert_eq!(from, to);
 
         // Store the skip connection for use in the propagation.
         self.connect.insert(into, infrom);
@@ -925,7 +955,9 @@ impl Network {
 
             // Check if the layer should account for a skip connection.
             if self.connect.contains_key(&i) {
-                let _x = activated[self.connect[&i]].clone();
+                // Extracting the tensor from the layer with the corresponding index.
+                // Reshaping it in case the connection is across shape types.
+                let _x = activated[self.connect[&i]].clone().reshape(x.shape.clone());
 
                 match self.accumulation {
                     feedback::Accumulation::Add => {
@@ -1103,6 +1135,11 @@ impl Network {
 
         for layer in &self.layers[from..to] {
             let x = activated.last().unwrap();
+
+            // Extracting the tensor from the layer with the corresponding index.
+            // Reshaping it in case the connection is across shape types.
+            // .reshape(layer.inputs.clone())
+
             match layer {
                 Layer::Dense(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
