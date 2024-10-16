@@ -1221,14 +1221,6 @@ impl Network {
             let input: &tensor::Tensor = &activated[idx];
             let output: &tensor::Tensor = &preactivated[idx];
 
-            // Check for skip connections.
-            // Add the gradient of the skip connection to the current gradient.
-            if connect.contains_key(&idx) {
-                let gradient = gradients[i].clone();
-                gradients.last_mut().unwrap().add_inplace(&gradient);
-                // TODO: Handle accumulation methods.
-            }
-
             let (gradient, wg, bg) = match layer {
                 Layer::Dense(layer) => layer.backward(&gradients.last().unwrap(), input, output),
                 Layer::Convolution(layer) => {
@@ -1257,6 +1249,14 @@ impl Network {
             gradients.push(gradient);
             weight_gradient.push(wg);
             bias_gradient.push(bg);
+
+            // Check for skip connections.
+            // Add the gradient of the skip connection to the current gradient.
+            if connect.contains_key(&idx) {
+                let gradient = gradients[self.layers.len() - *connect[&idx]].clone();
+                gradients.last_mut().unwrap().add_inplace(&gradient);
+                // TODO: Handle accumulation methods?
+            }
         });
 
         (weight_gradient, bias_gradient)
