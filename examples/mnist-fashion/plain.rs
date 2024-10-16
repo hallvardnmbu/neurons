@@ -53,7 +53,7 @@ fn load_labels(file_path: &str, numbers: usize) -> Result<Vec<tensor::Tensor>> {
 }
 
 fn main() {
-    let labels: HashMap<u8, &str> = [
+    let _labels: HashMap<u8, &str> = [
         (0, "top"),
         (1, "trouser"),
         (2, "pullover"),

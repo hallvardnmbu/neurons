@@ -45,7 +45,7 @@ pub fn load_cifar10(file_path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor
 }
 
 fn main() {
-    let labels: HashMap<u8, &str> = [
+    let _labels: HashMap<u8, &str> = [
         (0, "airplane"),
         (1, "automobile"),
         (2, "bird"),

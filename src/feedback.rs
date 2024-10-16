@@ -685,7 +685,7 @@ impl Feedback {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{activation, assert_eq_data, assert_eq_shape, dense, network, optimizer, tensor};
+    use crate::{activation, assert_eq_data, assert_eq_shape, dense, network, tensor};
 
     #[test]
     fn test_feedback_create() {
