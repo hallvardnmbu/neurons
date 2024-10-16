@@ -117,7 +117,7 @@ fn main() {
         feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
     );
 
-    network.set_optimizer(optimizer::SGD::create(0.0001, None));
+    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
 
     println!("{}", network);

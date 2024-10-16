@@ -81,12 +81,6 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
 
-    plot::heatmap(
-        &x_train[0],
-        &format!("{}", &labels[&(y_train[0].argmax() as u8)]),
-        "./static/cifar/input.png",
-    );
-
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
 
     network.convolution(
@@ -163,13 +157,13 @@ fn main() {
         prediction.argmax()
     );
 
-    let x = x_test.get(5).unwrap();
-    let y = y_test.get(5).unwrap();
-    plot::heatmap(
-        &x,
-        &format!("Target: {}", y.argmax()),
-        "./static/cifar/input.png",
-    );
+    // let x = x_test.get(5).unwrap();
+    // let y = y_test.get(5).unwrap();
+    // plot::heatmap(
+    //     &x,
+    //     &format!("Target: {}", y.argmax()),
+    //     "./static/cifar/input.png",
+    // );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);

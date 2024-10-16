@@ -237,7 +237,7 @@ impl Feedback {
         Feedback {
             inputs,
             outputs,
-            optimizer: optimizer::SGD::create(0.1, None),
+            optimizer: optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None),
             flatten: false,
             layers,
             connect,

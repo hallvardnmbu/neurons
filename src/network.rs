@@ -1254,7 +1254,8 @@ impl Network {
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
                 let gradient = gradients[self.layers.len() - *connect[&idx]].clone();
-                gradients.last_mut().unwrap().add_inplace(&gradient);
+                let last = gradients.last_mut().unwrap();
+                last.add_inplace(&gradient.reshape(last.shape.clone()));
                 // TODO: Handle accumulation methods?
             }
         });

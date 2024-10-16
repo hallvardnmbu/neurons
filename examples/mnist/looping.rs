@@ -109,10 +109,7 @@ fn main() {
         feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
     );
 
-    network.set_optimizer(optimizer::SGD::create(
-        0.0001, // Learning rate
-        None,   // Decay
-    ));
+    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(
         objective::Objective::CrossEntropy, // Objective function
         None,                               // Gradient clipping
@@ -153,13 +150,13 @@ fn main() {
         prediction.argmax()
     );
 
-    let x = x_test.get(5).unwrap();
-    let y = y_test.get(5).unwrap();
-    plot::heatmap(
-        &x,
-        &format!("Target: {}", y.argmax()),
-        "./static/mnist/input.png",
-    );
+    // let x = x_test.get(5).unwrap();
+    // let y = y_test.get(5).unwrap();
+    // plot::heatmap(
+    //     &x,
+    //     &format!("Target: {}", y.argmax()),
+    //     "./static/mnist/input.png",
+    // );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.
     // let (pre, post, _) = network.forward(x);
