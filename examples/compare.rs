@@ -214,6 +214,11 @@ fn main() {
                         network.set_objective(objective::Objective::CrossEntropy, None);
                     }
 
+                    // Add the skip connection if applicable.
+                    if *skip {
+                        network.connect(1, network.layers.len() - 1);
+                    }
+
                     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
                     println!("{}", network);
 
@@ -272,12 +277,21 @@ fn main() {
 
                         let (val_loss, val_acc);
                         if method == &"REG" {
-                            (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            (val_loss, val_acc) = network.validate(&x_val, &y_val, 1e-6);
                         } else {
-                            (val_loss, val_acc) = network.validate(&x_test, &class_test, 1e-6);
+                            (val_loss, val_acc) = network.validate(&x_val, &class_val, 1e-6);
                         }
                         writeln!(file, "     val loss: {:?}", val_loss).unwrap();
                         writeln!(file, "     val  acc: {}", val_acc).unwrap();
+
+                        let (test_loss, test_acc);
+                        if method == &"REG" {
+                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                        } else {
+                            (test_loss, test_acc) = network.validate(&x_test, &class_test, 1e-6);
+                        }
+                        writeln!(file, "     test loss: {:?}", test_loss).unwrap();
+                        writeln!(file, "     test  acc: {}", test_acc).unwrap();
 
                         // Restore the feedback loop.
                         network.loopbacks = loopbacks;
@@ -291,12 +305,21 @@ fn main() {
 
                         let (val_loss, val_acc);
                         if method == &"REG" {
-                            (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            (val_loss, val_acc) = network.validate(&x_val, &y_val, 1e-6);
                         } else {
-                            (val_loss, val_acc) = network.validate(&x_test, &class_test, 1e-6);
+                            (val_loss, val_acc) = network.validate(&x_val, &class_val, 1e-6);
                         }
                         writeln!(file, "     val loss: {:?}", val_loss).unwrap();
                         writeln!(file, "     val  acc: {}", val_acc).unwrap();
+
+                        let (test_loss, test_acc);
+                        if method == &"REG" {
+                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                        } else {
+                            (test_loss, test_acc) = network.validate(&x_test, &class_test, 1e-6);
+                        }
+                        writeln!(file, "     test loss: {:?}", test_loss).unwrap();
+                        writeln!(file, "     test  acc: {}", test_acc).unwrap();
                     }
                 });
             });
