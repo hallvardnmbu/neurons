@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 //
 // Code for comparison between the various architectures.
-// The respective loss and accuracies is stored to the file `~/output/compare.txt`.
+// The respective loss and accuracies is stored to the file `~/output/compare/ftir.json`.
 //
 // In addition, some simple probing of the networks are done.
 // Namely, validating the trained networks with and without feedback and skip connections.
@@ -152,7 +152,7 @@ fn main() {
     println!("Validation data {}x{}\n", x_val.len(), x_val[0].shape,);
 
     // Create the results file.
-    let mut file = File::create("./output/compare.json").unwrap();
+    let mut file = File::create("./output/compare/ftir.json").unwrap();
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 

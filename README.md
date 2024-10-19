@@ -173,6 +173,18 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.5.3 – Architecture comparison.</summary>
+
+  Added examples comparing the performance of different architectures.
+  Probes the final network by turning of skips and feedbacks, etc.
+  * `examples/compare/*`
+
+  Corresponding plotting functionality.
+  * `documentation/comparison.py`
+</details>
+
+
+<details>
   <summary>v2.5.2 – Bug extermination and expanded examples.</summary>
 
   * Fix bug related to skip connections.
@@ -503,7 +515,7 @@ fn main() {
     - [x] Thorough testing of activation functions
     - [x] Thorough testing of objective functions
     - [x] Thorough testing of optimization techniques
-    - [ ] Thorough testing of feedback blocks
+    - [x] Thorough testing of feedback blocks
   - [x] Integration tests
     - [x] Network forward pass
     - [x] Network backward pass
@@ -515,17 +527,17 @@ fn main() {
 
   - [x] XOR
   - [x] Iris
-  - [ ] FTIR
-    - [ ] MLP
+  - [x] FTIR
+    - [x] MLP
       - [x] Plain
-      - [ ] Skip
-      - [ ] Looping
-      - [ ] Feedback
-    - [ ] CNN
-      - [ ] Plain
-      - [ ] Skip
-      - [ ] Looping
-      - [ ] Feedback
+      - [x] Skip
+      - [x] Looping
+      - [x] Feedback
+    - [x] CNN
+      - [x] Plain
+      - [x] Skip
+      - [x] Looping
+      - [x] Feedback
   - [x] MNIST
     - [x] CNN
     - [x] CNN + Skip

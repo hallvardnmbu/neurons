@@ -1,7 +1,14 @@
+"""Plot the comparison of different methods. To be run from the root directory."""
 import json
 import matplotlib.pyplot as plt
 
-_DATA = json.load(open('../output/compare.json'))[0]
+_PROBLEM = input("Enter the problem name (e.g. 'ftir' or 'mnist'): ").strip().lower()
+try:
+    _DATA = json.load(open(f'./output/compare/{_PROBLEM}.json'))[0]
+except FileNotFoundError:
+    raise FileNotFoundError(f"""
+File not found (./output/compare/{_PROBLEM}.json). Are you standing in the root directory? The relevant example should be run first; `cargo run --example compare-{_PROBLEM} --release`.
+        """)
 _COLOUR = {
     "REGULAR": "black",
     "FB1": "forestgreen",
@@ -28,6 +35,8 @@ for which in ["CLASSIFICATION", "REGRESSION"]:
                 linewidth=1,
                 color=_COLOUR[run.split("-")[0]]
             )
+        if not ax_loss.lines:
+            continue
         ax_loss.legend()
         ax_acc.legend()
         ax_loss.set_xlabel('Epoch')
@@ -39,6 +48,6 @@ for which in ["CLASSIFICATION", "REGRESSION"]:
             for location in ['top', 'right', 'left', 'bottom']:
                 ax.spines[location].set_visible(False)
 
-        fig_loss.savefig(f"../output/compare/loss-{which.lower()}-{skip}.png")
+        fig_loss.savefig(f"./output/compare/{_PROBLEM}/loss-{which.lower()}-{skip}.png")
         if which == "CLASSIFICATION":
-            fig_acc.savefig(f"../output/compare/acc-{which.lower()}-{skip}.png")
+            fig_acc.savefig(f"./output/compare/{_PROBLEM}/acc-{which.lower()}-{skip}.png")
