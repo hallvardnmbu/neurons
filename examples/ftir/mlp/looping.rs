@@ -177,7 +177,7 @@ fn main() {
                 &val_loss,
                 &val_acc,
                 &format!("LOOP : FTIR : {}", method),
-                &format!("./static/ftir/mlp-{}-loop.png", method.to_lowercase()),
+                &format!("./output/ftir/mlp-{}-loop.png", method.to_lowercase()),
             );
 
             if method == &"REGRESSION" {

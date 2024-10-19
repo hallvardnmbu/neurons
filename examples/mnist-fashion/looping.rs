@@ -136,7 +136,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "LOOP : Fashion-MNIST",
-        "./static/mnist-fashion/looping.png",
+        "./output/mnist-fashion/looping.png",
     );
 
     // Validate the network

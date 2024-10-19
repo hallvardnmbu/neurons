@@ -1,6 +1,6 @@
 debug/
 target/
-static/
+output/
 
 **/*.rs.bk
 *.pdb

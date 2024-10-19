@@ -131,7 +131,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "LOOP : MNIST",
-        "./static/mnist/looping.png",
+        "./output/mnist/looping.png",
     );
 
     // Validate the network
@@ -155,7 +155,7 @@ fn main() {
     // plot::heatmap(
     //     &x,
     //     &format!("Target: {}", y.argmax()),
-    //     "./static/mnist/input.png",
+    //     "./output/mnist/input.png",
     // );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.

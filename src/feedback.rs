@@ -95,7 +95,7 @@ pub struct Feedback {
     pub(crate) outputs: tensor::Shape,
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) flatten: bool,
-    layers: Vec<network::Layer>,
+    pub layers: Vec<network::Layer>,
     connect: HashMap<usize, usize>,
     pub(crate) accumulation: Accumulation,
     coupled: Vec<Vec<usize>>,

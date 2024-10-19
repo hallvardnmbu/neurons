@@ -34,6 +34,10 @@ name = "benchmark"
 path = "examples/benchmark.rs"
 
 [[example]]
+name = "compare"
+path = "examples/compare.rs"
+
+[[example]]
 name = "xor"
 path = "examples/xor.rs"
 

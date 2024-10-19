@@ -138,7 +138,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "LOOP : CIFAR-10",
-        "./static/cifar/looping.png",
+        "./output/cifar/looping.png",
     );
 
     // Validate the network
@@ -162,7 +162,7 @@ fn main() {
     // plot::heatmap(
     //     &x,
     //     &format!("Target: {}", y.argmax()),
-    //     "./static/cifar/input.png",
+    //     "./output/cifar/input.png",
     // );
 
     // Plot the pre- and post-activation heatmaps for each (image) layer.

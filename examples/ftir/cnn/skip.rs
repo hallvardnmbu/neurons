@@ -184,7 +184,7 @@ fn main() {
                 &val_loss,
                 &val_acc,
                 &format!("SKIP : FTIR : {}", method),
-                &format!("./static/ftir/cnn-{}-skip.png", method.to_lowercase()),
+                &format!("./output/ftir/cnn-{}-skip.png", method.to_lowercase()),
             );
 
             if method == &"REGRESSION" {

@@ -59,9 +59,9 @@ impl Layer {
 pub struct Network {
     input: tensor::Shape,
 
-    layers: Vec<Layer>,
-    loopbacks: HashMap<usize, usize>,
-    connect: HashMap<usize, usize>,
+    pub layers: Vec<Layer>,
+    pub loopbacks: HashMap<usize, usize>,
+    pub connect: HashMap<usize, usize>,
     accumulation: feedback::Accumulation,
 
     optimizer: optimizer::Optimizer,

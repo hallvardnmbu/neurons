@@ -135,7 +135,7 @@ fn main() {
         &val_loss,
         &val_acc,
         "FEEDBACK : Fashion-MNIST",
-        "./static/mnist-fashion/feedback.png",
+        "./output/mnist-fashion/feedback.png",
     );
 
     // Validate the network
