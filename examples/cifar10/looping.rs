@@ -113,6 +113,7 @@ fn main() {
         Arc::new(|loops| 1.0 / loops), // Gradient scaling.
     );
     network.set_accumulation(
+        feedback::Accumulation::Add, // How the skip-connection is accumulated.
         feedback::Accumulation::Add, // How the pre- and post-activations are accumulated.
     );
 

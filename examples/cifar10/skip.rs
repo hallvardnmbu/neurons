@@ -114,7 +114,7 @@ fn main() {
 
     // Adding a skip connection.
     network.connect(1, 4);
-    network.set_accumulation(feedback::Accumulation::Add);
+    network.set_accumulation(feedback::Accumulation::Add, feedback::Accumulation::Add);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(

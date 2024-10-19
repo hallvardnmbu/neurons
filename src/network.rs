@@ -52,17 +52,21 @@ impl Layer {
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
 /// * `loopbacks` - The looped connections of the network.
+/// * `loopaccumulation` - The accumulation type of the network for looped connections.
 /// * `connect` - The skip connections of the network.
-/// * `accumulation` - The accumulation type of the network for looped- and skip connections.
+/// * `skipaccumulation` - The accumulation type of the network for skip connections.
 /// * `optimizer` - The `optimizer::Optimizer` function of the network.
 /// * `objective` - The `objective::Function` of the network.
 pub struct Network {
     input: tensor::Shape,
 
     pub layers: Vec<Layer>,
+
     pub loopbacks: HashMap<usize, usize>,
+    loopaccumulation: feedback::Accumulation,
+
     pub connect: HashMap<usize, usize>,
-    accumulation: feedback::Accumulation,
+    skipaccumulation: feedback::Accumulation,
 
     optimizer: optimizer::Optimizer,
     objective: objective::Function,
@@ -82,7 +86,7 @@ impl std::fmt::Display for Network {
         write!(f, "\t)\n")?;
         if !self.connect.is_empty() {
             write!(f, "\tconnections: (\n")?;
-            write!(f, "\t\taccumulation: {}\n", self.accumulation)?;
+            write!(f, "\t\taccumulation: {}\n", self.skipaccumulation)?;
 
             let mut entries: Vec<(&usize, &usize)> = self.connect.iter().collect();
             entries.sort_by_key(|&(to, _)| to);
@@ -93,7 +97,7 @@ impl std::fmt::Display for Network {
         }
         if !self.loopbacks.is_empty() {
             write!(f, "\tloops: (\n")?;
-            write!(f, "\t\taccumulation: {}\n", self.accumulation)?;
+            write!(f, "\t\taccumulation: {}\n", self.loopaccumulation)?;
 
             let mut entries: Vec<(&usize, &usize)> = self.loopbacks.iter().collect();
             entries.sort_by_key(|&(to, _)| to);
@@ -129,8 +133,9 @@ impl Network {
             input,
             layers: Vec::new(),
             loopbacks: HashMap::new(),
+            loopaccumulation: feedback::Accumulation::Mean,
             connect: HashMap::new(),
-            accumulation: feedback::Accumulation::Mean,
+            skipaccumulation: feedback::Accumulation::Add,
             optimizer: optimizer::SGD::create(0.1, None),
             objective: objective::Function::create(objective::Objective::MSE, None),
         }
@@ -616,9 +621,17 @@ impl Network {
     }
 
     /// Set the `feedback::Accumulation` function of the network.
-    /// Note that this is only relevant for loopback- and skip connections.
-    pub fn set_accumulation(&mut self, accumulation: feedback::Accumulation) {
-        self.accumulation = accumulation;
+    ///
+    /// # Arguments
+    /// * `skipaccumulation` - The `feedback::Accumulation` function for skip connections.
+    /// * `loopaccumulation` - The `feedback::Accumulation` function for loop connections.
+    pub fn set_accumulation(
+        &mut self,
+        skipaccumulation: feedback::Accumulation,
+        loopaccumulation: feedback::Accumulation,
+    ) {
+        self.skipaccumulation = skipaccumulation;
+        self.loopaccumulation = loopaccumulation;
     }
 
     /// Modify the `activation::Activation` function of a layer.
@@ -959,7 +972,7 @@ impl Network {
                 // Reshaping it in case the connection is across shape types.
                 let _x = activated[self.connect[&i]].clone().reshape(x.shape.clone());
 
-                match self.accumulation {
+                match self.skipaccumulation {
                     feedback::Accumulation::Add => {
                         x.add_inplace(&_x);
                     }
@@ -1003,7 +1016,7 @@ impl Network {
                 });
 
                 // Add the original input of the fed-back layer to the latent representation.
-                match self.accumulation {
+                match self.loopaccumulation {
                     feedback::Accumulation::Add => {
                         current.add_inplace(&activated[self.loopbacks[&i]]);
                     }
@@ -1027,7 +1040,7 @@ impl Network {
 
                 // Store the outputs of the loopback layers.
                 for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
-                    match self.accumulation {
+                    match self.loopaccumulation {
                         feedback::Accumulation::Add => {
                             preactivated[j].add_inplace(&fpre[idx]);
                             activated[j + 1].add_inplace(&fpost[idx]);
@@ -1135,10 +1148,6 @@ impl Network {
 
         for layer in &self.layers[from..to] {
             let x = activated.last().unwrap();
-
-            // Extracting the tensor from the layer with the corresponding index.
-            // Reshaping it in case the connection is across shape types.
-            // .reshape(layer.inputs.clone())
 
             match layer {
                 Layer::Dense(layer) => {
