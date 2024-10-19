@@ -1,9 +1,13 @@
 import json
 import matplotlib.pyplot as plt
 
-# Fix formatting of JSON file:
-# `npm install -g fixjson` -> `fixjson ../output/compare.json > ../output/compare-fmt.json`
-_DATA = json.load(open('../output/compare-fmt.json'))[0]
+_DATA = json.load(open('../output/compare.json'))[0]
+_COLOUR = {
+    "REGULAR": "black",
+    "FB1": "forestgreen",
+    "FB2x2": "tomato",
+    "FB2x3": "cornflowerblue",
+}
 
 for which in ["CLASSIFICATION", "REGRESSION"]:
     for skip in ["true", "false"]:
@@ -14,20 +18,26 @@ for which in ["CLASSIFICATION", "REGRESSION"]:
                 continue
             ax_loss.plot(
                 _DATA[run]["train"]["val-loss"],
-                label=run.replace(f"-{skip}-{which}", ""),
-                linewidth=0.75
+                label=run.replace(f"-{skip}-{which}", "").replace("x", " x"),
+                linewidth=1,
+                color=_COLOUR[run.split("-")[0]]
             )
             ax_acc.plot(
                 _DATA[run]["train"]["val-acc"],
-                label=run.replace(f"-{skip}-{which}", ""),
-                linewidth=0.75
+                label=run.replace(f"-{skip}-{which}", "").replace("x", " x"),
+                linewidth=1,
+                color=_COLOUR[run.split("-")[0]]
             )
         ax_loss.legend()
         ax_acc.legend()
-        ax_loss.set_xlabel('Epochs')
-        ax_loss.set_ylabel('Validation Loss')
-        ax_acc.set_xlabel('Epochs')
-        ax_acc.set_ylabel('Validation Accuracy')
+        ax_loss.set_xlabel('Epoch')
+        ax_loss.set_ylabel('Validation loss')
+        ax_acc.set_xlabel('Epoch')
+        ax_acc.set_ylabel('Validation accuracy')
+
+        for ax in [ax_loss, ax_acc]:
+            for location in ['top', 'right', 'left', 'bottom']:
+                ax.spines[location].set_visible(False)
 
         fig_loss.savefig(f"../output/compare/loss-{which.lower()}-{skip}.png")
         if which == "CLASSIFICATION":

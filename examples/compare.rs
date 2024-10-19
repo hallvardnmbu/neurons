@@ -149,31 +149,27 @@ fn main() {
 
     println!("Train data {}x{}", x_train.len(), x_train[0].shape,);
     println!("Test data {}x{}", x_test.len(), x_test[0].shape,);
-    println!("Validation data {}x{}", x_val.len(), x_val[0].shape,);
+    println!("Validation data {}x{}\n", x_val.len(), x_val[0].shape,);
 
     // Create the results file.
     let mut file = File::create("./output/compare.json").unwrap();
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 
-    vec!["REGULAR", "FB1", "FB22", "FB23"]
+    vec!["REGULAR", "FB1", "FB2x2", "FB2x3"]
         .iter()
         .for_each(|method| {
             println!("Method: {}", method);
-
             vec![false, true].iter().for_each(|skip| {
                 println!("  Skip: {}", skip);
-
                 vec!["CLASSIFICATION", "REGRESSION"]
                     .iter()
                     .for_each(|problem| {
                         println!("   Problem: {}", problem);
-
                         writeln!(file, "    \"{}-{}-{}\": {{", method, skip, problem).unwrap();
 
-                        let mut network: network::Network;
-
                         // Create the network based on the architecture.
+                        let mut network: network::Network;
                         network = network::Network::new(tensor::Shape::Single(571));
                         network.dense(128, activation::Activation::ReLU, false, None);
 
@@ -202,7 +198,7 @@ fn main() {
                                         None,
                                     ),
                                 ],
-                                method.chars().nth(3).unwrap().to_digit(10).unwrap() as usize,
+                                method.chars().last().unwrap().to_digit(10).unwrap() as usize,
                                 false,
                                 feedback::Accumulation::Mean,
                             );
@@ -224,32 +220,25 @@ fn main() {
 
                         network
                             .set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
-                        // println!("{}", network);
 
                         // Train the network
                         let (train_loss, val_loss, val_acc);
                         if problem == &"REGRESSION" {
-                            println!("   > Training the network for regression.");
-
                             (train_loss, val_loss, val_acc) = network.learn(
                                 &x_train,
                                 &y_train,
                                 Some((&x_val, &y_val, 50)),
-                                16,
+                                32,
                                 500,
-                                // Some(100),
                                 None,
                             );
                         } else {
-                            println!("   > Training the network for classification.");
-
                             (train_loss, val_loss, val_acc) = network.learn(
                                 &x_train,
                                 &class_train,
                                 Some((&x_val, &class_val, 50)),
-                                16,
+                                32,
                                 500,
-                                // Some(100),
                                 None,
                             );
                         }
@@ -259,12 +248,10 @@ fn main() {
                         writeln!(file, "        \"trn-loss\": {:?},", train_loss).unwrap();
                         writeln!(file, "        \"val-loss\": {:?},", val_loss).unwrap();
                         writeln!(file, "        \"val-acc\": {:?}", val_acc).unwrap();
-                        writeln!(file, "      }},").unwrap();
 
                         // Probe the network (if applicable).
                         if method != &"REGULAR" {
                             println!("   > Without feedback.");
-                            writeln!(file, "      \"no-feedback\": {{").unwrap();
 
                             // Store the network's loopbacks and layers to restore them later.
                             let loopbacks = network.loopbacks.clone();
@@ -297,11 +284,12 @@ fn main() {
                                     network.validate(&x_test, &class_test, 1e-6);
                             }
 
+                            writeln!(file, "      }},").unwrap();
+                            writeln!(file, "      \"no-feedback\": {{").unwrap();
                             writeln!(file, "        \"val-loss\": {},", val_loss).unwrap();
                             writeln!(file, "        \"val-acc\": {},", val_acc).unwrap();
                             writeln!(file, "        \"tst-loss\": {},", test_loss).unwrap();
                             writeln!(file, "        \"tst-acc\": {}", test_acc).unwrap();
-                            writeln!(file, "      }},").unwrap();
 
                             // Restore the feedback loop.
                             network.loopbacks = loopbacks;
@@ -309,8 +297,6 @@ fn main() {
                         }
                         if *skip {
                             println!("   > Without skip.");
-                            writeln!(file, "      \"no-skip\": {{").unwrap();
-
                             network.connect = HashMap::new();
 
                             let (val_loss, val_acc);
@@ -327,14 +313,19 @@ fn main() {
                                     network.validate(&x_test, &class_test, 1e-6);
                             }
 
+                            writeln!(file, "      }},").unwrap();
+                            writeln!(file, "      \"no-skip\": {{").unwrap();
                             writeln!(file, "        \"val-loss\": {},", val_loss).unwrap();
                             writeln!(file, "        \"val-acc\": {},", val_acc).unwrap();
                             writeln!(file, "        \"tst-loss\": {},", test_loss).unwrap();
                             writeln!(file, "        \"tst-acc\": {}", test_acc).unwrap();
-                            writeln!(file, "      }},").unwrap();
                         }
-
-                        writeln!(file, "    }},").unwrap();
+                        writeln!(file, "      }}").unwrap();
+                        if method == &"FB2x3" && *skip && problem == &"REGRESSION" {
+                            writeln!(file, "    }}").unwrap();
+                        } else {
+                            writeln!(file, "    }},").unwrap();
+                        }
                     });
             });
         });

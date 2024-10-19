@@ -1016,7 +1016,7 @@ impl Network {
                 });
 
                 // Add the original input of the fed-back layer to the latent representation.
-                match self.loopaccumulation {
+                match self.skipaccumulation {
                     feedback::Accumulation::Add => {
                         current.add_inplace(&activated[self.loopbacks[&i]]);
                     }
