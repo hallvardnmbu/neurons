@@ -175,7 +175,7 @@ fn main() {
 <details>
   <summary>v2.5.3 – Architecture comparison.</summary>
 
-  Added examples comparing the performance of different architectures.
+  Added examples comparing the performance off different architectures.
   Probes the final network by turning of skips and feedbacks, etc.
   * `examples/compare/*`
 
