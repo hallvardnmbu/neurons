@@ -1,0 +1,33 @@
+Train data 60000x1x14x14
+Test data 10000x1x14x14
+
+Method: REGULAR
+  Skip: false
+   Problem: CLASSIFICATION
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without skip.
+Method: FB1
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.
+Method: FB2x2
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.
+Method: FB2x3
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.

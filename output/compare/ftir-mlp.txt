@@ -1,0 +1,52 @@
+Train data 529x571
+Test data 174x571
+Validation data 182x571
+
+Method: REGULAR
+  Skip: false
+   Problem: CLASSIFICATION
+   Problem: REGRESSION
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without skip.
+   Problem: REGRESSION
+   > Without skip.
+Method: FB1
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+   Problem: REGRESSION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.
+   Problem: REGRESSION
+   > Without feedback.
+   > Without skip.
+Method: FB2x2
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+   Problem: REGRESSION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.
+   Problem: REGRESSION
+   > Without feedback.
+   > Without skip.
+Method: FB2x3
+  Skip: false
+   Problem: CLASSIFICATION
+   > Without feedback.
+   Problem: REGRESSION
+   > Without feedback.
+  Skip: true
+   Problem: CLASSIFICATION
+   > Without feedback.
+   > Without skip.
+   Problem: REGRESSION
+   > Without feedback.
+   > Without skip.

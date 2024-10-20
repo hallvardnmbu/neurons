@@ -2,7 +2,7 @@
 import json
 import matplotlib.pyplot as plt
 
-_PROBLEM = input("Enter the problem name (e.g. 'ftir' or 'mnist'): ").strip().lower()
+_PROBLEM = input("Enter the problem name (e.g. 'mnist'): ").strip().lower()
 try:
     _DATA = json.load(open(f'./output/compare/{_PROBLEM}.json'))[0]
 except FileNotFoundError:

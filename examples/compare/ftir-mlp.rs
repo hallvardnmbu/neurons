@@ -1,7 +1,9 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 //
+// NOTE: Gradient clipping is added for the classification task.
+//
 // Code for comparison between the various architectures.
-// The respective loss and accuracies is stored to the file `~/output/compare/ftir.json`.
+// The respective loss and accuracies is stored to the file `~/output/compare/ftir-mlp.json`.
 //
 // In addition, some simple probing of the networks are done.
 // Namely, validating the trained networks with and without feedback and skip connections.
@@ -152,7 +154,7 @@ fn main() {
     println!("Validation data {}x{}\n", x_val.len(), x_val[0].shape,);
 
     // Create the results file.
-    let mut file = File::create("./output/compare/ftir.json").unwrap();
+    let mut file = File::create("./output/compare/ftir-mlp.json").unwrap();
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 
@@ -210,7 +212,10 @@ fn main() {
                             network.set_objective(objective::Objective::RMSE, None);
                         } else {
                             network.dense(28, activation::Activation::Softmax, false, None);
-                            network.set_objective(objective::Objective::CrossEntropy, None);
+                            network.set_objective(
+                                objective::Objective::CrossEntropy,
+                                Some((-5.0, 5.0)),
+                            );
                         }
 
                         // Add the skip connection if applicable.

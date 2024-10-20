@@ -1,6 +1,7 @@
 debug/
 target/
-output/
+output/*
+!output/compare/
 
 **/*.rs.bk
 *.pdb

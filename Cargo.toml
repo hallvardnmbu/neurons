@@ -34,8 +34,12 @@ name = "benchmark"
 path = "examples/benchmark.rs"
 
 [[example]]
-name = "compare-ftir"
-path = "examples/compare/ftir.rs"
+name = "compare-ftir-mlp"
+path = "examples/compare/ftir-mlp.rs"
+
+[[example]]
+name = "compare-ftir-cnn"
+path = "examples/compare/ftir-cnn.rs"
 
 [[example]]
 name = "compare-mnist"
