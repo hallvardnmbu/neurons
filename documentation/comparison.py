@@ -9,6 +9,7 @@ _COLOUR = {
     "FB1": "forestgreen",
     "FB2x2": "tomato",
     "FB2x3": "cornflowerblue",
+    "FB2x4": "darkorange",
 }
 
 for problem in os.listdir("./output/compare/"):
@@ -36,6 +37,7 @@ for problem in os.listdir("./output/compare/"):
                     linewidth=1,
                     color=_COLOUR[run.split("-")[0]]
                 )
+                ax_loss.set_yscale('log')
                 ax_acc.plot(
                     data[run]["train"]["val-acc"],
                     label=run.replace(f"-{skip}-{which}", "").replace("x", " x"),
@@ -43,6 +45,7 @@ for problem in os.listdir("./output/compare/"):
                     color=_COLOUR[run.split("-")[0]]
                 )
             if not ax_loss.lines:
+                plt.close(fig)
                 continue
             ax_loss.legend()
             ax_loss.set_xlabel('Epoch')
@@ -54,6 +57,7 @@ for problem in os.listdir("./output/compare/"):
                     ax.spines[location].set_visible(False)
 
             fig.suptitle(f"{problem.upper()} : {which} : {'WITH SKIP' if skip == 'true' else 'WITHOUT SKIP'}")
-            plt.subplots_adjust(hspace=0.3)
+            # plt.tight_layout()
+            plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
             fig.savefig(f"{directory}{which.lower()}-{skip}.png")
             plt.close(fig)
