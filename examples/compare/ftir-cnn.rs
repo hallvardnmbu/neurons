@@ -256,18 +256,18 @@ fn main() {
                             (train_loss, val_loss, val_acc) = network.learn(
                                 &x_train,
                                 &y_train,
-                                Some((&x_val, &y_val, 50)),
+                                Some((&x_val, &y_val, 100)),
                                 32,
-                                500,
+                                1000,
                                 None,
                             );
                         } else {
                             (train_loss, val_loss, val_acc) = network.learn(
                                 &x_train,
                                 &class_train,
-                                Some((&x_val, &class_val, 50)),
+                                Some((&x_val, &class_val, 100)),
                                 32,
-                                500,
+                                1000,
                                 None,
                             );
                         }

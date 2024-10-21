@@ -1223,6 +1223,11 @@ impl Network {
             // {to: from} -> {from: to}
             connect.insert(value, key);
         }
+        let mut loopbacks = HashMap::new();
+        for (key, value) in self.loopbacks.iter() {
+            // {to: from} -> {from: to}
+            loopbacks.insert(value, key);
+        }
 
         self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
             let idx = self.layers.len() - i - 1;
@@ -1259,13 +1264,18 @@ impl Network {
             weight_gradient.push(wg);
             bias_gradient.push(bg);
 
-            // Check for skip connections.
+            // Check for skip- or loopback connections.
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
                 let gradient = gradients[self.layers.len() - *connect[&idx]].clone();
                 let last = gradients.last_mut().unwrap();
                 last.add_inplace(&gradient.reshape(last.shape.clone()));
                 // TODO: Handle accumulation methods?
+            } else if loopbacks.contains_key(&idx) {
+                let gradient = gradients[self.layers.len() - *loopbacks[&idx]].clone();
+                let last = gradients.last_mut().unwrap();
+                // TODO: Handle accumulation methods?
+                last.add_inplace(&gradient.reshape(last.shape.clone()));
             }
         });
 

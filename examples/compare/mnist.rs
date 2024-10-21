@@ -204,7 +204,7 @@ fn main() {
                             &class_train,
                             Some((&x_test, &class_test, 10)),
                             32,
-                            25,
+                            100,
                             None,
                         );
                     }

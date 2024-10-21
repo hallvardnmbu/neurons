@@ -1,7 +1,5 @@
 debug/
 target/
-output/*
-!output/compare/
 
 **/*.rs.bk
 *.pdb
@@ -10,7 +8,6 @@ output/*
 **/*.jpg
 **/*.jpeg
 **/*.png
-!output/compare/**/*.png
 **/*.svg
 **/*.gif
 
@@ -24,3 +21,12 @@ examples/datasets/mnist/*
 examples/datasets/mnist-fashion/*
 examples/datasets/cifar10/*
 documentation/validation/datasets/*
+
+# Incomplete.
+examples/cifar10/
+
+# Output files.
+output/*
+!output/compare/**/*.png
+!output/compare/
+output/compare/*.txt

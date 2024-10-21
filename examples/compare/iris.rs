@@ -178,18 +178,18 @@ fn main() {
                         (train_loss, val_loss, val_acc) = network.learn(
                             &x_train,
                             &y_train,
-                            Some((&x_test, &y_test, 5)),
+                            Some((&x_test, &y_test, 10)),
                             1,
-                            10,
+                            50,
                             None,
                         );
                     } else {
                         (train_loss, val_loss, val_acc) = network.learn(
                             &x_train,
                             &y_train,
-                            Some((&x_test, &y_test, 5)),
+                            Some((&x_test, &y_test, 10)),
                             1,
-                            10,
+                            50,
                             None,
                         );
                     }
