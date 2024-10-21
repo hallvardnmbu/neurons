@@ -2,7 +2,7 @@
 import json
 import matplotlib.pyplot as plt
 
-_PROBLEM = input("Enter the problem name (e.g. 'mnist'): ").strip().lower()
+_PROBLEM = input("Enter the problem name (e.g. 'mnist') to graph: ").strip().lower()
 try:
     _DATA = json.load(open(f'./output/compare/{_PROBLEM}.json'))[0]
 except FileNotFoundError:
@@ -18,8 +18,11 @@ _COLOUR = {
 
 for which in ["CLASSIFICATION", "REGRESSION"]:
     for skip in ["true", "false"]:
-        fig_loss, ax_loss = plt.subplots()
-        fig_acc, ax_acc = plt.subplots()
+        if which == "REGRESSION":
+            fig, ax_loss = plt.subplots()
+            _, ax_acc = plt.subplots()
+        else:
+            fig, (ax_acc, ax_loss) = plt.subplots(2, 1, sharex=True)
         for run in _DATA.keys():
             if which not in run or skip not in run:
                 continue
@@ -38,16 +41,16 @@ for which in ["CLASSIFICATION", "REGRESSION"]:
         if not ax_loss.lines:
             continue
         ax_loss.legend()
-        ax_acc.legend()
+        # ax_acc.legend()
         ax_loss.set_xlabel('Epoch')
         ax_loss.set_ylabel('Validation loss')
-        ax_acc.set_xlabel('Epoch')
+        # ax_acc.set_xlabel('Epoch')
         ax_acc.set_ylabel('Validation accuracy')
 
         for ax in [ax_loss, ax_acc]:
             for location in ['top', 'right', 'left', 'bottom']:
                 ax.spines[location].set_visible(False)
 
-        fig_loss.savefig(f"./output/compare/{_PROBLEM}/loss-{which.lower()}-{skip}.png")
-        if which == "CLASSIFICATION":
-            fig_acc.savefig(f"./output/compare/{_PROBLEM}/acc-{which.lower()}-{skip}.png")
+        fig.suptitle(f"{_PROBLEM.upper()} : {which} : {'WITH SKIP' if skip == 'true' else 'WITHOUT SKIP'}")
+        plt.subplots_adjust(hspace=0.3)
+        fig.savefig(f"./output/compare/{_PROBLEM}/{which.lower()}-{skip}.png")

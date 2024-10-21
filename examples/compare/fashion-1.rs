@@ -1,7 +1,7 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 //
 // Code for comparison between the various architectures.
-// The respective loss and accuracies is stored to the file `~/output/compare/mnist-fashion.json`.
+// The respective loss and accuracies is stored to the file `~/output/compare/fashion-1.json`.
 //
 // In addition, some simple probing of the networks are done.
 // Namely, validating the trained networks with and without feedback and skip connections.
@@ -106,7 +106,7 @@ fn main() {
     println!("Test data {}x{}\n", x_test.len(), x_test[0].shape,);
 
     // Create the results file.
-    let mut file = File::create("./output/compare/mnist-fashion.json").unwrap();
+    let mut file = File::create("./output/compare/fashion-1.json").unwrap();
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 

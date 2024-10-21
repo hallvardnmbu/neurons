@@ -46,8 +46,12 @@ name = "compare-mnist"
 path = "examples/compare/mnist.rs"
 
 [[example]]
-name = "compare-fashion"
-path = "examples/compare/mnist-fashion.rs"
+name = "compare-fashion-1"
+path = "examples/compare/fashion-1.rs"
+
+[[example]]
+name = "compare-fashion-2"
+path = "examples/compare/fashion-2.rs"
 
 [[example]]
 name = "xor"
