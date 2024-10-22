@@ -55,9 +55,9 @@ for problem in os.listdir("./output/compare/"):
             for ax in [ax_loss, ax_acc]:
                 for location in ['top', 'right', 'left', 'bottom']:
                     ax.spines[location].set_visible(False)
+                    ax.yaxis.grid(True, color='gray', linestyle='--', linewidth=0.5)
 
             fig.suptitle(f"{problem.upper()} : {which} : {'WITH SKIP' if skip == 'true' else 'WITHOUT SKIP'}")
-            # plt.tight_layout()
             plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
             fig.savefig(f"{directory}{which.lower()}-{skip}.png")
             plt.close(fig)
