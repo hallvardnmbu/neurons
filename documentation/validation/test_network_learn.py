@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
 
 class Network(nn.Module):
@@ -11,8 +12,8 @@ class Network(nn.Module):
 
         self.conv1.weight.data = torch.Tensor([[[[1.0, 1.0], [2.0, 2.0]], [[1.0, 2.0], [1.0, 2.0]]],
                                                [[[2.0, 2.0], [1.0, 1.0]], [[2.0, 1.0], [2.0, 1.0]]],
-                                               [[[0.0, 5.0], [0.0, 0.0]],
-                                                [[0.0, 0.0], [0.0, 10.0]]]])
+                                               [[[0.0, 5.0], [0.0, 3.0]],
+                                                [[2.0, 0.0], [0.0, 10.0]]]])
         self.fc1.weight.data = torch.Tensor([[2.5 for _ in range(3 * 3 * 3)],
                                              [-1.2 for _ in range(3 * 3 * 3)],
                                              [0.5 for _ in range(3 * 3 * 3)],
@@ -41,10 +42,17 @@ input = torch.Tensor([[[[0.0, 0.0, 0.0, 0.0],
 input.requires_grad = True
 
 output = network(input)
-gradient = torch.ones((1, 5))
-output.backward(gradient)
 
-# Backpropagate the gradient
-print(network.conv1.weight - 0.1 * network.conv1.weight.grad)
-print(network.fc1.weight - 0.1 * network.fc1.weight.grad)
-print(network.fc1.bias - 0.1 * network.fc1.bias.grad)
+# Update the weights
+criterion = nn.MSELoss()
+optimizer = optim.Adam(network.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+optimizer.zero_grad()
+target = torch.Tensor([[1.0, 0.0, 0.0, 0.0, 0.0]])
+loss = criterion(output, target)
+loss.backward()
+optimizer.step()
+
+# Print updated weights
+print(network.conv1.weight)
+print(network.fc1.weight)
+print(network.fc1.bias)

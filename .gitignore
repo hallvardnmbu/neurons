@@ -22,9 +22,6 @@ examples/datasets/mnist-fashion/*
 examples/datasets/cifar10/*
 documentation/validation/datasets/*
 
-# Incomplete.
-examples/cifar10/
-
 # Output files.
 output/*
 !output/compare/**/*.png

@@ -1223,11 +1223,6 @@ impl Network {
             // {to: from} -> {from: to}
             connect.insert(value, key);
         }
-        let mut loopbacks = HashMap::new();
-        for (key, value) in self.loopbacks.iter() {
-            // {to: from} -> {from: to}
-            loopbacks.insert(value, key);
-        }
 
         self.layers.iter().rev().enumerate().for_each(|(i, layer)| {
             let idx = self.layers.len() - i - 1;
@@ -1271,11 +1266,6 @@ impl Network {
                 let last = gradients.last_mut().unwrap();
                 last.add_inplace(&gradient.reshape(last.shape.clone()));
                 // TODO: Handle accumulation methods?
-            } else if loopbacks.contains_key(&idx) {
-                let gradient = gradients[self.layers.len() - *loopbacks[&idx]].clone();
-                let last = gradients.last_mut().unwrap();
-                // TODO: Handle accumulation methods?
-                last.add_inplace(&gradient.reshape(last.shape.clone()));
             }
         });
 
@@ -1715,8 +1705,8 @@ mod tests {
                     vec![vec![2.0, 1.0], vec![2.0, 1.0]],
                 ]);
                 conv.kernels[2] = tensor::Tensor::triple(vec![
-                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
-                    vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                    vec![vec![0.0, 5.0], vec![0.0, 0.0]],
+                    vec![vec![0.0, 0.0], vec![0.0, 10.0]],
                 ]);
             }
             _ => (),
@@ -1780,8 +1770,8 @@ mod tests {
                 assert_eq_data!(
                     conv.kernels[2].data,
                     tensor::Tensor::triple(vec![
-                        vec![vec![0.0, 0.0], vec![0.0, 0.0]],
-                        vec![vec![0.0, 0.0], vec![0.0, 0.0]],
+                        vec![vec![-4.68, -6.7], vec![-4.68, -11.7]],
+                        vec![vec![-7.02, -11.7], vec![-7.02, -1.7]],
                     ])
                     .data
                 );
@@ -1796,8 +1786,8 @@ mod tests {
                         vec![
                             1.5000, 0.9000, 1.8000, 0.6000, -0.6000, 1.1000, 1.8000, 1.4000,
                             2.0000, 2.0000, 1.1000, 1.7000, 1.4000, -0.4000, 0.9000, 1.7000,
-                            0.6000, 1.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000, 2.5000,
-                            2.5000, 2.5000
+                            0.6000, 1.5000, -1.5000, -0.5000, 2.5000, 0.0000, 0.5000, 2.5000,
+                            1.0000, 0.5000, 2.5000
                         ],
                         vec![
                             -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
@@ -1808,19 +1798,20 @@ mod tests {
                         vec![
                             -0.5000, -1.1000, -0.2000, -1.4000, -2.6000, -0.9000, -0.2000, -0.6000,
                             0.0000, 0.0000, -0.9000, -0.3000, -0.6000, -2.4000, -1.1000, -0.3000,
-                            -1.4000, -0.5000, 0.5000, 0.5000, 0.5000, 0.5000, 0.5000, 0.5000,
-                            0.5000, 0.5000, 0.5000
+                            -1.4000, -0.5000, -3.5000, -2.5000, 0.5000, -2.0000, -1.5000, 0.5000,
+                            -1.0000, -1.5000, 0.5000
                         ],
                         vec![
                             2.5000, 1.9000, 2.8000, 1.6000, 0.4000, 2.1000, 2.8000, 2.4000, 3.0000,
                             3.0000, 2.1000, 2.7000, 2.4000, 0.6000, 1.9000, 2.7000, 1.6000, 2.5000,
-                            3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000, 3.5000
+                            -0.5000, 0.5000, 3.5000, 1.0000, 1.5000, 3.5000, 2.0000, 1.5000,
+                            3.5000
                         ],
                         vec![
                             4.2000, 3.6000, 4.5000, 3.3000, 2.1000, 3.8000, 4.5000, 4.1000, 4.7000,
                             4.7000, 3.8000, 4.4000, 4.1000, 2.3000, 3.6000, 4.4000, 3.3000, 4.2000,
-                            5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000, 5.2000
-                        ],
+                            1.2000, 2.2000, 5.2000, 2.7000, 3.2000, 5.2000, 3.7000, 3.2000, 5.2000
+                        ]
                     ])
                 );
                 if let Some(bias) = &dense.bias {
@@ -1828,6 +1819,319 @@ mod tests {
                         bias.data,
                         tensor::Data::Single(vec![2.9000, 4.0000, 4.9000, 5.9000, 6.9000])
                     );
+                }
+            }
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn test_learn_sgd() {
+        // See Python file `documentation/validation/test_network_learn.py` for the reference implementation.
+
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
+
+        network.convolution(
+            3,
+            (2, 2),
+            (1, 1),
+            (0, 0),
+            (1, 1),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.dense(5, activation::Activation::ReLU, true, None);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                conv.kernels[0] = tensor::Tensor::triple(vec![
+                    vec![vec![1.0, 1.0], vec![2.0, 2.0]],
+                    vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+                ]);
+                conv.kernels[1] = tensor::Tensor::triple(vec![
+                    vec![vec![2.0, 2.0], vec![1.0, 1.0]],
+                    vec![vec![2.0, 1.0], vec![2.0, 1.0]],
+                ]);
+                conv.kernels[2] = tensor::Tensor::triple(vec![
+                    vec![vec![0.0, 5.0], vec![0.0, 3.0]],
+                    vec![vec![2.0, 0.0], vec![0.0, 10.0]],
+                ]);
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                dense.weights = tensor::Tensor::double(vec![
+                    vec![2.5; 27],
+                    vec![-1.2; 27],
+                    vec![0.5; 27],
+                    vec![3.5; 27],
+                    vec![5.2; 27],
+                ]);
+                dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
+            }
+            _ => (),
+        }
+
+        let input = tensor::Tensor::triple(vec![
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 2.0, 0.0],
+                vec![0.0, 3.0, 4.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 4.0, 3.0, 0.0],
+                vec![0.0, 2.0, 1.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+        ]);
+
+        let target = tensor::Tensor::single(vec![1.0, 0.0, 0.0, 0.0, 0.0]);
+
+        network.set_objective(objective::Objective::MSE, None);
+        network.set_optimizer(optimizer::SGD::create(0.001, None));
+
+        network.learn(&vec![&input], &vec![&target], None, 1, 1, None);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                let weights: Vec<Vec<Vec<Vec<f32>>>> = conv
+                    .kernels
+                    .iter()
+                    .map(|kernel| kernel.get_triple(&kernel.shape))
+                    .collect();
+
+                let expected: Vec<Vec<Vec<Vec<f32>>>> = vec![
+                    vec![
+                        vec![vec![-79.8500, -79.8500], vec![-78.8500, -78.8500]],
+                        vec![vec![-79.8500, -78.8500], vec![-79.8500, -78.8500]],
+                    ],
+                    vec![
+                        vec![vec![-78.8500, -78.8500], vec![-79.8500, -79.8500]],
+                        vec![vec![-78.8500, -79.8500], vec![-78.8500, -79.8500]],
+                    ],
+                    vec![
+                        vec![vec![-80.8500, -75.8500], vec![-64.6800, -77.8500]],
+                        vec![vec![-78.8500, -80.8500], vec![-56.5950, -70.8500]],
+                    ],
+                ];
+
+                for (weight, expect) in weights.iter().zip(expected.iter()) {
+                    for (w1, e1) in weight.iter().zip(expect.iter()) {
+                        for (w2, e2) in w1.iter().zip(e1.iter()) {
+                            for (w3, e3) in w2.iter().zip(e2.iter()) {
+                                assert!((w3 - e3).abs() < 1e-2);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                assert_eq_data!(
+                    dense.weights.data,
+                    tensor::Data::Double(vec![
+                        vec![
+                            -1.9080, -4.5528, -0.5856, -5.8752, -11.1648, -3.6712, -0.5856,
+                            -2.3488, 0.2960, 0.2960, -3.6712, -1.0264, -2.3488, -10.2832, -4.5528,
+                            -1.0264, -5.8752, -1.9080, -16.4544, -13.3688, 2.5000, -12.4872,
+                            -15.1320, -0.1448, -4.1120, -8.0792, 1.6184
+                        ],
+                        vec![
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                            -1.2000, -1.2000, -1.2000
+                        ],
+                        vec![
+                            -0.4000, -0.9400, -0.1300, -1.2100, -2.2900, -0.7600, -0.1300, -0.4900,
+                            0.0500, 0.0500, -0.7600, -0.2200, -0.4900, -2.1100, -0.9400, -0.2200,
+                            -1.2100, -0.4000, -3.3700, -2.7400, 0.5000, -2.5600, -3.1000, -0.0400,
+                            -0.8500, -1.6600, 0.3200
+                        ],
+                        vec![
+                            -2.6840, -6.3944, -0.8288, -8.2496, -15.6704, -5.1576, -0.8288,
+                            -3.3024, 0.4080, 0.4080, -5.1576, -1.4472, -3.3024, -14.4336, -6.3944,
+                            -1.4472, -8.2496, -2.6840, -23.0912, -18.7624, 3.5000, -17.5256,
+                            -21.2360, -0.2104, -5.7760, -11.3416, 2.2632
+                        ],
+                        vec![
+                            -3.9800, -9.4880, -1.2260, -12.2420, -23.2580, -7.6520, -1.2260,
+                            -4.8980, 0.6100, 0.6100, -7.6520, -2.1440, -4.8980, -21.4220, -9.4880,
+                            -2.1440, -12.2420, -3.9800, -34.2740, -27.8480, 5.2000, -26.0120,
+                            -31.5200, -0.3080, -8.5700, -16.8320, 3.3640
+                        ]
+                    ])
+                );
+                if let Some(bias) = &dense.bias {
+                    assert_eq_data!(
+                        bias.data,
+                        tensor::Data::Single(vec![2.5592, 4.0000, 4.9100, 5.3816, 6.0820])
+                    );
+                }
+            }
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn test_learn_adam() {
+        // See Python file `documentation/validation/test_network_learn.py` for the reference implementation.
+
+        let mut network = Network::new(tensor::Shape::Triple(2, 4, 4));
+
+        network.convolution(
+            3,
+            (2, 2),
+            (1, 1),
+            (0, 0),
+            (1, 1),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.dense(5, activation::Activation::ReLU, true, None);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                conv.kernels[0] = tensor::Tensor::triple(vec![
+                    vec![vec![1.0, 1.0], vec![2.0, 2.0]],
+                    vec![vec![1.0, 2.0], vec![1.0, 2.0]],
+                ]);
+                conv.kernels[1] = tensor::Tensor::triple(vec![
+                    vec![vec![2.0, 2.0], vec![1.0, 1.0]],
+                    vec![vec![2.0, 1.0], vec![2.0, 1.0]],
+                ]);
+                conv.kernels[2] = tensor::Tensor::triple(vec![
+                    vec![vec![0.0, 5.0], vec![0.0, 3.0]],
+                    vec![vec![2.0, 0.0], vec![0.0, 10.0]],
+                ]);
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                dense.weights = tensor::Tensor::double(vec![
+                    vec![2.5; 27],
+                    vec![-1.2; 27],
+                    vec![0.5; 27],
+                    vec![3.5; 27],
+                    vec![5.2; 27],
+                ]);
+                dense.bias = Some(tensor::Tensor::single(vec![3.0, 4.0, 5.0, 6.0, 7.0]));
+            }
+            _ => (),
+        }
+
+        let input = tensor::Tensor::triple(vec![
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 1.0, 2.0, 0.0],
+                vec![0.0, 3.0, 4.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+            vec![
+                vec![0.0, 0.0, 0.0, 0.0],
+                vec![0.0, 4.0, 3.0, 0.0],
+                vec![0.0, 2.0, 1.0, 0.0],
+                vec![0.0, 0.0, 0.0, 0.0],
+            ],
+        ]);
+
+        let target = tensor::Tensor::single(vec![1.0, 0.0, 0.0, 0.0, 0.0]);
+
+        network.set_objective(objective::Objective::MSE, None);
+        network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
+
+        network.learn(&vec![&input], &vec![&target], None, 1, 1, None);
+
+        match network.layers[0] {
+            Layer::Convolution(ref mut conv) => {
+                let weights: Vec<Vec<Vec<Vec<f32>>>> = conv
+                    .kernels
+                    .iter()
+                    .map(|kernel| kernel.get_triple(&kernel.shape))
+                    .collect();
+
+                let expected: Vec<Vec<Vec<Vec<f32>>>> = vec![
+                    vec![
+                        vec![vec![9.9900e-01, 9.9900e-01], vec![1.9990e+00, 1.9990e+00]],
+                        vec![vec![9.9900e-01, 1.9990e+00], vec![9.9900e-01, 1.9990e+00]],
+                    ],
+                    vec![
+                        vec![vec![1.9990e+00, 1.9990e+00], vec![9.9900e-01, 9.9900e-01]],
+                        vec![vec![1.9990e+00, 9.9900e-01], vec![1.9990e+00, 9.9900e-01]],
+                    ],
+                    vec![
+                        vec![vec![-1.0000e-03, 4.9990e+00], vec![-1.0000e-03, 2.9990e+00]],
+                        vec![vec![1.9990e+00, -1.0000e-03], vec![-1.0000e-03, 9.9990e+00]],
+                    ],
+                ];
+
+                for (weight, expect) in weights.iter().zip(expected.iter()) {
+                    for (w1, e1) in weight.iter().zip(expect.iter()) {
+                        for (w2, e2) in w1.iter().zip(e1.iter()) {
+                            for (w3, e3) in w2.iter().zip(e2.iter()) {
+                                assert!((w3 - e3).abs() < 1e-2);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => (),
+        }
+        match network.layers[1] {
+            Layer::Dense(ref mut dense) => {
+                let weights: Vec<Vec<f32>> = match dense.weights.data {
+                    tensor::Data::Double(ref weights) => weights.clone(),
+                    _ => panic!("Invalid weight type"),
+                };
+
+                let expected: Vec<Vec<f32>> = vec![
+                    vec![
+                        2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990,
+                        2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990,
+                        2.4990, 2.4990, 2.5000, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990, 2.4990,
+                    ],
+                    vec![
+                        -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                        -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                        -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000, -1.2000,
+                        -1.2000, -1.2000, -1.2000,
+                    ],
+                    vec![
+                        0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990,
+                        0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990,
+                        0.4990, 0.4990, 0.5000, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990, 0.4990,
+                    ],
+                    vec![
+                        3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990,
+                        3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990,
+                        3.4990, 3.4990, 3.5000, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990, 3.4990,
+                    ],
+                    vec![
+                        5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990,
+                        5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990,
+                        5.1990, 5.1990, 5.2000, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990, 5.1990,
+                    ],
+                ];
+
+                for (weight, expect) in weights.iter().zip(expected.iter()) {
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-2);
+                    }
+                }
+
+                if let Some(bias) = &dense.bias {
+                    let weight = bias.get_flat();
+                    let expect = vec![2.9990, 4.0000, 4.9990, 5.9990, 6.9990];
+
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-2);
+                    }
                 }
             }
             _ => (),
