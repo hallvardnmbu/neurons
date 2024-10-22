@@ -107,7 +107,6 @@ fn main() {
         None,
     );
     network.maxpool((2, 2), (2, 2));
-    network.connect(0, 2);
     network.convolution(
         32,
         (3, 3),
@@ -127,7 +126,6 @@ fn main() {
         None,
     );
     network.maxpool((2, 2), (2, 2));
-    network.connect(3, 5);
     network.convolution(
         32,
         (3, 3),
@@ -147,9 +145,12 @@ fn main() {
         None,
     );
     network.maxpool((2, 2), (2, 2));
-    network.connect(6, 8);
     network.dense(128, activation::Activation::ReLU, true, None);
     network.dense(10, activation::Activation::Softmax, true, None);
+
+    network.connect(1, 2);
+    network.connect(3, 5);
+    network.connect(6, 8);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);

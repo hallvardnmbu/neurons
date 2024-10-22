@@ -88,27 +88,25 @@ fn main() {
 
     let mut network = network::Network::new(tensor::Shape::Triple(3, 32, 32));
 
+    network.convolution(
+        32,
+        (3, 3),
+        (1, 1),
+        (1, 1),
+        (1, 1),
+        activation::Activation::ReLU,
+        None,
+    );
     network.feedback(
-        vec![
-            feedback::Layer::Convolution(
-                32,
-                activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                (1, 1),
-                None,
-            ),
-            feedback::Layer::Convolution(
-                32,
-                activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                (1, 1),
-                None,
-            ),
-        ],
+        vec![feedback::Layer::Convolution(
+            32,
+            activation::Activation::ReLU,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            None,
+        )],
         2,
         false,
         feedback::Accumulation::Mean,

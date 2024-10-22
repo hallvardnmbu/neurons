@@ -107,7 +107,6 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.loopback(1, 0, Arc::new(|_loops| 1.0));
     network.maxpool((2, 2), (2, 2));
     network.convolution(
         32,
@@ -127,7 +126,6 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.loopback(4, 3, Arc::new(|_loops| 1.0));
     network.maxpool((2, 2), (2, 2));
     network.convolution(
         32,
@@ -147,13 +145,16 @@ fn main() {
         activation::Activation::ReLU,
         None,
     );
-    network.loopback(7, 6, Arc::new(|_loops| 1.0));
     network.maxpool((2, 2), (2, 2));
     network.dense(128, activation::Activation::ReLU, true, None);
     network.dense(10, activation::Activation::Softmax, true, None);
 
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
+
+    network.loopback(1, 1, Arc::new(|_loops| 1.0));
+    network.loopback(4, 3, Arc::new(|_loops| 1.0));
+    network.loopback(7, 6, Arc::new(|_loops| 1.0));
 
     println!("{}", network);
 
