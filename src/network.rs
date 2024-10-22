@@ -836,7 +836,7 @@ impl Network {
                             &preactivated,
                             &activated,
                             &maxpools,
-                            &feedbacks,
+                            feedbacks,
                         );
 
                         (wg, bg, loss)
@@ -1202,6 +1202,7 @@ impl Network {
     /// * `preactivated` - The pre-activation values of each layer.
     /// * `activated` - The post-activation values of each layer.
     /// * `maxpools` - The maxpool indices of each maxpool-layer.
+    /// * `feedbacks` - The feedback block tensors of each feedback-layer.
     ///
     /// # Returns
     ///
@@ -1212,7 +1213,7 @@ impl Network {
         preactivated: &Vec<tensor::Tensor>,
         activated: &Vec<tensor::Tensor>,
         maxpools: &Vec<Option<tensor::Tensor>>,
-        feedbacks: &Vec<Vec<tensor::Tensor>>,
+        mut feedbacks: Vec<Vec<tensor::Tensor>>,
     ) -> (Vec<tensor::Tensor>, Vec<Option<tensor::Tensor>>) {
         let mut gradients: Vec<tensor::Tensor> = vec![gradient];
         let mut weight_gradient: Vec<tensor::Tensor> = Vec::new();
@@ -1251,7 +1252,7 @@ impl Network {
                     None,
                 ),
                 Layer::Feedback(block) => {
-                    block.backward(&gradients.last().unwrap(), feedbacks.last().unwrap())
+                    block.backward(&gradients.last().unwrap(), &feedbacks.pop().unwrap())
                 }
             };
 
@@ -1632,7 +1633,7 @@ mod tests {
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
         let (weight_gradient, bias_gradient) =
-            network.backward(gradient, &pre, &post, &max, &Vec::new());
+            network.backward(gradient, &pre, &post, &max, Vec::new());
 
         let _weight_gradient = vec![
             tensor::Tensor::quadruple(vec![
@@ -1745,7 +1746,7 @@ mod tests {
         let gradient = tensor::Tensor::single(vec![1.0; 5]);
 
         let (weight_gradients, bias_gradients) =
-            network.backward(gradient, &pre, &post, &max, &Vec::new());
+            network.backward(gradient, &pre, &post, &max, Vec::new());
 
         network.update(0, weight_gradients, bias_gradients);
 
