@@ -190,7 +190,7 @@ fn main() {
     );
 
     // Store the training metrics
-    let mut writer = File::create("./output/cifar/plain.csv").unwrap();
+    let mut writer = File::create("./output/cifar/feedback.csv").unwrap();
     writer.write_all(b"train_loss,val_loss,val_acc\n").unwrap();
     for i in 0..train_loss.len() {
         writer

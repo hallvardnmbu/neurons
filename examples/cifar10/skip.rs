@@ -4,7 +4,7 @@ use neurons::{activation, network, objective, optimizer, plot, random, tensor};
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Write};
 
 pub fn load_cifar10(file_path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let file = File::open(file_path).unwrap();
@@ -173,6 +173,15 @@ fn main() {
         "SKIP : CIFAR-10",
         "./output/cifar/skip.png",
     );
+
+    // Store the training metrics
+    let mut writer = File::create("./output/cifar/skip.csv").unwrap();
+    writer.write_all(b"train_loss,val_loss,val_acc\n").unwrap();
+    for i in 0..train_loss.len() {
+        writer
+            .write_all(format!("{},{},{}\n", train_loss[i], val_loss[i], val_acc[i]).as_bytes())
+            .unwrap();
+    }
 
     // Validate the network
     let (val_loss, val_acc) = network.validate(&x_test, &y_test, 1e-6);
