@@ -170,7 +170,7 @@ fn main() {
                         network.connect(1, network.layers.len() - 1);
                     }
 
-                    network.set_optimizer(optimizer::Adam::create(0.0001, 0.9, 0.999, 1e-8, None));
+                    network.set_optimizer(optimizer::Adam::create(0.0001, 0.95, 0.999, 1e-7, None));
 
                     // Train the network
                     let (train_loss, val_loss, val_acc);
@@ -180,7 +180,7 @@ fn main() {
                             &y_train,
                             Some((&x_test, &y_test, 10)),
                             1,
-                            50,
+                            100,
                             None,
                         );
                     } else {
@@ -189,7 +189,7 @@ fn main() {
                             &y_train,
                             Some((&x_test, &y_test, 10)),
                             1,
-                            50,
+                            100,
                             None,
                         );
                     }

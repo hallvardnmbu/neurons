@@ -142,7 +142,7 @@ fn main() {
                 false,
                 feedback::Accumulation::Mean,
             );
-            network.dense(64, activation::Activation::ReLU, false, None);
+            network.dense(32, activation::Activation::ReLU, false, None);
 
             if method == &"REGRESSION" {
                 network.dense(1, activation::Activation::Linear, false, None);

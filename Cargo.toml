@@ -66,6 +66,18 @@ name = "iris"
 path = "examples/iris.rs"
 
 [[example]]
+name = "bike-plain"
+path = "examples/bike/plain.rs"
+
+[[example]]
+name = "bike-loop"
+path = "examples/bike/looping.rs"
+
+[[example]]
+name = "bike-feedback"
+path = "examples/bike/feedback.rs"
+
+[[example]]
 name = "ftir-mlp-plain"
 path = "examples/ftir/mlp/plain.rs"
 
@@ -132,15 +144,3 @@ path = "examples/mnist-fashion/looping.rs"
 [[example]]
 name = "fashion-feedback"
 path = "examples/mnist-fashion/feedback.rs"
-
-[[example]]
-name = "cifar10-plain"
-path = "examples/cifar10/plain.rs"
-
-[[example]]
-name = "cifar10-loop"
-path = "examples/cifar10/looping.rs"
-
-[[example]]
-name = "cifar10-feedback"
-path = "examples/cifar10/feedback.rs"

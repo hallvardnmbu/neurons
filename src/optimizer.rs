@@ -462,7 +462,8 @@ impl Adam {
                     gradients[i] += decay * weights[i];
                 }
                 momentum[i] = momentum[i] * self.beta1 + gradients[i] * (1.0 - self.beta1);
-                velocity[i] = velocity[i] * self.beta2 + momentum[i].powf(2.0) * (1.0 - self.beta2);
+                velocity[i] =
+                    velocity[i] * self.beta2 + gradients[i].powf(2.0) * (1.0 - self.beta2);
                 let m = momentum[i] / (1.0 - self.beta1.powi(stepnr));
                 let v = velocity[i] / (1.0 - self.beta2.powi(stepnr));
                 weights[i] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
@@ -479,8 +480,8 @@ impl Adam {
                     }
                     momentum[i][j] =
                         momentum[i][j] * self.beta1 + gradients[i][j] * (1.0 - self.beta1);
-                    velocity[i][j] =
-                        velocity[i][j] * self.beta2 + momentum[i][j].powf(2.0) * (1.0 - self.beta2);
+                    velocity[i][j] = velocity[i][j] * self.beta2
+                        + gradients[i][j].powf(2.0) * (1.0 - self.beta2);
                     let m = momentum[i][j] / (1.0 - self.beta1.powi(stepnr));
                     let v = velocity[i][j] / (1.0 - self.beta2.powi(stepnr));
                     weights[i][j] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
@@ -500,7 +501,7 @@ impl Adam {
                         momentum[i][j][k] = momentum[i][j][k] * self.beta1
                             + gradients[i][j][k] * (1.0 - self.beta1);
                         velocity[i][j][k] = velocity[i][j][k] * self.beta2
-                            + momentum[i][j][k].powf(2.0) * (1.0 - self.beta2);
+                            + gradients[i][j][k].powf(2.0) * (1.0 - self.beta2);
                         let m = momentum[i][j][k] / (1.0 - self.beta1.powi(stepnr));
                         let v = velocity[i][j][k] / (1.0 - self.beta2.powi(stepnr));
                         weights[i][j][k] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
@@ -605,7 +606,8 @@ impl AdamW {
             ) => (0..weights.len()).for_each(|i| {
                 weights[i] -= self.learning_rate * self.decay * weights[i];
                 momentum[i] = momentum[i] * self.beta1 + gradients[i] * (1.0 - self.beta1);
-                velocity[i] = velocity[i] * self.beta2 + momentum[i].powf(2.0) * (1.0 - self.beta2);
+                velocity[i] =
+                    velocity[i] * self.beta2 + gradients[i].powf(2.0) * (1.0 - self.beta2);
                 let m = momentum[i] / (1.0 - self.beta1.powi(stepnr));
                 let v = velocity[i] / (1.0 - self.beta2.powi(stepnr));
                 weights[i] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
@@ -620,8 +622,8 @@ impl AdamW {
                     weights[i][j] -= self.learning_rate * self.decay * weights[i][j];
                     momentum[i][j] =
                         momentum[i][j] * self.beta1 + gradients[i][j] * (1.0 - self.beta1);
-                    velocity[i][j] =
-                        velocity[i][j] * self.beta2 + momentum[i][j].powf(2.0) * (1.0 - self.beta2);
+                    velocity[i][j] = velocity[i][j] * self.beta2
+                        + gradients[i][j].powf(2.0) * (1.0 - self.beta2);
                     let m = momentum[i][j] / (1.0 - self.beta1.powi(stepnr));
                     let v = velocity[i][j] / (1.0 - self.beta2.powi(stepnr));
                     weights[i][j] -= self.learning_rate * m / (v.sqrt() + self.epsilon);
@@ -639,7 +641,7 @@ impl AdamW {
                         momentum[i][j][k] = momentum[i][j][k] * self.beta1
                             + gradients[i][j][k] * (1.0 - self.beta1);
                         velocity[i][j][k] = velocity[i][j][k] * self.beta2
-                            + momentum[i][j][k].powf(2.0) * (1.0 - self.beta2);
+                            + gradients[i][j][k].powf(2.0) * (1.0 - self.beta2);
                         let m = momentum[i][j][k] / (1.0 - self.beta1.powi(stepnr));
                         let v = velocity[i][j][k] / (1.0 - self.beta2.powi(stepnr));
                         weights[i][j][k] -= self.learning_rate * m / (v.sqrt() + self.epsilon);

@@ -195,7 +195,7 @@ fn main() {
                                 activation::Activation::ReLU,
                                 None,
                             );
-                            network.dense(64, activation::Activation::ReLU, false, None);
+                            network.dense(32, activation::Activation::ReLU, false, None);
 
                             // Add the feedback loop if applicable.
                             if method == &"FB1" {
@@ -227,7 +227,7 @@ fn main() {
                                 false,
                                 feedback::Accumulation::Mean,
                             );
-                            network.dense(64, activation::Activation::ReLU, false, None);
+                            network.dense(32, activation::Activation::ReLU, false, None);
                         }
 
                         // Set the output layer based on the problem.

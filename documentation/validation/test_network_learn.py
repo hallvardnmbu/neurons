@@ -30,29 +30,39 @@ class Network(nn.Module):
 
 network = Network()
 
+# Update the weights
+criterion = nn.MSELoss()
+optimizer = optim.Adam(network.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+# optimizer = optim.SGD(network.parameters(), lr=0.01, weight_decay=0, nesterov=False)
+
 input = torch.Tensor([[[[0.0, 0.0, 0.0, 0.0],
                         [0.0, 1.0, 2.0, 0.0],
                         [0.0, 3.0, 4.0, 0.0],
                         [0.0, 0.0, 0.0, 0.0]],
 
-                       [[0.0, 0.0, 0.0, 0.0],
+                        [[0.0, 0.0, 0.0, 0.0],
                         [0.0, 4.0, 3.0, 0.0],
                         [0.0, 2.0, 1.0, 0.0],
                         [0.0, 0.0, 0.0, 0.0]]]])
 input.requires_grad = True
 
-output = network(input)
-
-# Update the weights
-criterion = nn.MSELoss()
-optimizer = optim.Adam(network.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-optimizer.zero_grad()
 target = torch.Tensor([[1.0, 0.0, 0.0, 0.0, 0.0]])
-loss = criterion(output, target)
-loss.backward()
-optimizer.step()
+
+# Train the network for two epochs
+for epoch in range(2):
+    optimizer.zero_grad()
+    output = network(input)
+    loss = criterion(output, target)
+    loss.backward()
+
+    # Print gradients
+    for name, param in network.named_parameters():
+        print(name)
+        print(param.grad)
+
+    optimizer.step()
 
 # Print updated weights
-print(network.conv1.weight)
-print(network.fc1.weight)
-print(network.fc1.bias)
+# print(network.conv1.weight)
+# print(network.fc1.weight)
+# print(network.fc1.bias)

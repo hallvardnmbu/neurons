@@ -138,7 +138,7 @@ fn main() {
                 activation::Activation::ReLU,
                 None,
             );
-            network.dense(64, activation::Activation::ReLU, false, None);
+            network.dense(32, activation::Activation::ReLU, false, None);
 
             if method == &"REGRESSION" {
                 network.dense(1, activation::Activation::Linear, false, None);

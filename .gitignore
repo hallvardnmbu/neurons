@@ -17,6 +17,10 @@ target/
 Icon?
 
 # Datasets.
+examples/datasets/abalone/
+examples/datasets/air-quality/
+examples/datasets/bike/
+examples/datasets/wine-quality/
 examples/datasets/mnist/*
 examples/datasets/mnist-fashion/*
 examples/datasets/cifar10/*
