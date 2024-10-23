@@ -5,43 +5,58 @@ use neurons::{activation, network, objective, optimizer, plot, random, tensor};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
+use std::time;
+
+const IMAGE_SIZE: usize = 32;
+const NUM_CHANNELS: usize = 3;
+const IMAGE_BYTES: usize = IMAGE_SIZE * IMAGE_SIZE * NUM_CHANNELS;
 
 pub fn load_cifar10(file_path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let file = File::open(file_path).unwrap();
     let mut reader = BufReader::new(file);
-    let mut buffer = vec![0u8; 1 + 3072];
+    let mut buffer = vec![0u8; 1 + IMAGE_BYTES];
 
     let mut labels = Vec::new();
     let mut images = Vec::new();
 
     while reader.read_exact(&mut buffer).is_ok() {
         let label = buffer[0];
-        let mut image = vec![vec![vec![0.0f32; 32]; 32]; 3];
+        let mut image = vec![vec![vec![0.0f32; IMAGE_SIZE]; IMAGE_SIZE]; NUM_CHANNELS];
 
-        for channel in 0..3 {
-            for row in 0..32 {
-                for col in 0..32 {
-                    let index = 1 + channel * 1024 + row * 32 + col;
+        for channel in 0..NUM_CHANNELS {
+            for row in 0..IMAGE_SIZE {
+                for col in 0..IMAGE_SIZE {
+                    let index = 1 + channel * IMAGE_SIZE * IMAGE_SIZE + row * IMAGE_SIZE + col;
                     image[channel][row][col] = buffer[index] as f32 / 255.0;
                 }
             }
         }
 
-        labels.push(label as usize);
+        labels.push(tensor::Tensor::one_hot(label as usize, 10));
         images.push(tensor::Tensor::triple(image));
     }
 
-    let mut generator = random::Generator::create(12345);
-    let mut indices: Vec<usize> = (0..labels.len()).collect();
+    (images, labels)
+}
+
+pub fn shuffle(
+    x: Vec<tensor::Tensor>,
+    y: Vec<tensor::Tensor>,
+) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
+    let mut generator = random::Generator::create(
+        time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .subsec_micros() as u64,
+    );
+
+    let mut indices: Vec<usize> = (0..y.len()).collect();
     generator.shuffle(&mut indices);
 
-    let images: Vec<tensor::Tensor> = indices.iter().map(|&i| images[i].clone()).collect();
-    let labels: Vec<tensor::Tensor> = indices
-        .iter()
-        .map(|&i| tensor::Tensor::one_hot(labels[i], 10))
-        .collect();
+    let a: Vec<tensor::Tensor> = indices.iter().map(|&i| x[i].clone()).collect();
+    let b: Vec<tensor::Tensor> = indices.iter().map(|&i| y[i].clone()).collect();
 
-    (images, labels)
+    (a, b)
 }
 
 fn main() {
@@ -75,6 +90,9 @@ fn main() {
         x_test.len()
     );
 
+    let (x_train, y_train) = shuffle(x_train, y_train);
+    let (x_test, y_test) = shuffle(x_test, y_test);
+
     let x_train: Vec<&tensor::Tensor> = x_train.iter().collect();
     let y_train: Vec<&tensor::Tensor> = y_train.iter().collect();
     let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
@@ -104,7 +122,7 @@ fn main() {
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        None,
+        Some(0.25),
     );
     network.maxpool((2, 2), (2, 2));
     network.convolution(
@@ -123,36 +141,20 @@ fn main() {
         (1, 1),
         (1, 1),
         activation::Activation::ReLU,
-        None,
+        Some(0.25),
     );
     network.maxpool((2, 2), (2, 2));
-    network.convolution(
-        32,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
-    network.convolution(
-        32,
-        (3, 3),
-        (1, 1),
-        (1, 1),
-        (1, 1),
-        activation::Activation::ReLU,
-        None,
-    );
-    network.maxpool((2, 2), (2, 2));
-    network.dense(128, activation::Activation::ReLU, true, None);
+    network.dense(512, activation::Activation::ReLU, true, Some(0.5));
     network.dense(10, activation::Activation::Softmax, true, None);
 
-    network.connect(1, 2);
-    network.connect(3, 5);
-    network.connect(6, 8);
-
-    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
+    network.set_optimizer(optimizer::RMSprop::create(
+        0.001,
+        0.9,
+        1e-7,
+        Some(1e-6),
+        None,
+        false,
+    ));
     network.set_objective(objective::Objective::CrossEntropy, None);
 
     println!("{}", network);
@@ -162,7 +164,7 @@ fn main() {
         &x_train,
         &y_train,
         Some((&x_test, &y_test, 5)),
-        128,
+        32,
         50,
         Some(1),
     );

@@ -134,8 +134,8 @@ name = "fashion-feedback"
 path = "examples/mnist-fashion/feedback.rs"
 
 [[example]]
-name = "cifar10-skip"
-path = "examples/cifar10/skip.rs"
+name = "cifar10-plain"
+path = "examples/cifar10/plain.rs"
 
 [[example]]
 name = "cifar10-loop"
