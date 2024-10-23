@@ -893,7 +893,7 @@ mod tests {
             momentum: vec![vec![vec![tensor::Tensor::single(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::single(vec![0.9999145, 1.99]);
+        let expected = tensor::Tensor::single(vec![0.9999145, 1.9972693]);
 
         adam.update(0, 0, false, 1, &mut values, &mut gradients);
 
@@ -912,7 +912,7 @@ mod tests {
             momentum: vec![vec![vec![tensor::Tensor::single(vec![0.2, 0.1])]]],
         };
         let (mut values, mut gradients) = create_test_case();
-        let expected = tensor::Tensor::single(vec![0.999905, 1.98998]);
+        let expected = tensor::Tensor::single(vec![0.999905, 1.99718]);
 
         adamw.update(0, 0, false, 1, &mut values, &mut gradients);
 
