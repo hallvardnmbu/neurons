@@ -154,7 +154,6 @@ fn main() {
 
     network.loopback(1, 1, Arc::new(|_loops| 1.0));
     network.loopback(4, 3, Arc::new(|_loops| 1.0));
-    network.loopback(7, 6, Arc::new(|_loops| 1.0));
 
     println!("{}", network);
 
