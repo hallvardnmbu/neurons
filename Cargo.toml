@@ -144,3 +144,15 @@ path = "examples/mnist-fashion/looping.rs"
 [[example]]
 name = "fashion-feedback"
 path = "examples/mnist-fashion/feedback.rs"
+
+[[example]]
+name = "cifar-plain"
+path = "examples/cifar10/plain.rs"
+
+[[example]]
+name = "cifar-loop"
+path = "examples/cifar10/looping.rs"
+
+[[example]]
+name = "cifar-feedback"
+path = "examples/cifar10/feedback.rs"
