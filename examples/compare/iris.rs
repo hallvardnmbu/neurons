@@ -10,20 +10,24 @@
 //   REGULAR,
 //   FEEDBACK[approach=1],
 //   FEEDBACK[approach=2, loops=2],
-//   FEEDBACK[approach=2, loops=3]
+//   FEEDBACK[approach=2, loops=3],
+//   FEEDBACK[approach=2, loops=4]
 // ) do {
 //
 //   for (NOSKIP, SKIP) do {
 //
-//     for (CLASSIFICATION, REGRESSION) do {
+//     for (CLASSIFICATION) do {
 //
-//       create the network
-//       train the network
-//       validate the network
-//       store the loss and accuracy
-//       probe the network
-//       store the probing results
+//       for (run in RUNS) do {
 //
+//         create the network
+//         train the network
+//         validate the network
+//         store the loss and accuracy
+//         probe the network
+//         store the probing results
+//
+//       }
 //     }
 //   }
 // }
@@ -36,6 +40,8 @@ use std::{
     io::{BufRead, BufReader, Write},
     sync::Arc,
 };
+
+const RUNS: usize = 5;
 
 fn data(path: &str) -> (Vec<tensor::Tensor>, Vec<tensor::Tensor>) {
     let reader = BufReader::new(File::open(&path).unwrap());
@@ -119,145 +125,158 @@ fn main() {
                     println!("   Problem: {}", problem);
                     writeln!(file, "    \"{}-{}-{}\": {{", method, skip, problem).unwrap();
 
-                    // Create the network based on the architecture.
-                    let mut network: network::Network;
-                    network = network::Network::new(tensor::Shape::Single(4));
+                    for run in 1..RUNS + 1 {
+                        println!("    Run: {}", run);
+                        writeln!(file, "      \"run-{}\": {{", run).unwrap();
 
-                    // Check if the method is regular or feedback.
-                    if method == &"REGULAR" || method == &"FB1" {
-                        network.dense(25, activation::Activation::ReLU, false, None);
-                        network.dense(25, activation::Activation::ReLU, false, None);
-                        network.dense(25, activation::Activation::ReLU, false, None);
+                        // Create the network based on the architecture.
+                        let mut network: network::Network;
+                        network = network::Network::new(tensor::Shape::Single(4));
 
-                        // Add the feedback loop if applicable.
-                        if method == &"FB1" {
-                            network.loopback(2, 1, Arc::new(|_loops| 1.0));
-                        }
-                    } else {
-                        network.dense(25, activation::Activation::ReLU, false, None);
-                        network.feedback(
-                            vec![
-                                feedback::Layer::Dense(
-                                    25,
-                                    activation::Activation::ReLU,
-                                    false,
-                                    None,
-                                ),
-                                feedback::Layer::Dense(
-                                    25,
-                                    activation::Activation::ReLU,
-                                    false,
-                                    None,
-                                ),
-                            ],
-                            method.chars().last().unwrap().to_digit(10).unwrap() as usize,
-                            false,
-                            feedback::Accumulation::Mean,
-                        );
-                    }
+                        // Check if the method is regular or feedback.
+                        if method == &"REGULAR" || method == &"FB1" {
+                            network.dense(25, activation::Activation::ReLU, false, None);
+                            network.dense(25, activation::Activation::ReLU, false, None);
+                            network.dense(25, activation::Activation::ReLU, false, None);
 
-                    // Set the output layer based on the problem.
-                    if problem == &"REGRESSION" {
-                        network.dense(1, activation::Activation::Linear, false, None);
-                        network.set_objective(objective::Objective::RMSE, None);
-                    } else {
-                        network.dense(3, activation::Activation::Softmax, false, None);
-                        network.set_objective(objective::Objective::CrossEntropy, None);
-                    }
-
-                    // Add the skip connection if applicable.
-                    if *skip {
-                        network.connect(1, network.layers.len() - 1);
-                    }
-
-                    network.set_optimizer(optimizer::Adam::create(0.0001, 0.95, 0.999, 1e-7, None));
-
-                    // Train the network
-                    let (train_loss, val_loss, val_acc);
-                    if problem == &"REGRESSION" {
-                        (train_loss, val_loss, val_acc) = network.learn(
-                            &x_train,
-                            &y_train,
-                            Some((&x_test, &y_test, 10)),
-                            1,
-                            100,
-                            None,
-                        );
-                    } else {
-                        (train_loss, val_loss, val_acc) = network.learn(
-                            &x_train,
-                            &y_train,
-                            Some((&x_test, &y_test, 10)),
-                            1,
-                            100,
-                            None,
-                        );
-                    }
-
-                    // Store the loss and accuracy.
-                    writeln!(file, "      \"train\": {{").unwrap();
-                    writeln!(file, "        \"trn-loss\": {:?},", train_loss).unwrap();
-                    writeln!(file, "        \"val-loss\": {:?},", val_loss).unwrap();
-                    writeln!(file, "        \"val-acc\": {:?}", val_acc).unwrap();
-
-                    // Probe the network (if applicable).
-                    if method != &"REGULAR" {
-                        println!("   > Without feedback.");
-
-                        // Store the network's loopbacks and layers to restore them later.
-                        let loopbacks = network.loopbacks.clone();
-                        let layers = network.layers.clone();
-
-                        // Remove the feedback loop.
-                        if method == &"FB1" {
-                            network.loopbacks = HashMap::new();
+                            // Add the feedback loop if applicable.
+                            if method == &"FB1" {
+                                network.loopback(2, 1, Arc::new(|_loops| 1.0));
+                            }
                         } else {
-                            match &mut network.layers.get_mut(1).unwrap() {
-                                network::Layer::Feedback(fb) => {
-                                    // Only keep the first layer.
-                                    fb.layers = fb.layers.drain(0..2).collect();
-                                }
-                                _ => panic!("Invalid layer."),
-                            };
+                            network.dense(25, activation::Activation::ReLU, false, None);
+                            network.feedback(
+                                vec![
+                                    feedback::Layer::Dense(
+                                        25,
+                                        activation::Activation::ReLU,
+                                        false,
+                                        None,
+                                    ),
+                                    feedback::Layer::Dense(
+                                        25,
+                                        activation::Activation::ReLU,
+                                        false,
+                                        None,
+                                    ),
+                                ],
+                                method.chars().last().unwrap().to_digit(10).unwrap() as usize,
+                                false,
+                                feedback::Accumulation::Mean,
+                            );
                         }
 
-                        let (test_loss, test_acc);
+                        // Set the output layer based on the problem.
                         if problem == &"REGRESSION" {
-                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            network.dense(1, activation::Activation::Linear, false, None);
+                            network.set_objective(objective::Objective::RMSE, None);
                         } else {
-                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            network.dense(3, activation::Activation::Softmax, false, None);
+                            network.set_objective(objective::Objective::CrossEntropy, None);
                         }
 
-                        writeln!(file, "      }},").unwrap();
-                        writeln!(file, "      \"no-feedback\": {{").unwrap();
-                        writeln!(file, "        \"tst-loss\": {},", test_loss).unwrap();
-                        writeln!(file, "        \"tst-acc\": {}", test_acc).unwrap();
+                        // Add the skip connection if applicable.
+                        if *skip {
+                            network.connect(1, network.layers.len() - 1);
+                        }
 
-                        // Restore the feedback loop.
-                        network.loopbacks = loopbacks;
-                        network.layers = layers;
-                    }
-                    if *skip {
-                        println!("   > Without skip.");
-                        network.connect = HashMap::new();
+                        network.set_optimizer(optimizer::Adam::create(
+                            0.0001, 0.95, 0.999, 1e-7, None,
+                        ));
 
-                        let (test_loss, test_acc);
+                        // Train the network
+                        let (train_loss, val_loss, val_acc);
                         if problem == &"REGRESSION" {
-                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            (train_loss, val_loss, val_acc) = network.learn(
+                                &x_train,
+                                &y_train,
+                                Some((&x_test, &y_test, 10)),
+                                1,
+                                100,
+                                None,
+                            );
                         } else {
-                            (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            (train_loss, val_loss, val_acc) = network.learn(
+                                &x_train,
+                                &y_train,
+                                Some((&x_test, &y_test, 10)),
+                                1,
+                                100,
+                                None,
+                            );
                         }
 
-                        writeln!(file, "      }},").unwrap();
-                        writeln!(file, "      \"no-feedback\": {{").unwrap();
-                        writeln!(file, "        \"tst-loss\": {},", test_loss).unwrap();
-                        writeln!(file, "        \"tst-acc\": {}", test_acc).unwrap();
-                    }
-                    writeln!(file, "      }}").unwrap();
-                    if method == &"FB2x4" && *skip && problem == &"CLASSIFICATION" {
-                        writeln!(file, "    }}").unwrap();
-                    } else {
-                        writeln!(file, "    }},").unwrap();
+                        // Store the loss and accuracy.
+                        writeln!(file, "        \"train\": {{").unwrap();
+                        writeln!(file, "          \"trn-loss\": {:?},", train_loss).unwrap();
+                        writeln!(file, "          \"val-loss\": {:?},", val_loss).unwrap();
+                        writeln!(file, "          \"val-acc\": {:?}", val_acc).unwrap();
+
+                        // Probe the network (if applicable).
+                        if method != &"REGULAR" {
+                            println!("    > Without feedback.");
+
+                            // Store the network's loopbacks and layers to restore them later.
+                            let loopbacks = network.loopbacks.clone();
+                            let layers = network.layers.clone();
+
+                            // Remove the feedback loop.
+                            if method == &"FB1" {
+                                network.loopbacks = HashMap::new();
+                            } else {
+                                match &mut network.layers.get_mut(1).unwrap() {
+                                    network::Layer::Feedback(fb) => {
+                                        // Only keep the first layer.
+                                        fb.layers = fb.layers.drain(0..2).collect();
+                                    }
+                                    _ => panic!("Invalid layer."),
+                                };
+                            }
+
+                            let (test_loss, test_acc);
+                            if problem == &"REGRESSION" {
+                                (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            } else {
+                                (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            }
+
+                            writeln!(file, "        }},").unwrap();
+                            writeln!(file, "        \"no-feedback\": {{").unwrap();
+                            writeln!(file, "          \"tst-loss\": {},", test_loss).unwrap();
+                            writeln!(file, "          \"tst-acc\": {}", test_acc).unwrap();
+
+                            // Restore the feedback loop.
+                            network.loopbacks = loopbacks;
+                            network.layers = layers;
+                        }
+                        if *skip {
+                            println!("    > Without skip.");
+                            network.connect = HashMap::new();
+
+                            let (test_loss, test_acc);
+                            if problem == &"REGRESSION" {
+                                (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            } else {
+                                (test_loss, test_acc) = network.validate(&x_test, &y_test, 1e-6);
+                            }
+
+                            writeln!(file, "        }},").unwrap();
+                            writeln!(file, "        \"no-skip\": {{").unwrap();
+                            writeln!(file, "          \"tst-loss\": {},", test_loss).unwrap();
+                            writeln!(file, "          \"tst-acc\": {}", test_acc).unwrap();
+                        }
+                        writeln!(file, "        }}").unwrap();
+
+                        if run == RUNS {
+                            writeln!(file, "      }}").unwrap();
+                            if method == &"FB2x4" && *skip && problem == &"CLASSIFICATION" {
+                                writeln!(file, "    }}").unwrap();
+                            } else {
+                                writeln!(file, "    }},").unwrap();
+                            }
+                        } else {
+                            writeln!(file, "      }},").unwrap();
+                        }
                     }
                 });
             });

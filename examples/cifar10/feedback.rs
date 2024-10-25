@@ -157,32 +157,6 @@ fn main() {
         feedback::Accumulation::Mean,
     );
     network.maxpool((2, 2), (2, 2));
-    network.feedback(
-        vec![
-            feedback::Layer::Convolution(
-                32,
-                activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                (1, 1),
-                None,
-            ),
-            feedback::Layer::Convolution(
-                32,
-                activation::Activation::ReLU,
-                (3, 3),
-                (1, 1),
-                (1, 1),
-                (1, 1),
-                None,
-            ),
-        ],
-        2,
-        false,
-        feedback::Accumulation::Mean,
-    );
-    network.maxpool((2, 2), (2, 2));
     network.dense(128, activation::Activation::ReLU, true, None);
     network.dense(10, activation::Activation::Softmax, true, None);
 

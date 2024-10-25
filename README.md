@@ -173,6 +173,14 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.5.4 – Bugs and examples.</summary>
+
+  Fix a typo in `Adam` and `AdamW` optimizers.
+  Updated examples.
+  Updated comparisons.
+</details>
+
+<details>
   <summary>v2.5.3 – Architecture comparison.</summary>
 
   Added examples comparing the performance off different architectures.
