@@ -55,11 +55,11 @@ fn main() {
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(12));
 
-    network.dense(64, activation::Activation::ReLU, false, None);
+    network.dense(24, activation::Activation::ReLU, false, None);
     network.feedback(
         vec![
-            feedback::Layer::Dense(64, activation::Activation::ReLU, false, None),
-            feedback::Layer::Dense(64, activation::Activation::ReLU, false, None),
+            feedback::Layer::Dense(24, activation::Activation::ReLU, false, None),
+            feedback::Layer::Dense(24, activation::Activation::ReLU, false, None),
         ],
         3,
         false,
@@ -69,7 +69,7 @@ fn main() {
     network.dense(1, activation::Activation::Linear, false, None);
     network.set_objective(objective::Objective::RMSE, None);
 
-    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
+    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-4, None));
 
     println!("{}", network);
 
@@ -78,9 +78,9 @@ fn main() {
     let (train_loss, val_loss, val_acc) = network.learn(
         &x_train,
         &y_train,
-        Some((&x_test, &y_test, 50)),
-        32,
-        1000,
+        Some((&x_test, &y_test, 25)),
+        64,
+        500,
         Some(100),
     );
     plot::loss(

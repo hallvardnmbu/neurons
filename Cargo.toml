@@ -38,6 +38,10 @@ name = "compare-iris"
 path = "examples/compare/iris.rs"
 
 [[example]]
+name = "compare-bike"
+path = "examples/compare/bike.rs"
+
+[[example]]
 name = "compare-ftir-mlp"
 path = "examples/compare/ftir-mlp.rs"
 

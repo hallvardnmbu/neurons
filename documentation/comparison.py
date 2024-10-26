@@ -1,6 +1,7 @@
 """Plot the comparison of different methods. To be run from the root directory."""
 
 import os
+import csv
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,9 +19,15 @@ for problem in os.listdir("./output/compare/"):
         continue
 
     data = json.load(open(f"./output/compare/{problem}"))[0]
+
     problem = problem.replace(".json", "")
-    saveto = f"./output/compare/graphs/{problem}/"
-    os.makedirs(saveto, exist_ok=True)
+    graph = f"./output/compare/graphs/{problem}/"
+    os.makedirs(graph, exist_ok=True)
+
+    probe = f"./output/compare/probed/{problem}.csv"
+    os.makedirs(os.path.dirname(probe), exist_ok=True)
+    with open(probe, "a") as f:
+        csv.writer(f).writerow(["problem", "configuration", "without", "metric", "mean", "std"])
 
     for which in ["CLASSIFICATION", "REGRESSION"]:
         for skip in ["true", "false"]:
@@ -70,20 +77,69 @@ for problem in os.listdir("./output/compare/"):
                     color=_COLOUR[configuration.split("-")[0]]
                 )
 
+                if skip == "true":
+                    probed = {
+                        metric: [] for metric in data[configuration]["run-1"]["no-skip"].keys()
+                    }
+                    probed["real-val-accr"] = []
+                    probed["real-val-loss"] = []
+                    for run in data[configuration].keys():
+                        for metric in probed:
+                            if metric not in data[configuration][run]["no-skip"]:
+                                continue
+                            probed[metric].append(data[configuration][run]["no-skip"][metric])
+                        probed["real-val-accr"].append(
+                            data[configuration][run]["train"]["val-acc"][-1]
+                        )
+                        probed["real-val-loss"].append(
+                            data[configuration][run]["train"]["val-loss"][-1]
+                        )
+                    for metric in probed:
+                        probed_mean = np.mean(probed[metric])
+                        probed_std = np.std(probed[metric])
+                        with open(probe, "a") as f:
+                            csv.writer(f).writerow([
+                                which, configuration, "no-skip", metric, probed_mean, probed_std
+                            ])
+                if configuration.split("-")[0] != "REGULAR":
+                    probed = {
+                        metric: [] for metric in data[configuration]["run-1"]["no-feedback"].keys()
+                    }
+                    probed["real-val-accr"] = []
+                    probed["real-val-loss"] = []
+                    for run in data[configuration].keys():
+                        for metric in probed:
+                            if metric not in data[configuration][run]["no-feedback"]:
+                                    continue
+                            probed[metric].append(data[configuration][run]["no-feedback"][metric])
+                        probed["real-val-accr"].append(
+                            data[configuration][run]["train"]["val-acc"][-1]
+                        )
+                        probed["real-val-loss"].append(
+                            data[configuration][run]["train"]["val-loss"][-1]
+                        )
+                    for metric in probed:
+                        probed_mean = np.mean(probed[metric])
+                        probed_std = np.std(probed[metric])
+                        with open(probe, "a") as f:
+                            csv.writer(f).writerow([
+                                which, configuration, "no-feedback", metric, probed_mean, probed_std
+                            ])
+
             if not ax_loss.lines:
                 plt.close(fig)
                 continue
-            ax_loss.legend()
+            ax_loss.legend(loc='upper right')
             ax_loss.set_xlabel('Epoch')
-            ax_loss.set_ylabel('Average loss')
-            ax_acc.set_ylabel('Average accuracy')
+            ax_loss.set_ylabel('Avg. validation loss')
+            ax_acc.set_ylabel('Avg. validation accuracy')
 
             for ax in [ax_loss, ax_acc]:
                 for location in ['top', 'right', 'left', 'bottom']:
                     ax.spines[location].set_visible(False)
-                    ax.yaxis.grid(True, color='gray', linestyle='--', linewidth=0.5)
+                    ax.yaxis.grid(True, color='gray', linewidth=0.5)
 
             fig.suptitle(f"{problem.upper()} : {which} : {'WITH SKIP' if skip == 'true' else 'WITHOUT SKIP'}")
             plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
-            fig.savefig(f"{saveto}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
+            fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
