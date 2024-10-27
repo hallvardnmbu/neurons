@@ -45,13 +45,14 @@ fn main() {
     // Load the ftir dataset
     let (x, y) = data("./examples/datasets/bike/hour.csv");
 
-    let split_index = 1000;
-    let (x_train, x_test) = x.split_at(split_index);
-    let (y_train, y_test) = y.split_at(split_index);
-    let x_train: Vec<&tensor::Tensor> = x_train.iter().collect();
-    let y_train: Vec<&tensor::Tensor> = y_train.iter().collect();
-    let x_test: Vec<&tensor::Tensor> = x_test.iter().collect();
-    let y_test: Vec<&tensor::Tensor> = y_test.iter().collect();
+    let split = (x.len() as f32 * 0.8) as usize;
+    let x = x.split_at(split);
+    let y = y.split_at(split);
+
+    let x_train: Vec<&tensor::Tensor> = x.0.iter().collect();
+    let y_train: Vec<&tensor::Tensor> = y.0.iter().collect();
+    let x_test: Vec<&tensor::Tensor> = x.1.iter().collect();
+    let y_test: Vec<&tensor::Tensor> = y.1.iter().collect();
 
     // Create the network
     let mut network = network::Network::new(tensor::Shape::Single(12));
@@ -65,7 +66,7 @@ fn main() {
 
     network.loopback(2, 1, Arc::new(|_loops| 1.0));
 
-    network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-4, None));
+    network.set_optimizer(optimizer::Adam::create(0.01, 0.9, 0.999, 1e-4, None));
 
     println!("{}", network);
 
@@ -76,7 +77,7 @@ fn main() {
         &y_train,
         Some((&x_test, &y_test, 25)),
         64,
-        500,
+        600,
         Some(100),
     );
     plot::loss(

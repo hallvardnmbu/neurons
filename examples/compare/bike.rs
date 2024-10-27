@@ -89,20 +89,8 @@ fn main() {
     let x_test: Vec<&tensor::Tensor> = x.1.iter().collect();
     let y_test: Vec<&tensor::Tensor> = y.1.iter().collect();
 
-    println!(
-        "Train data {}x{}: {} => {}",
-        x_train.len(),
-        x_train[0].shape,
-        x_train[0].data,
-        y_train[0].data
-    );
-    println!(
-        "Test data {}x{}: {} => {}",
-        x_test.len(),
-        x_test[0].shape,
-        x_test[0].data,
-        y_test[0].data
-    );
+    println!("Train data {}x{}", x_train.len(), x_train[0].shape,);
+    println!("Test data {}x{}", x_test.len(), x_test[0].shape,);
 
     // Create the results file.
     let mut file = File::create("./output/compare/bike.json").unwrap();
@@ -174,7 +162,7 @@ fn main() {
                         }
 
                         network
-                            .set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-4, None));
+                            .set_optimizer(optimizer::Adam::create(0.01, 0.9, 0.999, 1e-4, None));
 
                         // Train the network
                         let (train_loss, val_loss, val_acc);
@@ -184,7 +172,7 @@ fn main() {
                                 &y_train,
                                 Some((&x_test, &y_test, 25)),
                                 64,
-                                500,
+                                600,
                                 None,
                             );
                         } else {
