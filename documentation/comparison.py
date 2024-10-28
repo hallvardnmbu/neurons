@@ -26,6 +26,7 @@ for problem in os.listdir("./output/compare/"):
 
     probe = f"./output/compare/probed/{problem}.csv"
     os.makedirs(os.path.dirname(probe), exist_ok=True)
+    os.remove(probe) if os.path.exists(probe) else None
     with open(probe, "a") as f:
         csv.writer(f).writerow(["problem", "configuration", "without", "metric", "mean", "std"])
 
@@ -51,6 +52,21 @@ for problem in os.listdir("./output/compare/"):
                     for l in loss
                 ]
                 loss = np.nanmean(loss, axis=0)
+                std = np.nanstd(loss, axis=0)
+                ax_loss.plot(
+                    loss,
+                    label=configuration.replace(f"-{skip}-{which}", "").replace("x", " x"),
+                    linewidth=1,
+                    color=_COLOUR[configuration.split("-")[0]]
+                )
+                ax_loss.fill_between(
+                    range(len(loss)),
+                    loss - std,
+                    loss + std,
+                    alpha=0.1,
+                    color=_COLOUR[configuration.split("-")[0]]
+                )
+                ax_loss.set_yscale('log')
 
                 accr = [
                     data[configuration][run]["train"]["val-acc"]
@@ -62,18 +78,18 @@ for problem in os.listdir("./output/compare/"):
                     for a in accr
                 ]
                 accr = np.nanmean(accr, axis=0)
-
-                ax_loss.plot(
-                    loss,
-                    label=configuration.replace(f"-{skip}-{which}", "").replace("x", " x"),
-                    linewidth=1,
-                    color=_COLOUR[configuration.split("-")[0]]
-                )
-                ax_loss.set_yscale('log')
+                std = np.nanstd(accr, axis=0)
                 ax_acc.plot(
                     accr,
                     label=configuration.replace(f"-{skip}-{which}", "").replace("x", " x"),
                     linewidth=1,
+                    color=_COLOUR[configuration.split("-")[0]]
+                )
+                ax_acc.fill_between(
+                    range(len(accr)),
+                    accr - std,
+                    accr + std,
+                    alpha=0.1,
                     color=_COLOUR[configuration.split("-")[0]]
                 )
 
@@ -139,7 +155,7 @@ for problem in os.listdir("./output/compare/"):
                     ax.spines[location].set_visible(False)
                     ax.yaxis.grid(True, color='gray', linewidth=0.5)
 
-            fig.suptitle(f"{problem.upper()} : {which} : {'WITH SKIP' if skip == 'true' else 'WITHOUT SKIP'}")
+            fig.suptitle(f"{problem.upper()}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}")
             plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
