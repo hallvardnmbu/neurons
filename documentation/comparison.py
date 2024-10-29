@@ -117,9 +117,9 @@ for problem in os.listdir("./output/compare/"):
                 lstd = lstd[~np.isnan(lstd)]
 
                 if which == "CLASSIFICATION":
-                    metrics = f"{float(accr[-1]) * 100:.2f} \\pm {float(astd[-1]) * 100:.2f} | {float(loss[-1]):.2f} \\pm {float(lstd[-1]):.2f}"
+                    metrics = f"{float(accr[-1]) * 100:.2f} $\\pm$ {float(astd[-1]) * 100:.2f} | {float(loss[-1]):.2f} $\\pm$ {float(lstd[-1]):.2f}"
                 else:
-                    metrics = f"{float(loss[-1]):.2f} \\pm {float(lstd[-1]):.2f}"
+                    metrics = f"{float(loss[-1]):.2f} $\\pm$ {float(lstd[-1]):.2f}"
                 string = f"{name} & {metrics} & "
 
                 if skip == "true":
@@ -136,9 +136,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"{np.mean(accr) * 100:.2f} \\pm {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} \\pm {np.mean(loss):.2f} & "
+                        string += f"{np.mean(accr) * 100:.2f} $\\pm$ {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} & "
                     else:
-                        string += f"{np.mean(loss):.2f} \\pm {np.std(loss):.2f} & "
+                        string += f"{np.mean(loss):.2f} $\\pm$ {np.std(loss):.2f} & "
                 else:
                     string += "- & - & "
 
@@ -157,9 +157,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"{np.mean(accr) * 100:.2f} \\pm {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} \\pm {np.mean(loss):.2f} \\\\"
+                        string += f"{np.mean(accr) * 100:.2f} $\\pm$ {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} \\\\"
                     else:
-                        string += f"{np.mean(loss):.2f} \\pm {np.mean(loss):.2f} \\\\"
+                        string += f"{np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} \\\\"
                 else:
                     string += "- & - \\\\"
 
