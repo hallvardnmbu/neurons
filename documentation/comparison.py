@@ -27,27 +27,27 @@ for problem in os.listdir("./output/compare/"):
 
     for which in ["CLASSIFICATION", "REGRESSION"]:
 
-        for skip in ["true", "false"]:
-            tex = f"{probe}{problem}-{which.lower()}-{skip}.tex"
-            os.remove(tex) if os.path.exists(tex) else None
-            with open(tex, "a") as file:
-                file.write("""
+        tex = f"{probe}{problem}-{which.lower()}.tex"
+        os.remove(tex) if os.path.exists(tex) else None
+        with open(tex, "a") as file:
+            file.write("""
 \\begin{table}[h]
     \\centering
-    \\begin{tabular}{l|c|c|c|c}
+    \\begin{tabular}{l|l|l|l}
         \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize ORIGINAL} & \\textbf{\\footnotesize SKIP OFF} & \\textbf{\\footnotesize FEEDBACK OFF} \\\\
 """)
-                if which == "CLASSIFICATION":
-                    file.write("""
-        & \\textbf{\\footnotesize ACCURACY} | \\textbf{\\footnotesize LOSS} & \\textbf{\\footnotesize ACCURACY} | \\textbf{\\footnotesize LOSS} & \\textbf{\\footnotesize ACCURACY} | \\textbf{\\footnotesize LOSS} \\\\
+            if which == "CLASSIFICATION":
+                file.write("""
+        & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} \\\\
         \\hline
 """)
-                else:
-                    file.write("""
-        & \\textbf{\\footnotesize LOSS} & \\textbf{\\footnotesize LOSS} & \\textbf{\\footnotesize LOSS} \\\\
+            else:
+                file.write("""
+        & {\\footnotesize Loss} & {\\footnotesize Loss} & {\\footnotesize Loss} \\\\
         \\hline
 """)
 
+        for skip in ["true", "false"]:
             if which == "REGRESSION":
                 fig, ax_loss = plt.subplots()
                 _, ax_acc = plt.subplots()
@@ -58,7 +58,7 @@ for problem in os.listdir("./output/compare/"):
                 if which not in configuration or skip not in configuration:
                     continue
 
-                name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x")
+                name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x").replace("REGULAR", "Regular")
 
                 loss = [
                     data[configuration][run]["train"]["val-loss"]
@@ -117,10 +117,10 @@ for problem in os.listdir("./output/compare/"):
                 lstd = lstd[~np.isnan(lstd)]
 
                 if which == "CLASSIFICATION":
-                    metrics = f"{float(accr[-1]) * 100:.2f} $\\pm$ {float(astd[-1]) * 100:.2f} | {float(loss[-1]):.2f} $\\pm$ {float(lstd[-1]):.2f}"
+                    metrics = f"\\shortstack[l]{{\\\\ {float(accr[-1]):.4f} $\\pm$ {float(astd[-1]):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}}}"
                 else:
-                    metrics = f"{float(loss[-1]):.2f} $\\pm$ {float(lstd[-1]):.2f}"
-                string = f"{name} & {metrics} & "
+                    metrics = f"{float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}"
+                string = f"\\shortstack[l]{{\\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
 
                 if skip == "true":
                     probed = {
@@ -136,11 +136,11 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"{np.mean(accr) * 100:.2f} $\\pm$ {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} & "
+                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f}}} & "
                     else:
-                        string += f"{np.mean(loss):.2f} $\\pm$ {np.std(loss):.2f} & "
+                        string += f"{np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f} & "
                 else:
-                    string += "- & - & "
+                    string += " & "
 
                 if configuration.split("-")[0] != "REGULAR":
                     probed = {
@@ -157,14 +157,14 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"{np.mean(accr) * 100:.2f} $\\pm$ {np.std(accr) * 100:.2f} | {np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} \\\\"
+                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f}}} \\\\"
                     else:
-                        string += f"{np.mean(loss):.2f} $\\pm$ {np.mean(loss):.2f} \\\\"
+                        string += f"{np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f} \\\\"
                 else:
-                    string += "- & - \\\\"
+                    string += " \\\\"
 
                 with open(tex, "a") as file:
-                    file.write(string + "\n")
+                    file.write(string + "\n \\hline \n")
 
             if not ax_loss.lines:
                 plt.close(fig)
@@ -184,10 +184,10 @@ for problem in os.listdir("./output/compare/"):
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
 
-            with open(tex, "a") as file:
-                file.write(f"""
+        with open(tex, "a") as file:
+            file.write(f"""
     \\end{{tabular}}
-    \\caption{{Probed results of {problem.upper()} for {which.lower()}{' with skip' if skip == 'true' else ''}.}}
-    \\label{{tab:{problem}-{which.lower()}-{skip}}}
+    \\caption{{Probed results of {problem.upper()} for {which.lower()}.}}
+    \\label{{tab:{problem}-{which.lower()}}}
 \\end{{table}}
 """)
