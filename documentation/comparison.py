@@ -168,6 +168,7 @@ for problem in os.listdir("./output/compare/"):
 
             if not ax_loss.lines:
                 plt.close(fig)
+                os.remove(tex) if os.path.exists(tex) else None
                 continue
             ax_loss.legend(loc='upper right')
             ax_loss.set_xlabel('Epoch')
@@ -184,8 +185,9 @@ for problem in os.listdir("./output/compare/"):
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
 
-        with open(tex, "a") as file:
-            file.write(f"""
+        if os.path.exists(tex):
+            with open(tex, "a") as file:
+                file.write(f"""
     \\end{{tabular}}
     \\caption{{Probed results of {problem.upper()} for {which.lower()}.}}
     \\label{{tab:{problem}-{which.lower()}}}
