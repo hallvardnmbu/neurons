@@ -57,7 +57,6 @@ for problem in os.listdir("./output/compare/"):
             for configuration in data.keys():
                 if which not in configuration or skip not in configuration:
                     continue
-
                 name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x").replace("REGULAR", "Regular")
 
                 loss = [
@@ -120,7 +119,7 @@ for problem in os.listdir("./output/compare/"):
                     metrics = f"\\shortstack[l]{{\\\\ {float(accr[-1]):.4f} $\\pm$ {float(astd[-1]):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}}}"
                 else:
                     metrics = f"{float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}"
-                string = f"\\shortstack[l]{{\\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
+                string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
 
                 if skip == "true":
                     probed = {
