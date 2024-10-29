@@ -136,7 +136,7 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f}}} & "
+                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f}}} & "
                     else:
                         string += f"{np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f} & "
                 else:
@@ -157,9 +157,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f}}} \\\\"
+                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f}}} \\\\"
                     else:
-                        string += f"{np.mean(loss):.4f} $\\pm$ {np.mean(loss):.4f} \\\\"
+                        string += f"{np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f} \\\\"
                 else:
                     string += " \\\\"
 
