@@ -623,6 +623,231 @@ mod tests {
     }
 
     #[test]
+    fn test_backward_pytorch() {
+        // Test backward function in comparison to PyTorch;
+        // ./documentation/validation/test_convolution_backward.py
+        let mut conv = Convolution::create(
+            tensor::Shape::Triple(3, 32, 32),
+            2,
+            &activation::Activation::Linear,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            None,
+        );
+        for (i, kernel) in conv.kernels.iter_mut().enumerate() {
+            *kernel = tensor::Tensor::triple(vec![vec![vec![1.0 + i as f32; 3]; 3]; 3]);
+        }
+
+        let input = tensor::Tensor::triple(vec![vec![vec![0.1; 32]; 32]; 3]);
+
+        let output = tensor::Tensor::triple(vec![
+            {
+                let mut inner: Vec<Vec<f32>> = Vec::new();
+                inner.push({
+                    let mut row = vec![1.2000002];
+                    row.extend(vec![1.8000003; 30]);
+                    row.push(1.2000002);
+                    row
+                });
+                inner.extend(vec![
+                    {
+                        let mut row = vec![1.8000003];
+                        row.extend(vec![2.6999996; 30]);
+                        row.push(1.8000003);
+                        row
+                    };
+                    30
+                ]);
+                inner.push({
+                    let mut row = vec![1.2000002];
+                    row.extend(vec![1.8000003; 30]);
+                    row.push(1.2000002);
+                    row
+                });
+                inner
+            },
+            {
+                let mut inner: Vec<Vec<f32>> = Vec::new();
+                inner.push({
+                    let mut row = vec![2.4000003];
+                    row.extend(vec![3.6000006; 30]);
+                    row.push(2.4000003);
+                    row
+                });
+                inner.extend(vec![
+                    {
+                        let mut row = vec![3.6000006];
+                        row.extend(vec![5.399999; 30]);
+                        row.push(3.6000006);
+                        row
+                    };
+                    30
+                ]);
+                inner.push({
+                    let mut row = vec![2.4000003];
+                    row.extend(vec![3.6000006; 30]);
+                    row.push(2.4000003);
+                    row
+                });
+                inner
+            },
+        ]);
+
+        // Double-check to ensure the forward pass is correct.
+        let (pre, post) = conv.forward(&input);
+        assert_eq_data!(pre.data, output.data);
+        assert_eq_data!(post.data, output.data);
+
+        let gradient = tensor::Tensor::ones(post.shape.clone());
+
+        let (input_gradient, kernel_gradient, _) = conv.backward(&gradient, &input, &output);
+
+        let _input_gradient = vec![
+            {
+                let mut inner: Vec<Vec<f32>> = Vec::new();
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner.extend(vec![
+                    {
+                        let mut row = vec![18.0];
+                        row.extend(vec![27.0; 30]);
+                        row.push(18.0);
+                        row
+                    };
+                    30
+                ]);
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner
+            },
+            {
+                let mut inner: Vec<Vec<f32>> = Vec::new();
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner.extend(vec![
+                    {
+                        let mut row = vec![18.0];
+                        row.extend(vec![27.0; 30]);
+                        row.push(18.0);
+                        row
+                    };
+                    30
+                ]);
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner
+            },
+            {
+                let mut inner: Vec<Vec<f32>> = Vec::new();
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner.extend(vec![
+                    {
+                        let mut row = vec![18.0];
+                        row.extend(vec![27.0; 30]);
+                        row.push(18.0);
+                        row
+                    };
+                    30
+                ]);
+                inner.push({
+                    let mut row = vec![12.0];
+                    row.extend(vec![18.0; 30]);
+                    row.push(12.0);
+                    row
+                });
+                inner
+            },
+        ];
+
+        let _kernel_gradient = vec![
+            vec![
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+            ],
+            vec![
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+                vec![
+                    vec![96.1002, 99.2002, 96.1002],
+                    vec![99.2002, 102.4002, 99.2002],
+                    vec![96.1002, 99.2002, 96.1002],
+                ],
+            ],
+        ];
+
+        match input_gradient.data {
+            tensor::Data::Triple(ref data) => {
+                for (g, e) in data.iter().zip(_input_gradient.iter()) {
+                    for (g, e) in g.iter().zip(e.iter()) {
+                        for (g, e) in g.iter().zip(e.iter()) {
+                            assert!((g - e).abs() < 1e-6);
+                        }
+                    }
+                }
+            }
+            _ => panic!("Invalid data type"),
+        }
+        match kernel_gradient.data {
+            tensor::Data::Quadruple(ref data) => {
+                for (g, e) in data.iter().zip(_kernel_gradient.iter()) {
+                    for (g, e) in g.iter().zip(e.iter()) {
+                        for (g, e) in g.iter().zip(e.iter()) {
+                            for (g, e) in g.iter().zip(e.iter()) {
+                                assert!((g - e).abs() < 1e-2);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => panic!("Invalid data type"),
+        }
+    }
+
+    #[test]
     fn test_rotate() {
         let conv = Convolution::create(
             tensor::Shape::Triple(1, 3, 3),

@@ -1231,7 +1231,7 @@ impl Network {
             let input: &tensor::Tensor = &activated[idx];
             let output: &tensor::Tensor = &preactivated[idx];
 
-            let (gradient, wg, bg) = match layer {
+            let (mut gradient, wg, bg) = match layer {
                 Layer::Dense(layer) => layer.backward(&gradients.last().unwrap(), input, output),
                 Layer::Convolution(layer) => {
                     layer.backward(&gradients.last().unwrap(), input, output)
@@ -1256,18 +1256,17 @@ impl Network {
                 }
             };
 
-            gradients.push(gradient);
-            weight_gradient.push(wg);
-            bias_gradient.push(bg);
-
             // Check for skip- or loopback connections.
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
-                let gradient = gradients[self.layers.len() - *connect[&idx]].clone();
-                let last = gradients.last_mut().unwrap();
-                last.add_inplace(&gradient.reshape(last.shape.clone()));
+                let gradient2 = gradients[self.layers.len() - *connect[&idx]].clone();
+                gradient.add_inplace(&gradient2.reshape(gradient.shape.clone()));
                 // TODO: Handle accumulation methods?
             }
+
+            gradients.push(gradient);
+            weight_gradient.push(wg);
+            bias_gradient.push(bg);
         });
 
         (weight_gradient, bias_gradient)
@@ -1923,7 +1922,7 @@ mod tests {
                     for (w1, e1) in weight.iter().zip(expect.iter()) {
                         for (w2, e2) in w1.iter().zip(e1.iter()) {
                             for (w3, e3) in w2.iter().zip(e2.iter()) {
-                                assert!((w3 - e3).abs() < 1e-2);
+                                assert!((w3 - e3).abs() < 1e-5);
                             }
                         }
                     }
@@ -2076,7 +2075,7 @@ mod tests {
                     for (w1, e1) in weight.iter().zip(expect.iter()) {
                         for (w2, e2) in w1.iter().zip(e1.iter()) {
                             for (w3, e3) in w2.iter().zip(e2.iter()) {
-                                assert!((w3 - e3).abs() < 1e-2);
+                                assert!((w3 - e3).abs() < 1e-6);
                             }
                         }
                     }
@@ -2122,7 +2121,7 @@ mod tests {
 
                 for (weight, expect) in weights.iter().zip(expected.iter()) {
                     for (w, e) in weight.iter().zip(expect.iter()) {
-                        assert!((w - e).abs() < 1e-2);
+                        assert!((w - e).abs() < 1e-6);
                     }
                 }
 
@@ -2131,7 +2130,166 @@ mod tests {
                     let expect = vec![2.9980, 4.0000, 4.9980, 5.9980, 6.9980];
 
                     for (w, e) in weight.iter().zip(expect.iter()) {
-                        assert!((w - e).abs() < 1e-2);
+                        assert!((w - e).abs() < 1e-6);
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn test_learn_bigger() {
+        // See Python file `documentation/validation/test_network_learn_bigger.py` for the reference implementation.
+
+        let input = tensor::Tensor::triple(vec![vec![vec![0.1; 32]; 32]; 3]);
+        let target = tensor::Tensor::one_hot(4, 10);
+
+        let mut network = Network::new(tensor::Shape::Triple(3, 32, 32));
+        network.convolution(
+            32,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.maxpool((2, 2), (2, 2));
+        network.convolution(
+            32,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.maxpool((2, 2), (2, 2));
+        network.convolution(
+            32,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            activation::Activation::ReLU,
+            None,
+        );
+        network.maxpool((2, 2), (2, 2));
+        network.dense(256, activation::Activation::ReLU, true, None);
+        network.dense(10, activation::Activation::Softmax, true, None);
+
+        for layer in network.layers.iter_mut() {
+            match layer {
+                Layer::Convolution(ref mut conv) => {
+                    conv.kernels = vec![
+                        tensor::Tensor::ones(conv.kernels[0].shape.clone());
+                        conv.kernels.len()
+                    ];
+                }
+                Layer::Dense(ref mut dense) => {
+                    dense.weights = tensor::Tensor::ones(dense.weights.shape.clone());
+                    if let Some(ref mut bias) = dense.bias {
+                        *bias = tensor::Tensor::ones(bias.shape.clone());
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        network.set_objective(objective::Objective::CrossEntropy, None);
+        network.set_optimizer(optimizer::Adam::create(0.0001, 0.9, 0.999, 1e-8, None));
+
+        network.learn(&vec![&input], &vec![&target], None, 1, 5, None);
+
+        for layer in network.layers.iter() {
+            match layer {
+                Layer::Convolution(conv) => {
+                    let weights: Vec<Vec<Vec<Vec<f32>>>> = conv
+                        .kernels
+                        .iter()
+                        .map(|kernel| kernel.get_triple(&kernel.shape))
+                        .collect();
+
+                    let expected: Vec<Vec<Vec<Vec<f32>>>> =
+                        vec![vec![vec![vec![1.0; 3]; 3]; weights[0].len()]; weights.len()];
+
+                    for (weight, expect) in weights.iter().zip(expected.iter()) {
+                        for (w1, e1) in weight.iter().zip(expect.iter()) {
+                            for (w2, e2) in w1.iter().zip(e1.iter()) {
+                                for (w3, e3) in w2.iter().zip(e2.iter()) {
+                                    assert!((w3 - e3).abs() < 1e-3);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        match &network.layers[network.layers.len() - 2] {
+            Layer::Dense(dense) => {
+                let weights: Vec<Vec<f32>> = match dense.weights.data {
+                    tensor::Data::Double(ref weights) => weights.clone(),
+                    _ => panic!("Invalid weight type"),
+                };
+
+                let expected: Vec<Vec<f32>> = vec![vec![1.0; 512]; 256];
+
+                for (weight, expect) in weights.iter().zip(expected.iter()) {
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-3);
+                    }
+                }
+
+                if let Some(bias) = &dense.bias {
+                    let weight = bias.get_flat();
+                    let expect = vec![1.0; 256];
+
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-3);
+                    }
+                }
+            }
+            _ => (),
+        }
+
+        match &network.layers[network.layers.len() - 1] {
+            Layer::Dense(dense) => {
+                let weights: Vec<Vec<f32>> = match dense.weights.data {
+                    tensor::Data::Double(ref weights) => weights.clone(),
+                    _ => panic!("Invalid weight type"),
+                };
+
+                let expected: Vec<Vec<f32>> = vec![
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![1.0002971; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                    vec![0.9997029; 256],
+                ];
+
+                for (weight, expect) in weights.iter().zip(expected.iter()) {
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-6);
+                    }
+                }
+
+                if let Some(bias) = &dense.bias {
+                    let weight = bias.get_flat();
+                    let expect = vec![
+                        0.9997029, 0.9997029, 0.9997029, 0.9997029, 1.0002971, 0.9997029,
+                        0.9997029, 0.9997029, 0.9997029, 0.9997029,
+                    ];
+
+                    for (w, e) in weight.iter().zip(expect.iter()) {
+                        assert!((w - e).abs() < 1e-6);
                     }
                 }
             }

@@ -1108,35 +1108,7 @@ impl Tensor {
                     data: Data::Double(data),
                 }
             }
-            (Data::Double(data1), Data::Single(data2)) => {
-                let data: Vec<Vec<f32>> = data1
-                    .iter()
-                    .zip(data2.iter())
-                    .map(|(row, val)| row.iter().map(|a| a * val).collect())
-                    .collect();
-
-                Self {
-                    shape: Shape::Double(data.len(), data[0].len()),
-                    data: Data::Double(data),
-                }
-            }
-            (Data::Single(data1), Data::Double(data2)) => {
-                let data: Vec<f32> = (0..data2[0].len())
-                    .map(|i: usize| {
-                        data1
-                            .iter()
-                            .zip(data2.iter())
-                            .map(|(d, w)| d * w[i])
-                            .sum::<f32>()
-                    })
-                    .collect();
-
-                Self {
-                    shape: Shape::Single(data.len()),
-                    data: Data::Single(data),
-                }
-            }
-            _ => unimplemented!("The product between these types is not implemented."),
+            _ => unimplemented!("The outer product between these types is not implemented."),
         }
     }
 
