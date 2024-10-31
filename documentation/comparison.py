@@ -4,6 +4,7 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 
 _COLOUR = {
     "REGULAR": "black",
@@ -12,6 +13,10 @@ _COLOUR = {
     "FB2x3": "cornflowerblue",
     "FB2x4": "darkorange",
 }
+
+font = FontProperties(fname="./output/fonts/cmunrm.ttf")
+plt.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'serif'
 
 for problem in os.listdir("./output/compare/"):
     if not problem.endswith(".json"):
@@ -33,16 +38,20 @@ for problem in os.listdir("./output/compare/"):
             file.write("""
 \\begin{table}[h]
     \\centering
-    \\begin{tabular}{l|l|l|l}
+    \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
+        \\hline
+        \\rowcolor{gray!20}
         \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize ORIGINAL} & \\textbf{\\footnotesize SKIP OFF} & \\textbf{\\footnotesize FEEDBACK OFF} \\\\
 """)
             if which == "CLASSIFICATION":
                 file.write("""
+        \\rowcolor{gray!20}
         & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} \\\\
         \\hline
 """)
             else:
                 file.write("""
+        \\rowcolor{gray!20}
         & {\\footnotesize Loss} & {\\footnotesize Loss} & {\\footnotesize Loss} \\\\
         \\hline
 """)
@@ -169,17 +178,20 @@ for problem in os.listdir("./output/compare/"):
                 plt.close(fig)
                 os.remove(tex) if os.path.exists(tex) else None
                 continue
-            ax_loss.legend(loc='upper right')
-            ax_loss.set_xlabel('Epoch')
-            ax_loss.set_ylabel('Avg. validation loss')
-            ax_acc.set_ylabel('Avg. validation accuracy')
+            ax_loss.legend(loc='upper right', prop=font)
+            ax_loss.set_xlabel('Epoch', fontproperties=font)
+            ax_loss.set_ylabel('Avg. validation loss', fontproperties=font)
+            ax_acc.set_ylabel('Avg. validation accuracy', fontproperties=font)
 
             for ax in [ax_loss, ax_acc]:
+                for label in ax.get_xticklabels() + ax.get_yticklabels():
+                    label.set_fontproperties(font)
+                    label.set_fontsize(8)
                 for location in ['top', 'right', 'left', 'bottom']:
                     ax.spines[location].set_visible(False)
                     ax.yaxis.grid(True, color='gray', linewidth=0.5)
 
-            fig.suptitle(f"{problem.upper()}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}")
+            fig.suptitle(f"{problem.upper()}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
             plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
