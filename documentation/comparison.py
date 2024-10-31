@@ -59,17 +59,17 @@ for problem in os.listdir("./output/compare/"):
                     continue
                 name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x").replace("REGULAR", "Regular")
 
-                loss = [
+                _loss = [
                     data[configuration][run]["train"]["val-loss"]
                     for run in data[configuration].keys()
                 ]
-                _len = max([len(l) for l in loss])
-                loss = [
+                _len = max([len(l) for l in _loss])
+                _loss = [
                     np.pad(l, (0, _len - len(l)), mode='constant', constant_values=np.nan)
-                    for l in loss
+                    for l in _loss
                 ]
-                loss = np.nanmean(loss, axis=0)
-                lstd = np.nanstd(loss, axis=0)
+                loss = np.nanmean(_loss, axis=0)
+                lstd = np.nanstd(_loss, axis=0)
                 ax_loss.plot(
                     loss,
                     label=name,
@@ -85,17 +85,17 @@ for problem in os.listdir("./output/compare/"):
                 )
                 ax_loss.set_yscale('log')
 
-                accr = [
+                _accr = [
                     data[configuration][run]["train"]["val-acc"]
                     for run in data[configuration].keys()
                 ]
-                _len = max([len(a) for a in accr])
-                accr = [
+                _len = max([len(a) for a in _accr])
+                _accr = [
                     np.pad(a, (0, _len - len(a)), mode='constant', constant_values=np.nan)
-                    for a in accr
+                    for a in _accr
                 ]
-                accr = np.nanmean(accr, axis=0)
-                astd = np.nanstd(accr, axis=0)
+                accr = np.nanmean(_accr, axis=0)
+                astd = np.nanstd(_accr, axis=0)
                 ax_acc.plot(
                     accr,
                     label=name,
