@@ -157,9 +157,10 @@ for problem in os.listdir("./output/compare/"):
                     for run in data[configuration].keys():
                         for metric in probed:
                             if metric not in data[configuration][run]["no-feedback"]:
-                                    continue
+                                continue
                             probed[metric].append(data[configuration][run]["no-feedback"][metric])
 
+                    print(probed)
 
                     accr = probed["tst-acc"]
                     loss = probed["tst-loss"]
