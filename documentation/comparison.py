@@ -78,7 +78,8 @@ for problem in os.listdir("./output/compare/"):
                     for l in _loss
                 ]
                 loss = np.nanmean(_loss, axis=0)
-                lstd = np.nanstd(_loss, axis=0)
+                lloss = np.nanpercentile(_loss, 25, axis=0)
+                uloss = np.nanpercentile(_loss, 75, axis=0)
                 ax_loss.plot(
                     loss,
                     label=name,
@@ -87,12 +88,11 @@ for problem in os.listdir("./output/compare/"):
                 )
                 ax_loss.fill_between(
                     range(len(loss)),
-                    loss - lstd,
-                    loss + lstd,
+                    lloss,
+                    uloss,
                     alpha=0.1,
                     color=_COLOUR[configuration.split("-")[0]]
                 )
-                ax_loss.set_yscale('log')
 
                 _accr = [
                     data[configuration][run]["train"]["val-acc"]
@@ -104,7 +104,8 @@ for problem in os.listdir("./output/compare/"):
                     for a in _accr
                 ]
                 accr = np.nanmean(_accr, axis=0)
-                astd = np.nanstd(_accr, axis=0)
+                laccr = np.nanpercentile(_accr, 25, axis=0)
+                uaccr = np.nanpercentile(_accr, 75, axis=0)
                 ax_acc.plot(
                     accr,
                     label=name,
@@ -113,15 +114,18 @@ for problem in os.listdir("./output/compare/"):
                 )
                 ax_acc.fill_between(
                     range(len(accr)),
-                    accr - astd,
-                    accr + astd,
+                    laccr,
+                    uaccr,
                     alpha=0.1,
                     color=_COLOUR[configuration.split("-")[0]]
                 )
 
                 accr = accr[~np.isnan(accr)]
+                astd = np.nanstd(_accr, axis=0)
                 astd = astd[~np.isnan(astd)]
+
                 loss = loss[~np.isnan(loss)]
+                lstd = np.nanstd(_loss, axis=0)
                 lstd = lstd[~np.isnan(lstd)]
 
                 if which == "CLASSIFICATION":
@@ -160,8 +164,6 @@ for problem in os.listdir("./output/compare/"):
                                 continue
                             probed[metric].append(data[configuration][run]["no-feedback"][metric])
 
-                    print(probed)
-
                     accr = probed["tst-acc"]
                     loss = probed["tst-loss"]
 
@@ -179,6 +181,9 @@ for problem in os.listdir("./output/compare/"):
                 plt.close(fig)
                 os.remove(tex) if os.path.exists(tex) else None
                 continue
+            ax_loss.set_ylim(top=3000
+                             if max(ax_loss.get_ylim()) > 3000
+                             else max(ax_loss.get_ylim()))
             ax_loss.legend(loc='upper right', prop=font)
             ax_loss.set_xlabel('Epoch', fontproperties=font)
             ax_loss.set_ylabel('Avg. validation loss', fontproperties=font)
