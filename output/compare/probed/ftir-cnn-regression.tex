@@ -1,0 +1,32 @@
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
+        \hline
+        \rowcolor{gray!20}
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize ORIGINAL} & \textbf{\footnotesize SKIP OFF} & \textbf{\footnotesize FEEDBACK OFF} \\
+
+        \rowcolor{gray!20}
+        & {\footnotesize Loss} & {\footnotesize Loss} & {\footnotesize Loss} \\
+        \hline
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 482.5231 $\pm$ 8.7768 & 497.5622 $\pm$ 13.7966 &  \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 649.1629 $\pm$ 235.8826 & 635.7970 $\pm$ 196.1874 & 1931.7480 $\pm$ 580.4720 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 364.5621 $\pm$ 21.2237 & 390.4704 $\pm$ 8.0995 & 2440.5140 $\pm$ 6.7537 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 324.5447 $\pm$ 27.6966 & 367.1906 $\pm$ 19.5865 & 2470.4141 $\pm$ 0.9461 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 483.8680 $\pm$ 14.9439 &  &  \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 370.2847 $\pm$ 43.5648 &  & 2439.1212 $\pm$ 6.7636 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 345.7501 $\pm$ 15.0615 &  & 2441.5215 $\pm$ 9.2476 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 323.9352 $\pm$ 9.9574 &  & 2472.7892 $\pm$ 1.1681 \\
+ \hline 
+
+    \end{tabular}
+    \caption{Probed results of FTIR-CNN for regression.}
+    \label{tab:ftir-cnn-regression}
+\end{table}

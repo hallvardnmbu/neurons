@@ -1,0 +1,32 @@
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
+        \hline
+        \rowcolor{gray!20}
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize ORIGINAL} & \textbf{\footnotesize SKIP OFF} & \textbf{\footnotesize FEEDBACK OFF} \\
+
+        \rowcolor{gray!20}
+        & {\footnotesize Loss} & {\footnotesize Loss} & {\footnotesize Loss} \\
+        \hline
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 286.2516 $\pm$ 2.3320 & 329.5180 $\pm$ 3.1683 &  \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 280.9934 $\pm$ 15.6016 & 317.0611 $\pm$ 17.9791 & 2441.8258 $\pm$ 5.3010 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 242.2010 $\pm$ 4.6346 & 278.5039 $\pm$ 3.3245 & 2462.5900 $\pm$ 3.3482 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 286.3460 $\pm$ 13.3056 & 321.8900 $\pm$ 13.1515 & 2475.2114 $\pm$ 0.6274 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 289.4797 $\pm$ 3.7274 &  &  \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 296.1498 $\pm$ 23.3681 &  & 2463.8788 $\pm$ 51.3413 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 261.5397 $\pm$ 40.8263 &  & 2466.2960 $\pm$ 3.2956 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 250.9078 $\pm$ 32.2835 &  & 2475.2396 $\pm$ 0.7161 \\
+ \hline 
+
+    \end{tabular}
+    \caption{Probed results of FTIR-MLP for regression.}
+    \label{tab:ftir-mlp-regression}
+\end{table}
