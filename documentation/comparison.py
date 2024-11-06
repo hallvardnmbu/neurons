@@ -181,12 +181,18 @@ for problem in os.listdir("./output/compare/"):
                 plt.close(fig)
                 os.remove(tex) if os.path.exists(tex) else None
                 continue
-            ax_loss.set_ylim(top=3000
-                             if max(ax_loss.get_ylim()) > 3000
-                             else max(ax_loss.get_ylim()))
+            if "ftir-mlp" in problem and which == "REGRESSION":
+                ax_loss.set_ylim(top=1000)
+            else:
+                ax_loss.set_ylim(top=2000
+                                if max(ax_loss.get_ylim()) > 2000
+                                else max(ax_loss.get_ylim()))
             ax_loss.legend(loc='upper right', prop=font)
             ax_loss.set_xlabel('Epoch', fontproperties=font)
-            ax_loss.set_ylabel('Avg. validation loss', fontproperties=font)
+            if ax_loss.get_ylim()[1] in (1000, 2000):
+                ax_loss.set_ylabel('Avg. validation loss\n(capped for visibility)', fontproperties=font)
+            else:
+                ax_loss.set_ylabel('Avg. validation loss', fontproperties=font)
             ax_acc.set_ylabel('Avg. validation accuracy', fontproperties=font)
 
             for ax in [ax_loss, ax_acc]:

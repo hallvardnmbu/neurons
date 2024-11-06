@@ -268,7 +268,7 @@ fn main() {
                                     &y_train,
                                     Some((&x_val, &y_val, 100)),
                                     32,
-                                    1000,
+                                    2500,
                                     None,
                                 );
                             } else {
@@ -277,7 +277,7 @@ fn main() {
                                     &class_train,
                                     Some((&x_val, &class_val, 100)),
                                     32,
-                                    1000,
+                                    2500,
                                     None,
                                 );
                             }
