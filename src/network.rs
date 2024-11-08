@@ -1485,7 +1485,7 @@ impl Network {
     ///
     /// The output of the network for each of the given inputs.
     pub fn predict_batch(&self, inputs: &Vec<&tensor::Tensor>) -> Vec<tensor::Tensor> {
-        inputs.iter().map(|input| self.predict(input)).collect()
+        inputs.par_iter().map(|input| self.predict(input)).collect()
     }
 }
 
