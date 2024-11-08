@@ -1,0 +1,28 @@
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
+        \hline
+        \rowcolor{gray!20}
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 0.1149 $\pm$ 0.0032 & 0.0139 $\pm$ 0.0003 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 0.1189 $\pm$ 0.0018 & 0.0192 $\pm$ 0.0004 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 0.1722 $\pm$ 0.0049 & 0.0193 $\pm$ 0.0004 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 0.2293 $\pm$ 0.0018 & 0.0244 $\pm$ 0.0002 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 0.1139 $\pm$ 0.0027 & 0.0137 $\pm$ 0.0002 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 0.1224 $\pm$ 0.0003 & 0.0195 $\pm$ 0.0002 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 0.1768 $\pm$ 0.0085 & 0.0194 $\pm$ 0.0001 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 0.2277 $\pm$ 0.0020 & 0.0242 $\pm$ 0.0004 \\
+ \hline 
+
+    \end{tabular}
+    \caption[Time differences of FTIR dense for classification.]{Time differences of FTIR dense for classification. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \label{tab:times-ftir-mlp-classification}
+\end{table}

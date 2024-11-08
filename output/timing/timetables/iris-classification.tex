@@ -1,0 +1,32 @@
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
+        \hline
+        \rowcolor{gray!20}
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 0.0024 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 0.0022 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 0.0046 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 0.0065 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{w. bypassing skip}} & 0.0086 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 0.0024 $\pm$ 0.0003 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 0.0024 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 0.0047 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 0.0065 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{}} & 0.0085 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+ \hline 
+
+    \end{tabular}
+    \caption[Time differences of IRIS for classification.]{Time differences of IRIS for classification. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \label{tab:times-iris-classification}
+\end{table}

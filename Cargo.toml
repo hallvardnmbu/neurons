@@ -34,6 +34,26 @@ name = "benchmark"
 path = "examples/benchmark.rs"
 
 [[example]]
+name = "timing-iris"
+path = "examples/timing/iris.rs"
+
+[[example]]
+name = "timing-bike"
+path = "examples/timing/bike.rs"
+
+[[example]]
+name = "timing-ftir-mlp"
+path = "examples/timing/ftir-mlp.rs"
+
+[[example]]
+name = "timing-ftir-cnn"
+path = "examples/timing/ftir-cnn.rs"
+
+[[example]]
+name = "timing-mnist"
+path = "examples/timing/mnist.rs"
+
+[[example]]
 name = "compare-iris"
 path = "examples/compare/iris.rs"
 

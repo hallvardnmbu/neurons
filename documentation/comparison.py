@@ -206,7 +206,7 @@ for problem in os.listdir("./output/compare/"):
                 ax.set_facecolor('white')
 
             fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
-            fig.patch.set_facecolor('#f0f0f0')
+            fig.patch.set_facecolor('#f9f9f9')
             fig.patch.set_linewidth(1)
             fig.patch.set_edgecolor('black')
             plt.tight_layout()

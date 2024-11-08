@@ -31,3 +31,5 @@ output/*
 !output/compare/**/*.png
 !output/compare/
 output/compare/*.txt
+!output/timing/
+output/timing/*.txt
