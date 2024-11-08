@@ -203,7 +203,7 @@ for problem in os.listdir("./output/compare/"):
                     ax.spines[location].set_visible(False)
                     ax.yaxis.grid(True, color='gray', linewidth=0.5)
 
-            fig.suptitle(f"{problem.upper()}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
+            fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
             plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
@@ -212,7 +212,7 @@ for problem in os.listdir("./output/compare/"):
             with open(tex, "a") as file:
                 file.write(f"""
     \\end{{tabular}}
-    \\caption{{Probed results of {problem.upper()} for {which.lower()}.}}
+    \\caption{{Probed results of {problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')} for {which.lower()}.}}
     \\label{{tab:{problem}-{which.lower()}}}
 \\end{{table}}
 """)
