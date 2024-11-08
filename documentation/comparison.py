@@ -4,6 +4,7 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib.font_manager import FontProperties
 
 _COLOUR = {
@@ -199,12 +200,17 @@ for problem in os.listdir("./output/compare/"):
                 for label in ax.get_xticklabels() + ax.get_yticklabels():
                     label.set_fontproperties(font)
                     label.set_fontsize(8)
-                for location in ['top', 'right', 'left', 'bottom']:
-                    ax.spines[location].set_visible(False)
-                    ax.yaxis.grid(True, color='gray', linewidth=0.5)
+                # for location in ['top', 'right', 'left', 'bottom']:
+                #     ax.spines[location].set_visible(False)
+                ax.yaxis.grid(True, color='gray', linewidth=0.5)
+                ax.set_facecolor('white')
 
             fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
-            plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.1, hspace=0.3)
+            fig.patch.set_facecolor('#f0f0f0')
+            fig.patch.set_linewidth(1)
+            fig.patch.set_edgecolor('black')
+            plt.tight_layout()
+            plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.1, hspace=0.1)
             fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
             plt.close(fig)
 
