@@ -4,29 +4,31 @@
     \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
         \hline
         \rowcolor{gray!20}
-        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 0.0760 $\pm$ 0.0004 & 0.0080 $\pm$ 0.0006 \\
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\ 
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 0.0801 $\pm$ 0.0009 & 0.0118 $\pm$ 0.0010 \\
+
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 75.9705 $\pm$ 0.3820 & 8.0148 $\pm$ 0.5821 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 0.1324 $\pm$ 0.0005 & 0.0098 $\pm$ 0.0007 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 80.1148 $\pm$ 0.9472 & 11.7724 $\pm$ 1.0064 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 0.1776 $\pm$ 0.0006 & 0.0118 $\pm$ 0.0004 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 132.4095 $\pm$ 0.4612 & 9.7672 $\pm$ 0.7060 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{w. bypassing skip}} & 0.2195 $\pm$ 0.0006 & 0.0134 $\pm$ 0.0005 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 177.6235 $\pm$ 0.5752 & 11.8099 $\pm$ 0.3958 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 0.0766 $\pm$ 0.0029 & 0.0068 $\pm$ 0.0003 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{w. bypassing skip}} & 219.5080 $\pm$ 0.5722 & 13.3959 $\pm$ 0.4545 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 0.0783 $\pm$ 0.0013 & 0.0106 $\pm$ 0.0011 \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 76.5679 $\pm$ 2.9369 & 6.8109 $\pm$ 0.3227 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 0.1303 $\pm$ 0.0019 & 0.0096 $\pm$ 0.0008 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 78.2570 $\pm$ 1.3111 & 10.6004 $\pm$ 1.1105 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 0.1769 $\pm$ 0.0009 & 0.0113 $\pm$ 0.0004 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 130.3365 $\pm$ 1.8586 & 9.5661 $\pm$ 0.7955 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{}} & 0.2198 $\pm$ 0.0017 & 0.0137 $\pm$ 0.0004 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 176.8998 $\pm$ 0.8752 & 11.2936 $\pm$ 0.3903 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{}} & 219.8311 $\pm$ 1.6837 & 13.7131 $\pm$ 0.4333 \\
  \hline 
 
     \end{tabular}
-    \caption[Time differences of BIKE for regression.]{Time differences of BIKE for regression. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \caption[Time differences of BIKE models for regression.]{Time differences of BIKE models for regression. All times are in milliseconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
     \label{tab:times-bike-regression}
 \end{table}

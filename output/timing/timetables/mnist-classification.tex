@@ -4,25 +4,27 @@
     \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
         \hline
         \rowcolor{gray!20}
-        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 1.2449 $\pm$ 0.0267 & 0.3799 $\pm$ 0.0060 \\
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\ 
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 1.4834 $\pm$ 0.0118 & 0.6590 $\pm$ 0.0143 \\
+
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 1244.9171 $\pm$ 26.6905 & 379.9297 $\pm$ 6.0390 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 1.6194 $\pm$ 0.0235 & 0.4887 $\pm$ 0.0060 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 1483.4018 $\pm$ 11.8231 & 658.9507 $\pm$ 14.3373 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 1.9181 $\pm$ 0.0437 & 0.5914 $\pm$ 0.0147 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 1619.3873 $\pm$ 23.5440 & 488.7043 $\pm$ 5.9667 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 1.0771 $\pm$ 0.0388 & 0.3466 $\pm$ 0.0170 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 1918.0952 $\pm$ 43.6898 & 591.3666 $\pm$ 14.7267 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 1.4215 $\pm$ 0.0494 & 0.6297 $\pm$ 0.0147 \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 1077.0990 $\pm$ 38.7981 & 346.6381 $\pm$ 17.0221 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 1.5624 $\pm$ 0.0499 & 0.4663 $\pm$ 0.0050 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 1421.4692 $\pm$ 49.4162 & 629.6641 $\pm$ 14.7030 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 1.8250 $\pm$ 0.0297 & 0.5591 $\pm$ 0.0073 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 1562.4307 $\pm$ 49.9045 & 466.2632 $\pm$ 4.9649 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 1824.9791 $\pm$ 29.7431 & 559.1030 $\pm$ 7.2587 \\
  \hline 
 
     \end{tabular}
-    \caption[Time differences of MNIST for classification.]{Time differences of MNIST for classification. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \caption[Time differences of MNIST models for classification.]{Time differences of MNIST models for classification. All times are in milliseconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
     \label{tab:times-mnist-classification}
 \end{table}

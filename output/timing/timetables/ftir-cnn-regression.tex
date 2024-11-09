@@ -4,25 +4,27 @@
     \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
         \hline
         \rowcolor{gray!20}
-        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 0.0283 $\pm$ 0.0005 & 0.0066 $\pm$ 0.0001 \\
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\ 
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 0.0317 $\pm$ 0.0006 & 0.0101 $\pm$ 0.0002 \\
+
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 28.3277 $\pm$ 0.4829 & 6.5614 $\pm$ 0.0694 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 0.0385 $\pm$ 0.0014 & 0.0101 $\pm$ 0.0007 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 31.7322 $\pm$ 0.6306 & 10.0825 $\pm$ 0.2209 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 0.0481 $\pm$ 0.0022 & 0.0133 $\pm$ 0.0002 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 38.4845 $\pm$ 1.3548 & 10.1384 $\pm$ 0.6906 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 0.0273 $\pm$ 0.0004 & 0.0063 $\pm$ 0.0007 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 48.1464 $\pm$ 2.2174 & 13.2795 $\pm$ 0.2225 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 0.0312 $\pm$ 0.0002 & 0.0099 $\pm$ 0.0003 \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 27.3442 $\pm$ 0.3588 & 6.3414 $\pm$ 0.6589 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 0.0410 $\pm$ 0.0046 & 0.0116 $\pm$ 0.0030 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 31.1966 $\pm$ 0.2191 & 9.9429 $\pm$ 0.3135 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 0.0468 $\pm$ 0.0004 & 0.0130 $\pm$ 0.0002 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 41.0317 $\pm$ 4.5856 & 11.5794 $\pm$ 3.0173 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 46.8368 $\pm$ 0.4248 & 12.9976 $\pm$ 0.2010 \\
  \hline 
 
     \end{tabular}
-    \caption[Time differences of FTIR convolutional for regression.]{Time differences of FTIR convolutional for regression. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \caption[Time differences of FTIR convolutional models for regression.]{Time differences of FTIR convolutional models for regression. All times are in milliseconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
     \label{tab:times-ftir-cnn-regression}
 \end{table}

@@ -4,29 +4,31 @@
     \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
         \hline
         \rowcolor{gray!20}
-        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 0.0024 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize TRAIN} & \textbf{\footnotesize VALIDATE} \\ 
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 0.0022 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{w. bypassing skip}} & 2.3981 $\pm$ 0.0446 & 0.1922 $\pm$ 0.0248 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 0.0046 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{w. bypassing skip}} & 2.2181 $\pm$ 0.0942 & 0.1783 $\pm$ 0.0142 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 0.0065 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{w. bypassing skip}} & 4.6031 $\pm$ 0.0673 & 0.1720 $\pm$ 0.0242 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{w. bypassing skip}} & 0.0086 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{w. bypassing skip}} & 6.4967 $\pm$ 0.0417 & 0.1795 $\pm$ 0.0074 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 0.0024 $\pm$ 0.0003 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{w. bypassing skip}} & 8.5819 $\pm$ 0.0842 & 0.2048 $\pm$ 0.0195 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 0.0024 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{Regular}\\{}} & 2.3590 $\pm$ 0.2521 & 0.1866 $\pm$ 0.0162 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 0.0047 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB1}\\{}} & 2.3958 $\pm$ 0.0791 & 0.2137 $\pm$ 0.0300 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 0.0065 $\pm$ 0.0001 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x2}\\{}} & 4.6697 $\pm$ 0.0940 & 0.1513 $\pm$ 0.0054 \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{}} & 0.0085 $\pm$ 0.0000 & 0.0002 $\pm$ 0.0000 \\
+\shortstack[l]{\\ {} \\ \textbf{FB2 x3}\\{}} & 6.5351 $\pm$ 0.0788 & 0.1754 $\pm$ 0.0094 \\
+ \hline 
+\shortstack[l]{\\ {} \\ \textbf{FB2 x4}\\{}} & 8.4846 $\pm$ 0.0386 & 0.1978 $\pm$ 0.0136 \\
  \hline 
 
     \end{tabular}
-    \caption[Time differences of IRIS for classification.]{Time differences of IRIS for classification. All times are in seconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
+    \caption[Time differences of IRIS models for classification.]{Time differences of IRIS models for classification. All times are in milliseconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}
     \label{tab:times-iris-classification}
 \end{table}
