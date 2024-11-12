@@ -8,6 +8,7 @@ use std::{
     fs::File,
     io::{BufReader, Read, Result, Write},
     sync::Arc,
+    thread::panicking,
     time,
 };
 
@@ -40,7 +41,7 @@ fn load_mnist(path: &str) -> Result<Vec<tensor::Tensor>> {
             }
             image.push(row);
         }
-        images.push(tensor::Tensor::triple(vec![image]).resize(tensor::Shape::Triple(1, 14, 14)));
+        images.push(tensor::Tensor::triple(vec![image]));
     }
 
     Ok(images)
@@ -92,7 +93,7 @@ fn main() {
                     for _ in 0..RUNS {
                         // Create the network based on the architecture.
                         let mut network: network::Network;
-                        network = network::Network::new(tensor::Shape::Triple(1, 14, 14));
+                        network = network::Network::new(tensor::Shape::Triple(1, 28, 28));
                         network.convolution(
                             1,
                             (3, 3),
@@ -158,8 +159,7 @@ fn main() {
 
                         // Set the output layer based on the problem.
                         if problem == &"REGRESSION" {
-                            network.dense(1, activation::Activation::Linear, false, None);
-                            network.set_objective(objective::Objective::RMSE, None);
+                            panic!("Invalid problem type.");
                         } else {
                             network.dense(10, activation::Activation::Softmax, true, None);
                             network.set_objective(objective::Objective::CrossEntropy, None);
