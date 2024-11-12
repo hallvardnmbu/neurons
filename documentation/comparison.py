@@ -37,7 +37,7 @@ for problem in os.listdir("./output/compare/"):
         os.remove(tex) if os.path.exists(tex) else None
         with open(tex, "a") as file:
             file.write("""
-\\begin{table}[h]
+\\begin{table}[ht]
     \\centering
     \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
         \\hline

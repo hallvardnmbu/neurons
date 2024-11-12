@@ -173,17 +173,25 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.5.5 – Comparison and timing.</summary>
+
+  * Added timing functionality.
+  * Improve comparison functionality.
+</details>
+
+<details>
   <summary>v2.5.4 – Bugs and examples.</summary>
 
-  Fix a typo in `Adam` and `AdamW` optimizers.
-  Updated examples.
-  Updated comparisons.
+  * Fix a typo in `Adam` and `AdamW` optimizers.
+  * Updated examples.
+  * Updated comparisons.
 </details>
 
 <details>
   <summary>v2.5.3 – Architecture comparison.</summary>
 
   Added examples comparing the performance off different architectures.
+
   Probes the final network by turning of skips and feedbacks, etc.
   * `examples/compare/*`
 
@@ -211,7 +219,9 @@ fn main() {
   <summary>v2.5.0 – Deconvolution layer.</summary>
 
   Initial implementation of the deconvolution layer.
+
   Created with the good help of the GitHub Copilot.
+
   Validated against corresponding PyTorch implementation;
   * `documentation/validation/deconvolution.py`
 </details>
@@ -226,6 +236,7 @@ fn main() {
   <summary>v2.4.0 – Feedback blocks.</summary>
 
   Thorough expansion of the feedback module.
+
   Feedback blocks automatically handle weight coupling and skip connections.
 
   When defining a feedback block in the network's layers, the following syntax is used:
@@ -270,7 +281,9 @@ fn main() {
   <summary>v2.1.0 – Maxpool tensor consistency.</summary>
 
   Update maxpool logic to ensure consistency wrt. other layers.
+
   Maxpool layers now return a `tensor::Tensor` (of shape `tensor::Shape::Quintuple`), instead of nested `Vec`s.
+
   This will lead to consistency when implementing maxpool for `feedback` blocks.
 </details>
 
