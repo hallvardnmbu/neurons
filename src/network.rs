@@ -51,7 +51,7 @@ impl Layer {
 ///
 /// * `input` - The input `tensor::Shape` of the network.
 /// * `layers` - The `Layer`s of the network.
-/// * `loopbacks` - The looped connections of the network.
+/// * `loopbacks` - The looped connections of the network. from: (to, iterations)
 /// * `loopaccumulation` - The accumulation type of the network for looped connections.
 /// * `connect` - The skip connections of the network.
 /// * `skipaccumulation` - The accumulation type of the network for skip connections.
@@ -62,7 +62,7 @@ pub struct Network {
 
     pub layers: Vec<Layer>,
 
-    pub loopbacks: HashMap<usize, usize>,
+    pub loopbacks: HashMap<usize, (usize, usize)>,
     loopaccumulation: feedback::Accumulation,
 
     pub connect: HashMap<usize, usize>,
@@ -99,10 +99,14 @@ impl std::fmt::Display for Network {
             write!(f, "\tloops: (\n")?;
             write!(f, "\t\taccumulation: {}\n", self.loopaccumulation)?;
 
-            let mut entries: Vec<(&usize, &usize)> = self.loopbacks.iter().collect();
+            let mut entries: Vec<(&usize, &(usize, usize))> = self.loopbacks.iter().collect();
             entries.sort_by_key(|&(to, _)| to);
-            for (from, to) in entries.iter() {
-                write!(f, "\t\t{}.output -> {}.input\n", from, to)?;
+            for (from, (to, iterations)) in entries.iter() {
+                write!(
+                    f,
+                    "\t\t{}.output -> {}.input (x {})\n",
+                    from, to, iterations
+                )?;
             }
             write!(f, "\t)\n")?;
         }
@@ -501,8 +505,9 @@ impl Network {
     ///
     /// * `outof` - The index of the layer to connect from (output).
     /// * `into` - The index of the layer to connect to (input).
+    /// * `iterations` - The number of iterations in the loop connection.
     /// * `scale` - The scaling function of the loop connection wrt. gradients.
-    pub fn loopback(&mut self, outof: usize, into: usize, scale: tensor::Scale) {
+    pub fn loopback(&mut self, outof: usize, into: usize, iterations: usize, scale: tensor::Scale) {
         if outof > self.layers.len() || into >= self.layers.len() || outof < into {
             panic!("Invalid layer indices for loop connection.");
         } else if self.loopbacks.contains_key(&outof) {
@@ -530,23 +535,23 @@ impl Network {
             match &mut self.layers[k] {
                 Layer::Dense(layer) => {
                     layer.scale = Arc::clone(&scale);
-                    layer.loops += 1.0
+                    layer.loops += iterations as f32
                 }
                 Layer::Convolution(layer) => {
                     layer.scale = Arc::clone(&scale);
-                    layer.loops += 1.0
+                    layer.loops += iterations as f32
                 }
                 Layer::Deconvolution(layer) => {
                     layer.scale = Arc::clone(&scale);
-                    layer.loops += 1.0
+                    layer.loops += iterations as f32
                 }
-                Layer::Maxpool(layer) => layer.loops += 1.0,
+                Layer::Maxpool(layer) => layer.loops += iterations as f32,
                 Layer::Feedback(_) => panic!("Loop connection includes feedback block."),
             }
         }
 
         // Store the loop connection for use in the forward pass.
-        self.loopbacks.insert(outof, into);
+        self.loopbacks.insert(outof, (into, iterations));
     }
 
     /// Add a skip connection between two layers.
@@ -986,7 +991,7 @@ impl Network {
                         x = _x;
                     }
                     feedback::Accumulation::Mean => {
-                        x.mean_inplace(&_x);
+                        x.mean_inplace(&vec![&_x]);
                     }
                     #[allow(unreachable_patterns)]
                     _ => unimplemented!("Accumulation method not implemented."),
@@ -1007,7 +1012,7 @@ impl Network {
                 let mut current: tensor::Tensor = activated.last().unwrap().clone();
 
                 // Reshaping the last activated tensor in cases of flattened output.
-                current = current.reshape(match self.layers[self.loopbacks[&i]] {
+                current = current.reshape(match self.layers[self.loopbacks[&i].0] {
                     Layer::Dense(ref layer) => layer.inputs.clone(),
                     Layer::Convolution(ref layer) => layer.inputs.clone(),
                     Layer::Deconvolution(ref layer) => layer.inputs.clone(),
@@ -1015,94 +1020,103 @@ impl Network {
                     _ => panic!("Feedback not implemented for this layer type."),
                 });
 
-                // Add the original input of the fed-back layer to the latent representation.
-                match self.skipaccumulation {
-                    feedback::Accumulation::Add => {
-                        current.add_inplace(&activated[self.loopbacks[&i]]);
-                    }
-                    feedback::Accumulation::Subtract => {
-                        current.sub_inplace(&activated[self.loopbacks[&i]]);
-                    }
-                    feedback::Accumulation::Multiply => {
-                        current.mul_inplace(&activated[self.loopbacks[&i]]);
-                    }
-                    feedback::Accumulation::Overwrite => {
-                        ();
-                    }
-                    feedback::Accumulation::Mean => {
-                        current.mean_inplace(&activated[self.loopbacks[&i]])
-                    }
-                }
+                let iterations = self.loopbacks[&i].1;
 
                 // Perform the forward pass of the feedback loop.
                 // TODO: Handle feedback blocks inside loopbacks. Or; panic?
-                let (fpre, fpost, fmax, _) = self._forward(&current, self.loopbacks[&i], i + 1);
+                let mut fpres: Vec<Vec<tensor::Tensor>> = Vec::new();
+                let mut fposts: Vec<Vec<tensor::Tensor>> = Vec::new();
+                let mut fmaxs: Vec<Vec<Option<tensor::Tensor>>> = Vec::new();
+                for _ in 0..iterations {
+                    let (fpre, fpost, fmax, _) =
+                        self._forward(&current, self.loopbacks[&i].0, i + 1);
+                    fpres.push(fpre);
+                    fposts.push(fpost);
+                    fmaxs.push(fmax);
+                }
 
                 // Store the outputs of the loopback layers.
-                for (idx, j) in (self.loopbacks[&i]..i + 1).enumerate() {
+                for (idx, j) in (self.loopbacks[&i].0..i + 1).enumerate() {
                     match self.loopaccumulation {
                         feedback::Accumulation::Add => {
-                            preactivated[j].add_inplace(&fpre[idx]);
-                            activated[j + 1].add_inplace(&fpost[idx]);
+                            for iteration in 0..iterations {
+                                preactivated[j].add_inplace(&fpres[iteration][idx]);
+                                activated[j + 1].add_inplace(&fposts[iteration][idx]);
 
-                            // Extend the maxpool indices.
-                            if let Some(Some(max)) = maxpools.get_mut(j) {
-                                if let Some(fmax) = &fmax[idx] {
-                                    max.extend(&fmax);
-                                } else {
-                                    panic!("Maxpool indices are missing.");
+                                // Extend the maxpool indices.
+                                if let Some(Some(max)) = maxpools.get_mut(j) {
+                                    if let Some(fmax) = &fmaxs[iteration][idx] {
+                                        max.extend(&fmax);
+                                    } else {
+                                        panic!("Maxpool indices are missing.");
+                                    }
                                 }
                             }
                         }
                         feedback::Accumulation::Subtract => {
-                            preactivated[j].sub_inplace(&fpre[idx]);
-                            activated[j + 1].sub_inplace(&fpost[idx]);
+                            for iteration in 0..iterations {
+                                preactivated[j].sub_inplace(&fpres[iteration][idx]);
+                                activated[j + 1].sub_inplace(&fposts[iteration][idx]);
 
-                            // Extend the maxpool indices.
-                            if let Some(Some(max)) = maxpools.get_mut(j) {
-                                if let Some(fmax) = &fmax[idx] {
-                                    max.extend(&fmax);
-                                } else {
-                                    panic!("Maxpool indices are missing.");
+                                // Extend the maxpool indices.
+                                if let Some(Some(max)) = maxpools.get_mut(j) {
+                                    if let Some(fmax) = &fmaxs[iteration][idx] {
+                                        max.extend(&fmax);
+                                    } else {
+                                        panic!("Maxpool indices are missing.");
+                                    }
                                 }
                             }
                         }
                         feedback::Accumulation::Multiply => {
-                            preactivated[j].mul_inplace(&fpre[idx]);
-                            activated[j + 1].mul_inplace(&fpost[idx]);
+                            for iteration in 0..iterations {
+                                preactivated[j].mul_inplace(&fpres[iteration][idx]);
+                                activated[j + 1].mul_inplace(&fposts[iteration][idx]);
 
-                            // Extend the maxpool indices.
-                            if let Some(Some(max)) = maxpools.get_mut(j) {
-                                if let Some(fmax) = &fmax[idx] {
-                                    max.extend(&fmax);
-                                } else {
-                                    panic!("Maxpool indices are missing.");
+                                // Extend the maxpool indices.
+                                if let Some(Some(max)) = maxpools.get_mut(j) {
+                                    if let Some(fmax) = &fmaxs[iteration][idx] {
+                                        max.extend(&fmax);
+                                    } else {
+                                        panic!("Maxpool indices are missing.");
+                                    }
                                 }
                             }
                         }
                         feedback::Accumulation::Overwrite => {
-                            preactivated[j] = fpre[idx].to_owned();
-                            activated[j + 1] = fpost[idx].to_owned();
+                            for iteration in 0..iterations {
+                                preactivated[j] = fpres[iteration][idx].to_owned();
+                                activated[j + 1] = fposts[iteration][idx].to_owned();
 
-                            // Overwrite the maxpool indices.
-                            if let Some(Some(max)) = maxpools.get_mut(j) {
-                                if let Some(fmax) = &fmax[idx] {
-                                    *max = fmax.clone();
-                                } else {
-                                    panic!("Maxpool indices are missing.");
+                                // Overwrite the maxpool indices.
+                                if let Some(Some(max)) = maxpools.get_mut(j) {
+                                    if let Some(fmax) = &fmaxs[iteration][idx] {
+                                        *max = fmax.clone();
+                                    } else {
+                                        panic!("Maxpool indices are missing.");
+                                    }
                                 }
                             }
                         }
                         feedback::Accumulation::Mean => {
-                            preactivated[j].mean_inplace(&fpre[idx]);
-                            activated[j + 1].mean_inplace(&fpost[idx]);
+                            let fpre: Vec<&tensor::Tensor> =
+                                fpres.iter().map(|x| &x[idx]).collect();
+                            let fpost: Vec<&tensor::Tensor> =
+                                fposts.iter().map(|x| &x[idx]).collect();
+                            let fmax: Vec<&Option<tensor::Tensor>> =
+                                fmaxs.iter().map(|x| &x[idx]).collect();
+
+                            preactivated[j].mean_inplace(&fpre);
+                            activated[j + 1].mean_inplace(&fpost);
 
                             // Extend the maxpool indices.
                             if let Some(Some(max)) = maxpools.get_mut(j) {
-                                if let Some(fmax) = &fmax[idx] {
-                                    max.extend(&fmax);
-                                } else {
-                                    panic!("Maxpool indices are missing.");
+                                for fmax in fmax {
+                                    if let Some(fmax) = fmax {
+                                        max.extend(&fmax);
+                                    } else {
+                                        panic!("Maxpool indices are missing.");
+                                    }
                                 }
                             }
                         }

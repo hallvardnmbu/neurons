@@ -384,7 +384,7 @@ impl Feedback {
                         x = _x;
                     }
                     Accumulation::Mean => {
-                        x.mean_inplace(&_x);
+                        x.mean_inplace(&vec![&_x]);
                     }
                     #[allow(unreachable_patterns)]
                     _ => unimplemented!("Accumulation method not implemented."),

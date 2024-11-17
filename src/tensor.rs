@@ -965,42 +965,74 @@ impl Tensor {
 
     /// Inplace element-wise mean of two `Tensor`s.
     /// Validates their shapes beforehand.
-    pub fn mean_inplace(&mut self, other: &Tensor) {
-        assert_eq_shape!(self.shape, other.shape);
+    pub fn mean_inplace(&mut self, others: &Vec<&Tensor>) {
+        assert!(!others.is_empty(), "Vector of tensors cannot be empty");
+        for other in others {
+            assert_eq_shape!(self.shape, other.shape);
+        }
 
-        match (&mut self.data, &other.data) {
-            (Data::Single(data1), Data::Single(data2)) => {
-                data1
-                    .iter_mut()
-                    .zip(data2.iter())
-                    .for_each(|(a, b)| *a = (*a + b) / 2.0);
+        let n = (others.len() + 1) as f32; // +1 to include self
+
+        match &mut self.data {
+            Data::Single(data1) => {
+                for (i, val) in data1.iter_mut().enumerate() {
+                    let sum: f32 = others
+                        .iter()
+                        .map(|t| match &t.data {
+                            Data::Single(d) => d[i],
+                            _ => panic!("Inconsistent tensor types"),
+                        })
+                        .sum::<f32>();
+                    *val = (*val + sum) / n;
+                }
             }
-            (Data::Double(data1), Data::Double(data2)) => {
-                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
-                    r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
-                        *a = (*a + b) / 2.0;
-                    });
-                });
+            Data::Double(data1) => {
+                for (i, row1) in data1.iter_mut().enumerate() {
+                    for (j, val) in row1.iter_mut().enumerate() {
+                        let sum: f32 = others
+                            .iter()
+                            .map(|t| match &t.data {
+                                Data::Double(d) => d[i][j],
+                                _ => panic!("Inconsistent tensor types"),
+                            })
+                            .sum::<f32>();
+                        *val = (*val + sum) / n;
+                    }
+                }
             }
-            (Data::Triple(data1), Data::Triple(data2)) => {
-                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
-                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
-                        r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
-                            *a = (*a + b) / 2.0;
-                        });
-                    });
-                });
+            Data::Triple(data1) => {
+                for (i, matrix1) in data1.iter_mut().enumerate() {
+                    for (j, row1) in matrix1.iter_mut().enumerate() {
+                        for (k, val) in row1.iter_mut().enumerate() {
+                            let sum: f32 = others
+                                .iter()
+                                .map(|t| match &t.data {
+                                    Data::Triple(d) => d[i][j][k],
+                                    _ => panic!("Inconsistent tensor types"),
+                                })
+                                .sum::<f32>();
+                            *val = (*val + sum) / n;
+                        }
+                    }
+                }
             }
-            (Data::Quadruple(data1), Data::Quadruple(data2)) => {
-                data1.iter_mut().zip(data2.iter()).for_each(|(f1, f2)| {
-                    f1.iter_mut().zip(f2.iter()).for_each(|(c1, c2)| {
-                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
-                            r1.iter_mut().zip(r2.iter()).for_each(|(a, b)| {
-                                *a = (*a + b) / 2.0;
-                            });
-                        });
-                    });
-                });
+            Data::Quadruple(data1) => {
+                for (i, cube1) in data1.iter_mut().enumerate() {
+                    for (j, matrix1) in cube1.iter_mut().enumerate() {
+                        for (k, row1) in matrix1.iter_mut().enumerate() {
+                            for (l, val) in row1.iter_mut().enumerate() {
+                                let sum: f32 = others
+                                    .iter()
+                                    .map(|t| match &t.data {
+                                        Data::Quadruple(d) => d[i][j][k][l],
+                                        _ => panic!("Inconsistent tensor types"),
+                                    })
+                                    .sum::<f32>();
+                                *val = (*val + sum) / n;
+                            }
+                        }
+                    }
+                }
             }
             _ => panic!("Invalid mean."),
         }
