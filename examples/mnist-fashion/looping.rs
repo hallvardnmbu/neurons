@@ -111,6 +111,7 @@ fn main() {
     network.loopback(
         2,                      // From layer X's output.
         0,                      // To layer Y's input.
+        1,                      // Number of loops.
         Arc::new(|_loops| 1.0), // Gradient scaling.
     );
     network.set_accumulation(

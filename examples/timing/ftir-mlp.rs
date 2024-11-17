@@ -63,7 +63,7 @@ fn main() {
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 
-    vec!["REGULAR", "FB1", "FB2x2", "FB2x3"]
+    vec!["REGULAR", "FB1x2", "FB1x3", "FB2x2", "FB2x3"]
         .iter()
         .for_each(|method| {
             println!("Method: {}", method);
@@ -84,13 +84,20 @@ fn main() {
                             network.dense(128, activation::Activation::ReLU, false, None);
 
                             // Check if the method is regular or feedback.
-                            if method == &"REGULAR" || method == &"FB1" {
+                            if method == &"REGULAR" || method.contains(&"FB1") {
                                 network.dense(256, activation::Activation::ReLU, false, None);
                                 network.dense(128, activation::Activation::ReLU, false, None);
 
                                 // Add the feedback loop if applicable.
-                                if method == &"FB1" {
-                                    network.loopback(2, 1, Arc::new(|_loops| 1.0));
+                                if method.contains(&"FB1") {
+                                    network.loopback(
+                                        2,
+                                        1,
+                                        method.chars().last().unwrap().to_digit(10).unwrap()
+                                            as usize
+                                            - 1,
+                                        Arc::new(|_loops| 1.0),
+                                    );
                                 }
                             } else {
                                 network.feedback(

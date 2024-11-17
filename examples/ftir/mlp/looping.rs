@@ -140,7 +140,7 @@ fn main() {
                 network.set_objective(objective::Objective::CrossEntropy, None);
             }
 
-            network.loopback(2, 1, Arc::new(|_loops| 1.0));
+            network.loopback(2, 1, 1, Arc::new(|_loops| 1.0));
             network.set_accumulation(feedback::Accumulation::Mean, feedback::Accumulation::Mean);
 
             network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));

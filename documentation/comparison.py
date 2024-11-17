@@ -9,7 +9,9 @@ from matplotlib.font_manager import FontProperties
 
 _COLOUR = {
     "REGULAR": "black",
-    "FB1": "forestgreen",
+    "FB1x2": "forestgreen",
+    "FB1x3": "darkmagenta",
+    "FB1x4": "palevioletred",
     "FB2x2": "tomato",
     "FB2x3": "cornflowerblue",
     "FB2x4": "darkorange",
@@ -184,11 +186,13 @@ for problem in os.listdir("./output/compare/"):
                 continue
             if "ftir-mlp" in problem and which == "REGRESSION":
                 ax_loss.set_ylim(top=1000)
+            elif "bike" in problem and which == "REGRESSION":
+                ax_loss.set_ylim(top=200)
             else:
                 ax_loss.set_ylim(top=2000
                                 if max(ax_loss.get_ylim()) > 2000
                                 else max(ax_loss.get_ylim()))
-            ax_loss.legend(loc='upper right', prop=font)
+            ax_loss.legend(prop=font)
             ax_loss.set_xlabel('Epoch', fontproperties=font)
             if ax_loss.get_ylim()[1] in (1000, 2000):
                 ax_loss.set_ylabel('Avg. validation loss\n(capped for visibility)', fontproperties=font)

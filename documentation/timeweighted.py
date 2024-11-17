@@ -9,7 +9,9 @@ from matplotlib.font_manager import FontProperties
 
 _COLOUR = {
     "REGULAR": "black",
-    "FB1": "forestgreen",
+    "FB1x2": "forestgreen",
+    "FB1x3": "steelblue",
+    "FB1x4": "palevioletred",
     "FB2x2": "tomato",
     "FB2x3": "cornflowerblue",
     "FB2x4": "darkorange",

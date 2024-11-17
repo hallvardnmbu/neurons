@@ -10,7 +10,8 @@
 //
 // for (
 //   REGULAR,
-//   FEEDBACK[approach=1],
+//   FEEDBACK[approach=1, loops=2],
+//   FEEDBACK[approach=1, loops=3],
 //   FEEDBACK[approach=2, loops=2],
 //   FEEDBACK[approach=2, loops=3]
 // ) do {
@@ -164,7 +165,7 @@ fn main() {
     writeln!(file, "[").unwrap();
     writeln!(file, "  {{").unwrap();
 
-    vec!["REGULAR", "FB1", "FB2x2", "FB2x3"]
+    vec!["REGULAR", "FB1x2", "FB1x3", "FB2x2", "FB2x3"]
         .iter()
         .for_each(|method| {
             println!("Method: {}", method);
@@ -185,7 +186,7 @@ fn main() {
                             network = network::Network::new(tensor::Shape::Triple(1, 1, 571));
 
                             // Check if the method is regular or feedback.
-                            if method == &"REGULAR" || method == &"FB1" {
+                            if method == &"REGULAR" || method.contains(&"FB1") {
                                 network.convolution(
                                     1,
                                     (1, 9),
@@ -207,8 +208,15 @@ fn main() {
                                 network.dense(32, activation::Activation::ReLU, false, None);
 
                                 // Add the feedback loop if applicable.
-                                if method == &"FB1" {
-                                    network.loopback(1, 0, Arc::new(|_loops| 1.0));
+                                if method.contains(&"FB1") {
+                                    network.loopback(
+                                        1,
+                                        0,
+                                        method.chars().last().unwrap().to_digit(10).unwrap()
+                                            as usize
+                                            - 1,
+                                        Arc::new(|_loops| 1.0),
+                                    );
                                 }
                             } else {
                                 network.feedback(
@@ -297,7 +305,7 @@ fn main() {
                                 let layers = network.layers.clone();
 
                                 // Remove the feedback loop.
-                                if method == &"FB1" {
+                                if method.contains(&"FB1") {
                                     network.loopbacks = HashMap::new();
                                 } else {
                                     match &mut network.layers.get_mut(0).unwrap() {

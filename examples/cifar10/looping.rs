@@ -152,8 +152,8 @@ fn main() {
     network.set_optimizer(optimizer::Adam::create(0.001, 0.9, 0.999, 1e-8, None));
     network.set_objective(objective::Objective::CrossEntropy, None);
 
-    network.loopback(1, 1, Arc::new(|_loops| 1.0));
-    network.loopback(4, 3, Arc::new(|_loops| 1.0));
+    network.loopback(1, 1, 1, Arc::new(|_loops| 1.0));
+    network.loopback(4, 3, 1, Arc::new(|_loops| 1.0));
 
     println!("{}", network);
 
