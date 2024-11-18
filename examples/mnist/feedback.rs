@@ -90,6 +90,7 @@ fn main() {
         )],
         3,
         false,
+        false,
         feedback::Accumulation::Mean,
     );
     network.convolution(

@@ -128,6 +128,7 @@ fn main() {
         )],
         2,
         false,
+        false,
         feedback::Accumulation::Mean,
     );
     network.maxpool((2, 2), (2, 2));
@@ -153,6 +154,7 @@ fn main() {
             ),
         ],
         2,
+        false,
         false,
         feedback::Accumulation::Mean,
     );

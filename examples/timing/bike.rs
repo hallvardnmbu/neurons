@@ -111,6 +111,7 @@ fn main() {
                             ],
                             method.chars().last().unwrap().to_digit(10).unwrap() as usize,
                             false,
+                            false,
                             feedback::Accumulation::Mean,
                         );
                     }

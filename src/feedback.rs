@@ -96,7 +96,7 @@ pub struct Feedback {
     pub(crate) optimizer: optimizer::Optimizer,
     pub(crate) flatten: bool,
     pub layers: Vec<network::Layer>,
-    connect: HashMap<usize, usize>,
+    connect: HashMap<usize, Vec<usize>>,
     pub(crate) accumulation: Accumulation,
     coupled: Vec<Vec<usize>>,
 }
@@ -162,10 +162,10 @@ impl std::fmt::Display for Feedback {
             write!(f, "\t\t\tconnections: (\n")?;
             write!(f, "\t\t\t\taccumulation: {}\n", self.accumulation)?;
 
-            let mut entries: Vec<(&usize, &usize)> = self.connect.iter().collect();
+            let mut entries: Vec<(&usize, &Vec<usize>)> = self.connect.iter().collect();
             entries.sort_by_key(|&(to, _)| to);
             for (to, from) in entries.iter() {
-                write!(f, "\t\t\t\t{}.input -> {}.input\n", from, to)?;
+                write!(f, "\t\t\t\t{:?}.input -> {}.input\n", from, to)?;
             }
             write!(f, "\t\t\t)\n")?;
         }
@@ -182,12 +182,14 @@ impl Feedback {
     ///
     /// * `layers` - The layers of the block.
     /// * `loops` - The number of loops the block should perform.
-    /// * `skips` - Whether the block should include skip connections.
+    /// * `inskips` - Whether the block should include input-to-input skip connections.
+    /// * `outskips` - Whether the block should include output-to-output skip connections.
     /// * `accumulation` - The accumulation method of the block.
     pub fn create(
         mut layers: Vec<network::Layer>,
         loops: usize,
-        skips: bool,
+        inskips: bool,
+        outskips: bool,
         accumulation: Accumulation,
     ) -> Self {
         assert!(loops > 0, "Feedback block should loop at least once.");
@@ -226,11 +228,21 @@ impl Feedback {
         }
 
         // Define the skip connections.
-        let mut connect: HashMap<usize, usize> = HashMap::new();
-        if skips {
+        let mut connect: HashMap<usize, Vec<usize>> = HashMap::new();
+        if inskips || outskips {
+            let mut outputs = Vec::new();
             for i in 1..loops {
+                if inskips {
+                    // {to: from}
+                    connect.insert(i * length, vec![0]);
+                }
+                if outskips {
+                    outputs.push(i * length);
+                }
+            }
+            if outskips {
                 // {to: from}
-                connect.insert(i * length, 0);
+                connect.insert(loops * length, outputs);
             }
         }
 
@@ -368,23 +380,31 @@ impl Feedback {
 
             // Check if the layer should account for a skip connection.
             if self.connect.contains_key(&i) {
-                let _x = activated[self.connect[&i]].clone();
-
                 match self.accumulation {
                     Accumulation::Add => {
-                        x.add_inplace(&_x);
+                        for idx in self.connect.get(&i).unwrap() {
+                            x.add_inplace(&activated[*idx]);
+                        }
                     }
                     Accumulation::Subtract => {
-                        x.sub_inplace(&_x);
+                        for idx in self.connect.get(&i).unwrap() {
+                            x.sub_inplace(&activated[*idx]);
+                        }
                     }
                     Accumulation::Multiply => {
-                        x.mul_inplace(&_x);
+                        for idx in self.connect.get(&i).unwrap() {
+                            x.mul_inplace(&activated[*idx]);
+                        }
                     }
                     Accumulation::Overwrite => {
-                        x = _x;
+                        x = activated[*self.connect.get(&i).unwrap().last().unwrap()].clone();
                     }
                     Accumulation::Mean => {
-                        x.mean_inplace(&vec![&_x]);
+                        let mut _x: Vec<&tensor::Tensor> = Vec::new();
+                        for idx in self.connect.get(&i).unwrap() {
+                            _x.push(&activated[*idx]);
+                        }
+                        x.mean_inplace(&_x);
                     }
                     #[allow(unreachable_patterns)]
                     _ => unimplemented!("Accumulation method not implemented."),
@@ -424,11 +444,47 @@ impl Feedback {
             };
         }
 
+        let mut last = activated.pop().unwrap();
+
+        // Check if the last layer should account for a skip connection.
+        if self.connect.contains_key(&self.layers.len()) {
+            let i = self.layers.len();
+            match self.accumulation {
+                Accumulation::Add => {
+                    for idx in self.connect.get(&i).unwrap() {
+                        last.add_inplace(&activated[*idx]);
+                    }
+                }
+                Accumulation::Subtract => {
+                    for idx in self.connect.get(&i).unwrap() {
+                        last.sub_inplace(&activated[*idx]);
+                    }
+                }
+                Accumulation::Multiply => {
+                    for idx in self.connect.get(&i).unwrap() {
+                        last.mul_inplace(&activated[*idx]);
+                    }
+                }
+                Accumulation::Overwrite => {
+                    last = activated[*self.connect.get(&i).unwrap().last().unwrap()].clone();
+                }
+                Accumulation::Mean => {
+                    let mut _x: Vec<&tensor::Tensor> = Vec::new();
+                    for idx in self.connect.get(&i).unwrap() {
+                        _x.push(&activated[*idx]);
+                    }
+                    last.mean_inplace(&_x);
+                }
+                #[allow(unreachable_patterns)]
+                _ => unimplemented!("Accumulation method not implemented."),
+            }
+        }
+
         // Flattening the last output if specified.
         if self.flatten {
-            let last = activated.last().unwrap().clone();
-            activated.pop();
             activated.push(last.flatten());
+        } else {
+            activated.push(last);
         }
 
         (
@@ -465,11 +521,13 @@ impl Feedback {
 
         let mut connect: HashMap<usize, Vec<usize>> = HashMap::new();
         for (key, value) in self.connect.iter() {
-            // {to: from} -> {from: [to1, ...]}
-            if connect.contains_key(value) {
-                connect.get_mut(value).unwrap().push(*key);
-            } else {
-                connect.insert(*value, vec![*key]);
+            for idx in value.iter() {
+                // {to: from} -> {from: [to1, ...]}
+                if connect.contains_key(idx) {
+                    connect.get_mut(idx).unwrap().push(*key);
+                } else {
+                    connect.insert(*idx, vec![*key]);
+                }
             }
         }
 
@@ -483,7 +541,14 @@ impl Feedback {
             // Add the gradient of the skip connection to the current gradient.
             if connect.contains_key(&idx) {
                 for j in connect[&idx].iter() {
-                    let gradient = gradients[self.layers.len() - j - 1].clone();
+                    let mut idx = *j;
+                    if j == &self.layers.len() {
+                        // If the skip connection is the last layer (i.e., output);
+                        // * Account for this by using the output gradient (i.e., gradients[0]).
+                        // * Equivalent to `layers.len() - (layers.len() - 1) - 1 = 0` (below).
+                        idx = idx - 1;
+                    }
+                    let gradient = gradients[self.layers.len() - idx - 1].clone();
                     gradients.last_mut().unwrap().add_inplace(&gradient);
                 }
                 // TODO: Handle accumulation methods.
@@ -705,7 +770,7 @@ mod tests {
                 None,
             )),
         ];
-        let feedback = Feedback::create(layers.clone(), 2, true, Accumulation::Add);
+        let feedback = Feedback::create(layers.clone(), 2, true, false, Accumulation::Add);
 
         assert_eq!(feedback.inputs, tensor::Shape::Single(2));
         assert_eq!(feedback.outputs, tensor::Shape::Single(2));
@@ -723,7 +788,7 @@ mod tests {
     //         false,
     //         None,
     //     ))];
-    //     let mut feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+    //     let mut feedback = Feedback::create(layers.clone(), 1, false, false, Accumulation::Add);
     //     let optimizer = optimizer::SGD::create(0.1, None);
     //     feedback.copy_optimizer(optimizer.clone());
 
@@ -739,7 +804,7 @@ mod tests {
             true,
             None,
         ))];
-        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let feedback = Feedback::create(layers.clone(), 1, false, false, Accumulation::Add);
 
         assert_eq!(feedback.parameters(), 12); // 9 weights + 3 biases
     }
@@ -753,7 +818,7 @@ mod tests {
             true,
             None,
         ))];
-        let mut feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let mut feedback = Feedback::create(layers.clone(), 1, false, false, Accumulation::Add);
         feedback.training(true);
 
         for layer in feedback.layers.iter() {
@@ -775,7 +840,7 @@ mod tests {
         layer.weights = tensor::Tensor::double(vec![vec![1.0; 3]; 3]);
         layer.bias = Some(tensor::Tensor::single(vec![0.0; 3]));
         let layers = vec![network::Layer::Dense(layer)];
-        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let feedback = Feedback::create(layers.clone(), 1, false, false, Accumulation::Add);
         let input = tensor::Tensor::single(vec![-1.0, 2.0, 3.0]);
 
         let (unactivated, activated, maxpool, intermediate_unactivated, intermediate_activated) =
@@ -816,7 +881,7 @@ mod tests {
         layer.weights = tensor::Tensor::double(vec![vec![1.0; 3]; 3]);
         layer.bias = Some(tensor::Tensor::single(vec![0.0; 3]));
         let layers = vec![network::Layer::Dense(layer)];
-        let feedback = Feedback::create(layers.clone(), 1, false, Accumulation::Add);
+        let feedback = Feedback::create(layers.clone(), 1, false, false, Accumulation::Add);
         let input = tensor::Tensor::single(vec![1.0, 2.0, 3.0]);
         let (_, _, _, intermediate_unactivated, intermediate_activated) = feedback.forward(&input);
         let gradient = tensor::Tensor::single(vec![0.1, 0.2, 0.3]);
@@ -898,7 +963,8 @@ mod tests {
             // Accumulation::Overwrite,
             Accumulation::Mean,
         ] {
-            let mut feedback = Feedback::create(layers.clone(), 3, false, accumulation.clone());
+            let mut feedback =
+                Feedback::create(layers.clone(), 3, false, false, accumulation.clone());
             feedback.update(1, &mut weight_gradient, &mut bias_gradient);
 
             let (weight, bias) = match &feedback.layers[0] {

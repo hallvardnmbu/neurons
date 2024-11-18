@@ -136,6 +136,7 @@ fn main() {
                 ],
                 2,
                 false,
+                false,
                 feedback::Accumulation::Mean,
             );
 

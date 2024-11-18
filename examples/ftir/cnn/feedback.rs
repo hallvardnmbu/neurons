@@ -140,6 +140,7 @@ fn main() {
                 )],
                 2,
                 false,
+                false,
                 feedback::Accumulation::Mean,
             );
             network.dense(32, activation::Activation::ReLU, false, None);

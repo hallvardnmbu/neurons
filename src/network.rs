@@ -395,7 +395,8 @@ impl Network {
     ///
     /// * `layers` - The layers of the feedback block.
     /// * `loops` - The number of loops in the feedback block.
-    /// * `skips` - Whether to use skip connections inside the feedback block.
+    /// * `inskips` - Whether to use input-to-input skip connections inside the feedback block.
+    /// * `outskips` - Whether to use output-to-input skip connections inside the feedback block.
     /// * `accumulation` - The accumulation method of the feedback block.
     ///  - `feedback::Accumulation::Mean` is assumed to be the best choice.
     ///
@@ -408,7 +409,8 @@ impl Network {
         &mut self,
         layers: Vec<feedback::Layer>,
         loops: usize,
-        skips: bool,
+        inskips: bool,
+        outskips: bool,
         accumulation: feedback::Accumulation,
     ) {
         assert!(
@@ -493,7 +495,8 @@ impl Network {
         self.layers.push(Layer::Feedback(feedback::Feedback::create(
             _layers,
             loops,
-            skips,
+            inskips,
+            outskips,
             accumulation,
         )));
     }

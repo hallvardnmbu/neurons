@@ -62,8 +62,9 @@ fn main() {
             feedback::Layer::Dense(24, activation::Activation::ReLU, false, None),
             feedback::Layer::Dense(24, activation::Activation::ReLU, false, None),
         ],
-        2,
-        false,
+        3,
+        true,
+        true,
         feedback::Accumulation::Mean,
     );
 

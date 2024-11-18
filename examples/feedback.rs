@@ -15,6 +15,7 @@ fn main() {
         ],
         2,
         true,
+        false,
         feedback::Accumulation::Mean,
     );
 
