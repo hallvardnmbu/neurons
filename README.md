@@ -173,6 +173,14 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.6.0 – Feedback approach 1.</summary>
+
+  * Improved implementation of approach 1 feedback connections.
+  * Add possibility of selecting iteration count.
+  * Improve averaging; now takes a vector of tensors.
+</details>
+
+<details>
   <summary>v2.5.5 – Comparison and timing.</summary>
 
   * Added timing functionality.
