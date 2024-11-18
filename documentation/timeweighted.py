@@ -10,7 +10,7 @@ from matplotlib.font_manager import FontProperties
 _COLOUR = {
     "REGULAR": "black",
     "FB1x2": "forestgreen",
-    "FB1x3": "steelblue",
+    "FB1x3": "darkmagenta",
     "FB1x4": "palevioletred",
     "FB2x2": "tomato",
     "FB2x3": "cornflowerblue",
@@ -90,6 +90,8 @@ for problem in os.listdir("./output/timing/"):
                 continue
             if "ftir-mlp" in problem and which == "REGRESSION":
                 ax_loss.set_ylim(top=1000)
+            elif "bike" in problem and which == "REGRESSION":
+                ax_loss.set_ylim(top=200)
             else:
                 ax_loss.set_ylim(top=2000
                                 if max(ax_loss.get_ylim()) > 2000
