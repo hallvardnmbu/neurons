@@ -105,6 +105,7 @@ fn main() {
         0,                      // To layer Y's input.
         1,                      // Number of loops.
         Arc::new(|_loops| 1.0), // Gradient scaling.
+        false,                  // Input-to-input skip-connections.
     );
     network.set_accumulation(
         feedback::Accumulation::Add, // How the skip-connection is accumulated.

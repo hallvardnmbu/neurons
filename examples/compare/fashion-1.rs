@@ -173,6 +173,7 @@ fn main() {
                                     method.chars().last().unwrap().to_digit(10).unwrap() as usize
                                         - 1,
                                     Arc::new(|_loops| 1.0),
+                                    false,
                                 );
                             }
                         } else {

@@ -43,6 +43,17 @@ impl Layer {
             Layer::Maxpool(_) => 0,
         }
     }
+
+    /// Extracts the input- and output shape of the layer.
+    fn shape(&self) -> (&tensor::Shape, &tensor::Shape) {
+        match &self {
+            Layer::Dense(layer) => (&layer.inputs, &layer.outputs),
+            Layer::Convolution(layer) => (&layer.inputs, &layer.outputs),
+            Layer::Deconvolution(layer) => (&layer.inputs, &layer.outputs),
+            Layer::Feedback(layer) => (&layer.inputs, &layer.outputs),
+            Layer::Maxpool(layer) => (&layer.inputs, &layer.outputs),
+        }
+    }
 }
 
 /// A feedforward neural network.
@@ -62,7 +73,7 @@ pub struct Network {
 
     pub layers: Vec<Layer>,
 
-    pub loopbacks: HashMap<usize, (usize, usize)>,
+    pub loopbacks: HashMap<usize, (usize, usize, bool)>,
     loopaccumulation: feedback::Accumulation,
 
     pub connect: HashMap<usize, usize>,
@@ -99,14 +110,17 @@ impl std::fmt::Display for Network {
             write!(f, "\tloops: (\n")?;
             write!(f, "\t\taccumulation: {}\n", self.loopaccumulation)?;
 
-            let mut entries: Vec<(&usize, &(usize, usize))> = self.loopbacks.iter().collect();
+            let mut entries: Vec<(&usize, &(usize, usize, bool))> = self.loopbacks.iter().collect();
             entries.sort_by_key(|&(to, _)| to);
-            for (from, (to, iterations)) in entries.iter() {
+            for (from, (to, iterations, inskips)) in entries.iter() {
                 write!(
                     f,
                     "\t\t{}.output -> {}.input (x {})\n",
                     from, to, iterations
                 )?;
+                if *inskips {
+                    write!(f, "\t\twith input-to-input skips\n")?;
+                }
             }
             write!(f, "\t)\n")?;
         }
@@ -510,7 +524,15 @@ impl Network {
     /// * `into` - The index of the layer to connect to (input).
     /// * `iterations` - The number of iterations in the loop connection.
     /// * `scale` - The scaling function of the loop connection wrt. gradients.
-    pub fn loopback(&mut self, outof: usize, into: usize, iterations: usize, scale: tensor::Scale) {
+    /// * `inskips` - Whether to use input-to-input skip connections inside the loop connection.
+    pub fn loopback(
+        &mut self,
+        outof: usize,
+        into: usize,
+        iterations: usize,
+        scale: tensor::Scale,
+        inskips: bool,
+    ) {
         if outof > self.layers.len() || into >= self.layers.len() || outof < into {
             panic!("Invalid layer indices for loop connection.");
         } else if self.loopbacks.contains_key(&outof) {
@@ -554,7 +576,7 @@ impl Network {
         }
 
         // Store the loop connection for use in the forward pass.
-        self.loopbacks.insert(outof, (into, iterations));
+        self.loopbacks.insert(outof, (into, iterations, inskips));
     }
 
     /// Add a skip connection between two layers.
@@ -1012,34 +1034,44 @@ impl Network {
 
             // Check if the layer output should be fed back to a previous layer.
             if self.loopbacks.contains_key(&i) {
-                let mut current: tensor::Tensor = activated.last().unwrap().clone();
-
-                // Reshaping the last activated tensor in cases of flattened output.
-                current = current.reshape(match self.layers[self.loopbacks[&i].0] {
-                    Layer::Dense(ref layer) => layer.inputs.clone(),
-                    Layer::Convolution(ref layer) => layer.inputs.clone(),
-                    Layer::Deconvolution(ref layer) => layer.inputs.clone(),
-                    Layer::Maxpool(ref layer) => layer.inputs.clone(),
-                    _ => panic!("Feedback not implemented for this layer type."),
-                });
-
-                let iterations = self.loopbacks[&i].1;
+                let (into, iterations, inskips) = self.loopbacks[&i];
 
                 // Perform the forward pass of the feedback loop.
                 // TODO: Handle feedback blocks inside loopbacks. Or; panic?
                 let mut fpres: Vec<Vec<tensor::Tensor>> = Vec::new();
-                let mut fposts: Vec<Vec<tensor::Tensor>> = Vec::new();
+                let mut fposts: Vec<Vec<tensor::Tensor>> =
+                    vec![vec![activated.last().unwrap().clone()]];
                 let mut fmaxs: Vec<Vec<Option<tensor::Tensor>>> = Vec::new();
                 for _ in 0..iterations {
-                    let (fpre, fpost, fmax, _) =
-                        self._forward(&current, self.loopbacks[&i].0, i + 1);
+                    let mut current: tensor::Tensor =
+                        fposts.last().unwrap().last().unwrap().clone();
+
+                    // Reshaping the last activated tensor in cases of flattened output.
+                    if self.layers[into].shape() != self.layers[i].shape() {
+                        current = current.reshape(match self.layers[into] {
+                            Layer::Dense(ref layer) => layer.inputs.clone(),
+                            Layer::Convolution(ref layer) => layer.inputs.clone(),
+                            Layer::Deconvolution(ref layer) => layer.inputs.clone(),
+                            Layer::Maxpool(ref layer) => layer.inputs.clone(),
+                            _ => panic!("Feedback not implemented for this layer type."),
+                        });
+                    }
+
+                    if inskips {
+                        current.add_inplace(&activated[into]);
+                        // TODO: Handle other accumulation methods.
+                    }
+
+                    let (fpre, fpost, fmax, _) = self._forward(&current, into, i + 1);
                     fpres.push(fpre);
                     fposts.push(fpost);
                     fmaxs.push(fmax);
                 }
 
+                fposts.remove(0);
+
                 // Store the outputs of the loopback layers.
-                for (idx, j) in (self.loopbacks[&i].0..i + 1).enumerate() {
+                for (idx, j) in (into..i + 1).enumerate() {
                     match self.loopaccumulation {
                         feedback::Accumulation::Add => {
                             for iteration in 0..iterations {

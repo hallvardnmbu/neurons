@@ -64,7 +64,7 @@ fn main() {
     network.dense(1, activation::Activation::Linear, false, None);
     network.set_objective(objective::Objective::RMSE, None);
 
-    network.loopback(2, 1, 2, Arc::new(|_loops| 1.0));
+    network.loopback(2, 1, 2, Arc::new(|_loops| 1.0), false);
 
     network.set_optimizer(optimizer::Adam::create(0.01, 0.9, 0.999, 1e-4, None));
 
