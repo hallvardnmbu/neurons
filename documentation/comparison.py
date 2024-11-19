@@ -21,17 +21,17 @@ font = FontProperties(fname="./output/fonts/cmunrm.ttf")
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 
+graph = "./output/compare/graphs/"
+os.makedirs(graph, exist_ok=True)
+probe = "./output/compare/probed/"
+os.makedirs(probe, exist_ok=True)
+
 for problem in os.listdir("./output/compare/"):
     if not problem.endswith(".json"):
         continue
 
     data = json.load(open(f"./output/compare/{problem}"))[0]
-
     problem = problem.replace(".json", "")
-    graph = f"./output/compare/graphs/{problem}/"
-    os.makedirs(graph, exist_ok=True)
-    probe = "./output/compare/probed/"
-    os.makedirs(probe, exist_ok=True)
 
     for which in ["CLASSIFICATION", "REGRESSION"]:
 
@@ -59,12 +59,17 @@ for problem in os.listdir("./output/compare/"):
         \\hline
 """)
 
+        if which == "REGRESSION":
+            ax_acc = None
+            fig, ax_loss = plt.subplots(1, 2, sharey=True)
+        else:
+            fig, ax = plt.subplots(2, 2, sharex=True)
+            ax_acc = [ax[0,0], ax[0,1]]
+            ax_acc[1].sharey(ax_acc[0])
+            ax_loss = [ax[1,0], ax[1,1]]
+            ax_loss[1].sharey(ax_loss[0])
+
         for skip in ["true", "false"]:
-            if which == "REGRESSION":
-                fig, ax_loss = plt.subplots()
-                _, ax_acc = plt.subplots()
-            else:
-                fig, (ax_acc, ax_loss) = plt.subplots(2, 1, sharex=True)
 
             for configuration in data.keys():
                 if which not in configuration or skip not in configuration:
@@ -83,13 +88,13 @@ for problem in os.listdir("./output/compare/"):
                 loss = np.nanmean(_loss, axis=0)
                 lloss = np.nanpercentile(_loss, 25, axis=0)
                 uloss = np.nanpercentile(_loss, 75, axis=0)
-                ax_loss.plot(
+                ax_loss[int(skip == "true")].plot(
                     loss,
                     label=name,
-                    linewidth=1,
+                    linewidth=0.75,
                     color=_COLOUR[configuration.split("-")[0]]
                 )
-                ax_loss.fill_between(
+                ax_loss[int(skip == "true")].fill_between(
                     range(len(loss)),
                     lloss,
                     uloss,
@@ -109,19 +114,20 @@ for problem in os.listdir("./output/compare/"):
                 accr = np.nanmean(_accr, axis=0)
                 laccr = np.nanpercentile(_accr, 25, axis=0)
                 uaccr = np.nanpercentile(_accr, 75, axis=0)
-                ax_acc.plot(
-                    accr,
-                    label=name,
-                    linewidth=1,
-                    color=_COLOUR[configuration.split("-")[0]]
-                )
-                ax_acc.fill_between(
-                    range(len(accr)),
-                    laccr,
-                    uaccr,
-                    alpha=0.1,
-                    color=_COLOUR[configuration.split("-")[0]]
-                )
+                if ax_acc is not None:
+                    ax_acc[int(skip == "true")].plot(
+                        accr,
+                        label=name,
+                        linewidth=0.75,
+                        color=_COLOUR[configuration.split("-")[0]]
+                    )
+                    ax_acc[int(skip == "true")].fill_between(
+                        range(len(accr)),
+                        laccr,
+                        uaccr,
+                        alpha=0.1,
+                        color=_COLOUR[configuration.split("-")[0]]
+                    )
 
                 accr = accr[~np.isnan(accr)]
                 astd = np.nanstd(_accr, axis=0)
@@ -180,43 +186,52 @@ for problem in os.listdir("./output/compare/"):
                 with open(tex, "a") as file:
                     file.write(string + "\n \\hline \n")
 
-            if not ax_loss.lines:
-                plt.close(fig)
-                os.remove(tex) if os.path.exists(tex) else None
-                continue
-            if "ftir-mlp" in problem and which == "REGRESSION":
-                ax_loss.set_ylim(top=1000)
-            elif "bike" in problem and which == "REGRESSION":
-                ax_loss.set_ylim(top=200)
-            else:
-                ax_loss.set_ylim(top=2000
-                                if max(ax_loss.get_ylim()) > 2000
-                                else max(ax_loss.get_ylim()))
-            ax_loss.legend(prop=font)
-            ax_loss.set_xlabel('Epoch', fontproperties=font)
-            if ax_loss.get_ylim()[1] in (1000, 2000):
-                ax_loss.set_ylabel('Avg. validation loss\n(capped for visibility)', fontproperties=font)
-            else:
-                ax_loss.set_ylabel('Avg. validation loss', fontproperties=font)
-            ax_acc.set_ylabel('Avg. validation accuracy', fontproperties=font)
-
-            for ax in [ax_loss, ax_acc]:
-                for label in ax.get_xticklabels() + ax.get_yticklabels():
-                    label.set_fontproperties(font)
-                    label.set_fontsize(8)
-                # for location in ['top', 'right', 'left', 'bottom']:
-                #     ax.spines[location].set_visible(False)
-                ax.yaxis.grid(True, color='gray', linewidth=0.5)
-                ax.set_facecolor('white')
-
-            fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}, {'with skip' if skip == 'true' else 'without skip'}", fontproperties=font)
-            fig.patch.set_facecolor('#f9f9f9')
-            fig.patch.set_linewidth(1)
-            fig.patch.set_edgecolor('black')
-            plt.tight_layout()
-            plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.1, hspace=0.1)
-            fig.savefig(f"{graph}{which.lower()}{'-skip' if skip == 'true' else ''}.png")
+        if not ax_loss[0].lines:
             plt.close(fig)
+            os.remove(tex) if os.path.exists(tex) else None
+            continue
+
+        for ax in ax_loss:
+            ax.set_xlabel('Epoch', fontproperties=font)
+
+            if "ftir-mlp" in problem and which == "REGRESSION":
+                ax.set_ylim(top=1000)
+            elif "bike" in problem and which == "REGRESSION":
+                ax.set_ylim(top=200)
+            else:
+                ax.set_ylim(top=2000
+                            if max(ax.get_ylim()) > 2000
+                            else max(ax.get_ylim()))
+            ax.set_ylim(bottom=0)
+
+        ax_loss[0].legend(prop=font)
+        if ax_loss[0].get_ylim()[1] in (200, 1000, 2000):
+            ax_loss[0].set_ylabel('Avg. validation loss\n(capped for visibility)', fontproperties=font)
+        else:
+            ax_loss[0].set_ylabel('Avg. validation loss', fontproperties=font)
+        if ax_acc is not None:
+            ax_acc[0].set_ylabel('Avg. validation accuracy', fontproperties=font)
+
+        for ax in [*ax_loss, *(ax_acc if ax_acc is not None else [])]:
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontproperties(font)
+                label.set_fontsize(8)
+            for location in ['top', 'right', 'left', 'bottom']:
+                ax.spines[location].set_visible(False)
+            ax.yaxis.grid(True, color='gray', linewidth=0.5)
+            ax.set_facecolor('white')
+
+
+        fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}", fontproperties=font)
+        if ax_acc is not None:
+            ax_acc[0].set_title("Without skip", fontproperties=font)
+            ax_acc[1].set_title("With skip", fontproperties=font)
+        else:
+            ax_loss[0].set_title("Without skip", fontproperties=font)
+            ax_loss[1].set_title("With skip", fontproperties=font)
+        plt.tight_layout()
+        fig.savefig(f"{graph}{problem.lower()}-{which.lower()}.png")
+        plt.close(fig)
 
         if os.path.exists(tex):
             with open(tex, "a") as file:
