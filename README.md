@@ -173,6 +173,13 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.6.1 – Bugs and visualisation.</summary>
+
+  * Fix bugs concerning expanded feedback approach 1.
+  * Improved results visualisation.
+</details>
+
+<details>
   <summary>v2.6.0 – Feedback approach 1.</summary>
 
   * Improved implementation of approach 1 feedback connections.
