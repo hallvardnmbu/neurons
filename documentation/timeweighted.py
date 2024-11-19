@@ -21,7 +21,6 @@ font = FontProperties(fname="./output/fonts/cmunrm.ttf")
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 
-
 graph = f"./output/compare/weighted/"
 os.makedirs(graph, exist_ok=True)
 

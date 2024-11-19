@@ -4,6 +4,13 @@ import os
 import json
 import numpy as np
 
+
+def fmt(num: float) -> str:
+    if abs(num) >= 1000:
+        return f"{num:.2e}"
+    return f"{num:.4f}"
+
+
 for problem in os.listdir("./output/timing/"):
     if not problem.endswith(".json"):
         continue
@@ -24,7 +31,7 @@ for problem in os.listdir("./output/timing/"):
     \\centering
     \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
         \\hline
-        \\rowcolor{gray!20}
+        \\rowcolor{white}
         \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize TRAIN} & \\textbf{\\footnotesize VALIDATE} \\\\ \n \\hline \n
 """)
 
@@ -39,8 +46,8 @@ for problem in os.listdir("./output/timing/"):
                 data[configuration]['train'] = [i * 1000 for i in data[configuration]['train']]
                 data[configuration]['validate'] = [i * 1000 for i in data[configuration]['validate']]
 
-                train = f"{float(np.mean(data[configuration]['train'])):.4f} $\\pm$ {float(np.std(data[configuration]['train'])):.4f}"
-                validation = f"{float(np.mean(data[configuration]['validate'])):.4f} $\\pm$ {float(np.std(data[configuration]['validate'])):.4f}"
+                train = f"{fmt(float(np.mean(data[configuration]['train'])))} $\\pm$ {fmt(float(np.std(data[configuration]['train'])))}"
+                validation = f"{fmt(float(np.mean(data[configuration]['validate'])))} $\\pm$ {fmt(float(np.std(data[configuration]['validate'])))}"
                 string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {train} & {validation} \\\\"
 
                 with open(tex, "a") as file:

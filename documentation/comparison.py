@@ -26,6 +26,13 @@ os.makedirs(graph, exist_ok=True)
 probe = "./output/compare/probed/"
 os.makedirs(probe, exist_ok=True)
 
+
+def fmt(num: float) -> str:
+    if abs(num) >= 1000:
+        return f"{num:.2e}"
+    return f"{num:.4f}"
+
+
 for problem in os.listdir("./output/compare/"):
     if not problem.endswith(".json"):
         continue
@@ -43,18 +50,18 @@ for problem in os.listdir("./output/compare/"):
     \\centering
     \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
         \\hline
-        \\rowcolor{gray!20}
+        \\rowcolor{white}
         \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize ORIGINAL} & \\textbf{\\footnotesize SKIP OFF} & \\textbf{\\footnotesize FEEDBACK OFF} \\\\
 """)
             if which == "CLASSIFICATION":
                 file.write("""
-        \\rowcolor{gray!20}
+        \\rowcolor{white}
         & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} \\\\
         \\hline
 """)
             else:
                 file.write("""
-        \\rowcolor{gray!20}
+        \\rowcolor{white}
         & {\\footnotesize Loss} & {\\footnotesize Loss} & {\\footnotesize Loss} \\\\
         \\hline
 """)
@@ -138,9 +145,9 @@ for problem in os.listdir("./output/compare/"):
                 lstd = lstd[~np.isnan(lstd)]
 
                 if which == "CLASSIFICATION":
-                    metrics = f"\\shortstack[l]{{\\\\ {float(accr[-1]):.4f} $\\pm$ {float(astd[-1]):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}}}"
+                    metrics = f"\\shortstack[l]{{\\\\ {fmt(float(accr[-1]))} $\\pm$ {fmt(float(astd[-1]))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}}}"
                 else:
-                    metrics = f"{float(loss[-1]):.4f} $\\pm$ {float(lstd[-1]):.4f}"
+                    metrics = f"{fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}"
                 string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
 
                 if skip == "true":
@@ -157,9 +164,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f}}} & "
+                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} & "
                     else:
-                        string += f"{np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f} & "
+                        string += f"{fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))} & "
                 else:
                     string += " & "
 
@@ -177,9 +184,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {np.mean(accr):.4f} $\\pm$ {np.std(accr):.4f} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f}}} \\\\"
+                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} \\\\"
                     else:
-                        string += f"{np.mean(loss):.4f} $\\pm$ {np.std(loss):.4f} \\\\"
+                        string += f"{fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))} \\\\"
                 else:
                     string += " \\\\"
 
