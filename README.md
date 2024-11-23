@@ -173,9 +173,9 @@ fn main() {
 ## Releases
 
 <details>
-  <summary>v2.6.2 – Fixed size vectors and reduced redundant cloning.</summary>
+  <summary>v2.6.2 – Fixed-size vectors and reduced redundant cloning.</summary>
 
-  Use fixed size vectors where possible to increase performance.<br>
+  Use fixed-size vectors where possible to increase performance.<br>
   Modify `tensor` operations to both utilise parallelisation and reduce redundant cloning.<br>
   Reduce general redundant cloning in the network etc.<br>
 
