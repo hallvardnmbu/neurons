@@ -296,11 +296,11 @@ impl Deconvolution {
         let (oh, ow) = (delta[0].len(), delta[0][0].len());
 
         // Extracting the kernel and its dimensions.
-        let kernels: Vec<Vec<Vec<Vec<f32>>>> = self
+        let kernels: Vec<&Vec<Vec<Vec<f32>>>> = self
             .kernels
             .iter()
             .map(|k| match &k.data {
-                tensor::Data::Triple(ref kernel) => kernel.clone(),
+                tensor::Data::Triple(ref kernel) => kernel,
                 _ => panic!("Expected `Tensor` kernel data."),
             })
             .collect();

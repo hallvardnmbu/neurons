@@ -158,8 +158,8 @@ impl Dense {
             tensor::Shape::Triple(_, _, _) => &gradient.flatten(),
             _ => panic!("Invalid gradient shape."),
         };
-        let derivative = self.activation.backward(output);
-        let delta = derivative.hadamard(gradient, (self.scale)(self.loops));
+        let mut delta = self.activation.backward(output);
+        delta.hadamard(gradient, (self.scale)(self.loops));
 
         let weight_gradient = delta.product(input);
 

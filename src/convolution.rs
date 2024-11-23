@@ -139,16 +139,16 @@ impl Convolution {
         dilation: (usize, usize),
         dropout: Option<f32>,
     ) -> Self {
-        let (inputs, ic) = match &inputs {
+        let (inputs, ic) = match inputs {
             tensor::Shape::Single(size) => {
-                let root = (*size as f32).sqrt() as usize;
+                let root = (size as f32).sqrt() as usize;
                 if size % root == 0 {
                     (tensor::Shape::Triple(1, root, root), 1)
                 } else {
                     panic!("> When adding a convolutional layer after a dense layer, the dense layer must have a square output.\n> Currently, the layer has {} outputs, which cannot cannot be reshaped to a (1, root[{}], root[{}]) tensor.\n> Try using {} or {} outputs for the preceding dense layer.", size, size, size, root*root, (root+1)*(root+1));
                 }
             }
-            tensor::Shape::Triple(ic, _, _) => (inputs.clone(), *ic),
+            tensor::Shape::Triple(ic, _, _) => (inputs, ic),
             _ => unimplemented!("Expected a `tensor::Tensor` input shape."),
         };
         let outputs = Convolution::calculate_output_size(

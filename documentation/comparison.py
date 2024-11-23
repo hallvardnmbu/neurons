@@ -4,7 +4,6 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from matplotlib.font_manager import FontProperties
 
 _COLOUR = {

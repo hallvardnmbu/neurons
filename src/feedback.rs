@@ -371,9 +371,11 @@ impl Feedback {
         tensor::Tensor,
         tensor::Tensor,
     ) {
-        let mut unactivated: Vec<tensor::Tensor> = Vec::new();
-        let mut activated: Vec<tensor::Tensor> = vec![input.clone()];
-        let mut maxpools: Vec<Option<tensor::Tensor>> = Vec::new();
+        let mut unactivated = Vec::with_capacity(self.layers.len());
+        let mut activated = Vec::with_capacity(self.layers.len() + 1);
+        let mut maxpools = Vec::with_capacity(self.layers.len());
+
+        activated.push(input.clone());
 
         for (i, layer) in self.layers.iter().enumerate() {
             let mut x = activated.last().unwrap().clone();
@@ -411,37 +413,33 @@ impl Feedback {
                 }
             }
 
-            match layer {
+            let (pre, post, max) = match layer {
                 network::Layer::Dense(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(&x);
-                    unactivated.push(pre);
-                    activated.push(post);
-                    maxpools.push(None);
+                    (pre, post, None)
                 }
                 network::Layer::Convolution(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(&x);
-                    unactivated.push(pre);
-                    activated.push(post);
-                    maxpools.push(None);
+                    (pre, post, None)
                 }
                 network::Layer::Deconvolution(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(&x);
-                    unactivated.push(pre);
-                    activated.push(post);
-                    maxpools.push(None);
+                    (pre, post, None)
                 }
                 network::Layer::Maxpool(layer) => {
                     assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post, max) = layer.forward(&x);
-                    unactivated.push(pre);
-                    activated.push(post);
-                    maxpools.push(Some(max));
+                    (pre, post, Some(max))
                 }
                 network::Layer::Feedback(_) => panic!("Nested feedback blocks are not supported."),
             };
+
+            unactivated.push(pre);
+            activated.push(post);
+            maxpools.push(max);
         }
 
         let mut last = activated.pop().unwrap();

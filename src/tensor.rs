@@ -566,17 +566,25 @@ impl Tensor {
     ///
     /// A new Tensor with the same data but in a vector format.
     pub fn flatten(&self) -> Self {
-        let data: Vec<f32> = match &self.data {
-            Data::Triple(data) => data
-                .iter()
-                .flat_map(|channel| channel.iter().flat_map(|row| row.iter().cloned()))
-                .collect(),
-            Data::Single(data) => data.clone(),
-            _ => unimplemented!("Flatten not implemented for gradients"),
-        };
-        Tensor {
-            shape: Shape::Single(data.len()),
-            data: Data::Single(data),
+        match &self.data {
+            Data::Triple(data) => {
+                let size = data.len() * data[0].len() * data[0][0].len();
+                let mut flattened = Vec::with_capacity(size);
+                for channel in data {
+                    for row in channel {
+                        flattened.extend(row);
+                    }
+                }
+                Tensor {
+                    shape: Shape::Single(flattened.len()),
+                    data: Data::Single(flattened),
+                }
+            }
+            Data::Single(data) => Tensor {
+                shape: Shape::Single(data.len()),
+                data: Data::Single(data.clone()),
+            },
+            _ => unimplemented!("Flatten not implemented for gradients."),
         }
     }
 
@@ -667,9 +675,9 @@ impl Tensor {
     /// # Returns
     ///
     /// A new `Tensor` with the given shape.
-    pub fn reshape(&self, shape: Shape) -> Self {
+    pub fn reshape(mut self, shape: Shape) -> Self {
         match (&self.shape, &shape) {
-            (Shape::Single(_), Shape::Single(_)) => self.clone(),
+            (Shape::Single(_), Shape::Single(_)) => self,
             (
                 Shape::Triple(channels, rows, columns),
                 Shape::Triple(new_channels, new_rows, new_columns),
@@ -695,7 +703,9 @@ impl Tensor {
                     )
                 };
 
-                Tensor { shape, data }
+                self.data = data;
+                self.shape = shape;
+                self
             }
             (Shape::Single(length), Shape::Triple(new_channels, new_rows, new_columns)) => {
                 assert_eq!(
@@ -719,7 +729,9 @@ impl Tensor {
                     )
                 };
 
-                Tensor { shape, data }
+                self.data = data;
+                self.shape = shape;
+                self
             }
             (Shape::Triple(channels, rows, columns), Shape::Single(length)) => {
                 assert_eq!(
@@ -1045,83 +1057,42 @@ impl Tensor {
     ///
     /// * `other` - The `Tensor` to multiply with.
     /// * `scalar` - A scalar value to multiply the result by (e.g., `1.0 / self.loops`).
-    pub fn hadamard(&self, other: &Tensor, scalar: f32) -> Self {
+    pub fn hadamard(&mut self, other: &Tensor, scalar: f32) {
         assert_eq_shape!(self.shape, other.shape);
 
-        match (&self.data, &other.data) {
+        match (&mut self.data, &other.data) {
             (Data::Single(data1), Data::Single(data2)) => {
-                let data: Vec<f32> = data1
-                    .iter()
+                data1
+                    .iter_mut()
                     .zip(data2.iter())
-                    .map(|(a, b)| a * b * scalar)
-                    .collect();
-                Self {
-                    shape: self.shape.clone(),
-                    data: Data::Single(data),
-                }
+                    .for_each(|(a, b)| *a = *a * b * scalar);
             }
             (Data::Double(data1), Data::Double(data2)) => {
-                let data: Vec<Vec<f32>> = data1
-                    .iter()
-                    .zip(data2.iter())
-                    .map(|(r1, r2)| {
-                        r1.iter()
-                            .zip(r2.iter())
-                            .map(|(a, b)| a * b * scalar)
-                            .collect()
-                    })
-                    .collect();
-                Self {
-                    shape: self.shape.clone(),
-                    data: Data::Double(data),
-                }
+                data1.iter_mut().zip(data2.iter()).for_each(|(r1, r2)| {
+                    r1.iter_mut()
+                        .zip(r2.iter())
+                        .for_each(|(a, b)| *a = *a * b * scalar);
+                });
             }
             (Data::Triple(data1), Data::Triple(data2)) => {
-                let data: Vec<Vec<Vec<f32>>> = data1
-                    .iter()
-                    .zip(data2.iter())
-                    .map(|(c1, c2)| {
-                        c1.iter()
-                            .zip(c2.iter())
-                            .map(|(r1, r2)| {
-                                r1.iter()
-                                    .zip(r2.iter())
-                                    .map(|(a, b)| a * b * scalar)
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect();
-                Self {
-                    shape: self.shape.clone(),
-                    data: Data::Triple(data),
-                }
+                data1.iter_mut().zip(data2.iter()).for_each(|(c1, c2)| {
+                    c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                        r1.iter_mut()
+                            .zip(r2.iter())
+                            .for_each(|(a, b)| *a = *a * b * scalar);
+                    });
+                });
             }
             (Data::Quadruple(data1), Data::Quadruple(data2)) => {
-                let data: Vec<Vec<Vec<Vec<f32>>>> = data1
-                    .iter()
-                    .zip(data2.iter())
-                    .map(|(f1, f2)| {
-                        f1.iter()
-                            .zip(f2.iter())
-                            .map(|(c1, c2)| {
-                                c1.iter()
-                                    .zip(c2.iter())
-                                    .map(|(r1, r2)| {
-                                        r1.iter()
-                                            .zip(r2.iter())
-                                            .map(|(a, b)| a * b * scalar)
-                                            .collect()
-                                    })
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect();
-                Self {
-                    shape: self.shape.clone(),
-                    data: Data::Quadruple(data),
-                }
+                data1.iter_mut().zip(data2.iter()).for_each(|(h1, h2)| {
+                    h1.iter_mut().zip(h2.iter()).for_each(|(c1, c2)| {
+                        c1.iter_mut().zip(c2.iter()).for_each(|(r1, r2)| {
+                            r1.iter_mut()
+                                .zip(r2.iter())
+                                .for_each(|(a, b)| *a = *a * b * scalar);
+                        });
+                    });
+                });
             }
             _ => panic!("Invalid Hadamard product."),
         }

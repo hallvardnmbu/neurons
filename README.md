@@ -173,6 +173,22 @@ fn main() {
 ## Releases
 
 <details>
+  <summary>v2.6.2 – Fixed size vectors and reduced redundant cloning.</summary>
+
+  Use fixed size vectors where possible to increase performance.<br>
+  Modify `tensor` operations to both utilise parallelisation and reduce redundant cloning.<br>
+  Reduce general redundant cloning in the network etc.<br>
+
+  Benchmarking `benches/benchmark.rs` (mnist version):
+
+  * v2.6.2: 19.826974433s (1.92x speedup  from v2.6.1)
+  * v2.6.1: 38.140101795s (2.31x slowdown from v2.0.1)
+  * v2.0.1: 16.504570304s
+
+  Note: v2.0.1 is massively outdated wrt. modularity etc., reflected through benchmarking.
+</details>
+
+<details>
   <summary>v2.6.1 – Bugs and visualisation.</summary>
 
   * Fix bugs concerning expanded feedback approach 1.
@@ -370,8 +386,8 @@ fn main() {
 
   Benchmarking `benches/benchmark.rs` (mnist version):
 
-  v2.0.1: 16.504570304s (1.05x speedup)
-  v2.0.0: 17.268632412s
+  * v2.0.1: 16.504570304s (1.05x speedup)
+  * v2.0.0: 17.268632412s
 </details>
 
 <details>
@@ -382,8 +398,8 @@ fn main() {
 
   Benchmarking examples/example_benchmark.rs (mnist version):
 
-  batched (128): 17.268632412s (4.82x speedup)
-  unbatched (1): 83.347593292s
+  * batched (128): 17.268632412s (4.82x speedup)
+  * unbatched (1): 83.347593292s
 </details>
 
 <details>
@@ -407,8 +423,8 @@ fn main() {
 
   Benchmarking `examples/example_benchmark.rs` (iris version):
 
-  v0.3.0: 0.318811179s (6.95x speedup)
-  v0.2.2: 2.218362758s
+  * v0.3.0: 0.318811179s (6.95x speedup)
+  * v0.2.2: 2.218362758s
 </details>
 
 <details>
@@ -635,6 +651,30 @@ fn main() {
 * [ChatGPT](https://chatgpt.com)
 * [Mistral](https://chat.mistral.ai/chat)
 * [Claude](https://claude.ai)
+
+<details>
+  <summary>Profiling</summary>
+
+To profile, install flamegraph:
+
+`cargo install flamegraph`
+
+and include
+
+```toml
+[profile.release]
+debug = true
+```
+
+in the `Cargo.toml` file.
+
+Then run the following command:
+
+`sudo cargo flamegraph --example {{ EXAMPLE }} --release`
+
+with `{{ EXAMPLE }}` being the name of the example you want to profile (e.g., `benchmark`).
+
+</details>
 
 ### Inspiration
 

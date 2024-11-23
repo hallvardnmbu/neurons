@@ -110,24 +110,39 @@ impl ReLU {
     ///
     /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
+        match &input.data {
             tensor::Data::Single(data) => {
-                tensor::Data::Single(data.iter().map(|&v| v.max(0.0)).collect())
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| v.max(0.0)));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
             }
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| j.iter().map(|&v| v.max(0.0)).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| v.max(0.0)));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 
@@ -145,26 +160,39 @@ impl ReLU {
     ///
     /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
-            tensor::Data::Single(data) => tensor::Data::Single(
-                data.iter()
-                    .map(|&v| if v > 0.0 { 1.0 } else { 0.0 })
-                    .collect(),
-            ),
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| j.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
+        match &input.data {
+            tensor::Data::Single(data) => {
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
+            }
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| if v > 0.0 { 1.0 } else { 0.0 }));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 }
@@ -194,30 +222,45 @@ impl LeakyReLU {
     ///
     /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
-            tensor::Data::Single(data) => tensor::Data::Single(
-                data.iter()
-                    .map(|&v| if v > 0.0 { v } else { self.alpha * v })
-                    .collect(),
-            ),
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| {
-                                j.iter()
-                                    .map(|&v| if v > 0.0 { v } else { self.alpha * v })
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+        match &input.data {
+            tensor::Data::Single(data) => {
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(
+                    data.iter()
+                        .map(|&v| if v > 0.0 { v } else { self.alpha * v }),
+                );
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
+            }
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(
+                            row.iter()
+                                .map(|&v| if v > 0.0 { v } else { self.alpha * v }),
+                        );
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 
@@ -235,30 +278,40 @@ impl LeakyReLU {
     ///
     /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
-            tensor::Data::Single(data) => tensor::Data::Single(
-                data.iter()
-                    .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
-                    .collect(),
-            ),
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| {
-                                j.iter()
-                                    .map(|&v| if v > 0.0 { 1.0 } else { self.alpha })
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+        match &input.data {
+            tensor::Data::Single(data) => {
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
+            }
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result
+                            .extend(row.iter().map(|&v| if v > 0.0 { 1.0 } else { self.alpha }));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 }
@@ -282,24 +335,39 @@ impl Sigmoid {
     ///
     /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
+        match &input.data {
             tensor::Data::Single(data) => {
-                tensor::Data::Single(data.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
             }
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| j.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| 1.0 / (1.0 + f32::exp(-v))));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 
@@ -317,36 +385,45 @@ impl Sigmoid {
     ///
     /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
-            tensor::Data::Single(data) => tensor::Data::Single(
-                data.iter()
-                    .map(|&v| {
-                        let y = 1.0 / (1.0 + f32::exp(-v));
-                        y * (1.0 - y)
-                    })
-                    .collect(),
-            ),
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| {
-                                j.iter()
-                                    .map(|&v| {
-                                        let y = 1.0 / (1.0 + f32::exp(-v));
-                                        y * (1.0 - y)
-                                    })
-                                    .collect()
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+        match &input.data {
+            tensor::Data::Single(data) => {
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| {
+                    let y = 1.0 / (1.0 + f32::exp(-v));
+                    y * (1.0 - y)
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
+            }
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| {
+                            let y = 1.0 / (1.0 + f32::exp(-v));
+                            y * (1.0 - y)
+                        }));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 }
@@ -356,44 +433,30 @@ impl Sigmoid {
 pub struct Softmax {}
 
 impl Softmax {
-    /// Forward pass of the Softmax activation function.
-    ///
-    /// # Function
-    ///
-    /// * `f(x) = e^(x - max(x)) / sum(e^(x - max(x)))`
-    ///
-    /// # Arguments
-    ///
-    /// * `input` - A `tensor::Tensor` of input values.
-    ///
-    /// # Returns
-    ///
-    /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
         let x = input.get_flat();
+        let length = x.len();
 
+        // Find max for numerical stability
         let max = x.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-        let exps: Vec<f32> = x.iter().map(|v| (v - max).exp()).collect();
-        let sum: f32 = exps.iter().sum();
 
-        let y = exps.iter().map(|v| v / sum).collect();
+        // Preallocate vector for exponents
+        let mut exps = Vec::with_capacity(length);
+        let mut sum = 0.0;
+
+        // Compute exponentials and sum in one pass
+        for &v in x.iter() {
+            let exp = (v - max).exp();
+            sum += exp;
+            exps.push(exp);
+        }
+
+        // Compute final probabilities
+        let y: Vec<f32> = exps.iter().map(|&v| v / sum).collect();
 
         tensor::Tensor::single(y).reshape(input.shape.clone())
     }
 
-    /// Backward pass of the Softmax activation function ([source](https://e2eml.school/softmax)).
-    ///
-    /// # Function
-    ///
-    /// * `f'(x_i) = f(x_i) * (1 - f(x_i)) - f(x) @ f(x) - sum_j(f(x_i) * f(x_j) - f(x) @ f(x))`
-    ///
-    /// # Arguments
-    ///
-    /// * `input` - A `tensor::Tensor` of input values.
-    ///
-    /// # Returns
-    ///
-    /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, logits: &tensor::Tensor) -> tensor::Tensor {
         let probability = self.forward(logits).get_flat();
         let scalar: f32 = probability
@@ -437,24 +500,39 @@ impl Tanh {
     ///
     /// * A `tensor::Tensor` of output values.
     pub fn forward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
+        match &input.data {
             tensor::Data::Single(data) => {
-                tensor::Data::Single(data.iter().map(|&v| v.tanh()).collect())
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| v.tanh()));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
             }
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| j.iter().map(|&v| v.tanh()).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| v.tanh()));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 
@@ -472,24 +550,39 @@ impl Tanh {
     ///
     /// * A `tensor::Tensor` of the derivatives.
     pub fn backward(&self, input: &tensor::Tensor) -> tensor::Tensor {
-        let data = match &input.data {
+        match &input.data {
             tensor::Data::Single(data) => {
-                tensor::Data::Single(data.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
+                let length = data.len();
+                let mut result = Vec::with_capacity(length);
+                result.extend(data.iter().map(|&v| 1.0 / v.cosh().powi(2)));
+
+                tensor::Tensor {
+                    data: tensor::Data::Single(result),
+                    shape: tensor::Shape::Single(length),
+                }
             }
-            tensor::Data::Triple(data) => tensor::Data::Triple(
-                data.iter()
-                    .map(|i| {
-                        i.iter()
-                            .map(|j| j.iter().map(|&v| 1.0 / (v.cosh().powi(2))).collect())
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            tensor::Data::Triple(data) => {
+                let channels = data.len();
+                let height = data[0].len();
+                let width = data[0][0].len();
+
+                let mut result = Vec::with_capacity(channels);
+                result.extend(data.iter().map(|channel| {
+                    let mut channel_result = Vec::with_capacity(height);
+                    channel_result.extend(channel.iter().map(|row| {
+                        let mut row_result = Vec::with_capacity(width);
+                        row_result.extend(row.iter().map(|&v| 1.0 / v.cosh().powi(2)));
+                        row_result
+                    }));
+                    channel_result
+                }));
+
+                tensor::Tensor {
+                    data: tensor::Data::Triple(result),
+                    shape: tensor::Shape::Triple(channels, height, width),
+                }
+            }
             _ => panic!("Invalid data type."),
-        };
-        tensor::Tensor {
-            shape: input.shape.clone(),
-            data,
         }
     }
 }

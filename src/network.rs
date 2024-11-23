@@ -10,6 +10,9 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+// Number of chunks for parallel processing of validation and batched prediction.
+const _CHUNKS: usize = 64;
+
 /// Layer types of the network.
 #[derive(Clone)]
 pub enum Layer {
@@ -44,14 +47,25 @@ impl Layer {
         }
     }
 
-    /// Extracts the input- and output shape of the layer.
-    fn shape(&self) -> (&tensor::Shape, &tensor::Shape) {
+    /// Extracts the input shape of the layer.
+    fn inputs(&self) -> &tensor::Shape {
         match &self {
-            Layer::Dense(layer) => (&layer.inputs, &layer.outputs),
-            Layer::Convolution(layer) => (&layer.inputs, &layer.outputs),
-            Layer::Deconvolution(layer) => (&layer.inputs, &layer.outputs),
-            Layer::Feedback(layer) => (&layer.inputs, &layer.outputs),
-            Layer::Maxpool(layer) => (&layer.inputs, &layer.outputs),
+            Layer::Dense(layer) => &layer.inputs,
+            Layer::Convolution(layer) => &layer.inputs,
+            Layer::Deconvolution(layer) => &layer.inputs,
+            Layer::Feedback(layer) => &layer.inputs,
+            Layer::Maxpool(layer) => &layer.inputs,
+        }
+    }
+
+    /// Extracts the output shape of the layer.
+    fn outputs(&self) -> &tensor::Shape {
+        match &self {
+            Layer::Dense(layer) => &layer.outputs,
+            Layer::Convolution(layer) => &layer.outputs,
+            Layer::Deconvolution(layer) => &layer.outputs,
+            Layer::Feedback(layer) => &layer.outputs,
+            Layer::Maxpool(layer) => &layer.outputs,
         }
     }
 }
@@ -1000,7 +1014,10 @@ impl Network {
             if self.connect.contains_key(&i) {
                 // Extracting the tensor from the layer with the corresponding index.
                 // Reshaping it in case the connection is across shape types.
-                let _x = activated[self.connect[&i]].clone().reshape(x.shape.clone());
+                let mut _x = activated[self.connect[&i]].clone();
+                if _x.shape != x.shape {
+                    _x = _x.reshape(x.shape.clone());
+                }
 
                 match self.skipaccumulation {
                     feedback::Accumulation::Add => {
@@ -1047,14 +1064,9 @@ impl Network {
                         fposts.last().unwrap().last().unwrap().clone();
 
                     // Reshaping the last activated tensor in cases of flattened output.
-                    if self.layers[into].shape() != self.layers[i].shape() {
-                        current = current.reshape(match self.layers[into] {
-                            Layer::Dense(ref layer) => layer.inputs.clone(),
-                            Layer::Convolution(ref layer) => layer.inputs.clone(),
-                            Layer::Deconvolution(ref layer) => layer.inputs.clone(),
-                            Layer::Maxpool(ref layer) => layer.inputs.clone(),
-                            _ => panic!("Feedback not implemented for this layer type."),
-                        });
+                    let inputs = self.layers[into].inputs();
+                    if inputs != self.layers[i].outputs() {
+                        current = current.reshape(inputs.clone());
                     }
 
                     if inskips {
@@ -1431,54 +1443,68 @@ impl Network {
         }
 
         let results: Vec<_> = inputs
-            .par_iter()
-            .zip(targets.par_iter())
-            .map(|(input, target)| {
-                let prediction = self.predict(input);
-                let (loss, _) = self.objective.loss(&prediction, target);
+            .par_chunks(_CHUNKS)
+            .zip(targets.par_chunks(_CHUNKS))
+            .flat_map(|(inputs, targets)| {
+                inputs
+                    .iter()
+                    .zip(targets.iter())
+                    .map(|(input, target)| {
+                        let prediction = self.predict(input);
+                        let (loss, _) = self.objective.loss(&prediction, target);
 
-                let acc = match self.layers.last().unwrap() {
-                    Layer::Dense(layer) => match layer.activation {
-                        activation::Function::Softmax(_) => {
-                            if target.argmax() == prediction.argmax() {
-                                1.0
-                            } else {
-                                0.0
-                            }
-                        }
-                        _ => {
-                            let target = target.get_flat();
-                            let prediction = prediction.get_flat();
-
-                            if target.len() == 1 {
-                                if (prediction[0] - target[0]).abs() < tol {
-                                    1.0
-                                } else {
-                                    0.0
+                        let acc = match self.layers.last().unwrap() {
+                            Layer::Dense(layer) => match layer.activation {
+                                activation::Function::Softmax(_) => {
+                                    if target.argmax() == prediction.argmax() {
+                                        1.0
+                                    } else {
+                                        0.0
+                                    }
                                 }
-                            } else {
-                                target
-                                    .iter()
-                                    .zip(prediction.iter())
-                                    .map(|(t, p)| if (t - p).abs() < tol { 1.0 } else { 0.0 })
-                                    .sum::<f32>()
-                                    / target.len() as f32
-                            }
-                        }
-                    },
-                    Layer::Convolution(_) => {
-                        unimplemented!("Image output (target) not supported.")
-                    }
-                    Layer::Deconvolution(_) => {
-                        unimplemented!("Image output (target) not supported.")
-                    }
-                    Layer::Maxpool(_) => {
-                        unimplemented!("Image output (target) not supported.")
-                    }
-                    _ => unimplemented!("Feedback blocks not yet implemented."),
-                };
+                                _ => {
+                                    let target = target.get_flat();
+                                    let prediction = prediction.get_flat();
 
-                (loss, acc)
+                                    if target.len() == 1 {
+                                        if (prediction[0] - target[0]).abs() < tol {
+                                            1.0
+                                        } else {
+                                            0.0
+                                        }
+                                    } else {
+                                        target
+                                            .iter()
+                                            .zip(prediction.iter())
+                                            .map(
+                                                |(t, p)| {
+                                                    if (t - p).abs() < tol {
+                                                        1.0
+                                                    } else {
+                                                        0.0
+                                                    }
+                                                },
+                                            )
+                                            .sum::<f32>()
+                                            / target.len() as f32
+                                    }
+                                }
+                            },
+                            Layer::Convolution(_) => {
+                                unimplemented!("Image output (target) not supported.")
+                            }
+                            Layer::Deconvolution(_) => {
+                                unimplemented!("Image output (target) not supported.")
+                            }
+                            Layer::Maxpool(_) => {
+                                unimplemented!("Image output (target) not supported.")
+                            }
+                            _ => unimplemented!("Feedback blocks not yet implemented."),
+                        };
+
+                        (loss, acc)
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect();
 
@@ -1494,12 +1520,7 @@ impl Network {
             }
         }
 
-        let mut loss: Vec<f32> = Vec::new();
-        let mut acc: Vec<f32> = Vec::new();
-        for (_loss, _acc) in results {
-            loss.push(_loss);
-            acc.push(_acc);
-        }
+        let (loss, acc): (Vec<_>, Vec<_>) = results.into_iter().unzip();
 
         (
             loss.iter().sum::<f32>() / loss.len() as f32,
@@ -1534,7 +1555,15 @@ impl Network {
     ///
     /// The output of the network for each of the given inputs.
     pub fn predict_batch(&self, inputs: &Vec<&tensor::Tensor>) -> Vec<tensor::Tensor> {
-        inputs.par_iter().map(|input| self.predict(input)).collect()
+        inputs
+            .par_chunks(_CHUNKS)
+            .flat_map(|batch| {
+                batch
+                    .iter()
+                    .map(|input| self.predict(input))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
     }
 }
 
