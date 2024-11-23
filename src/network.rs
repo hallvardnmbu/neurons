@@ -1212,7 +1212,6 @@ impl Network {
 
             match layer {
                 Layer::Dense(layer) => {
-                    assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post) = layer.forward(x);
                     preactivated.push(pre);
                     activated.push(post);
@@ -1231,14 +1230,12 @@ impl Network {
                     maxpools.push(None);
                 }
                 Layer::Maxpool(layer) => {
-                    assert_eq_shape!(layer.inputs, x.shape);
                     let (pre, post, max) = layer.forward(x);
                     preactivated.push(pre);
                     activated.push(post);
                     maxpools.push(Some(max));
                 }
                 Layer::Feedback(block) => {
-                    assert_eq_shape!(block.inputs, x.shape);
                     let (pre, post, max, fbpre, fbpost) = block.forward(x);
                     preactivated.push(pre);
                     activated.push(post);
