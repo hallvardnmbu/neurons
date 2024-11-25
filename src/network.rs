@@ -1083,6 +1083,8 @@ impl Network {
                 fposts.remove(0);
 
                 // Store the outputs of the loopback layers.
+                // TODO: Only combine these if the network is training.
+                // TODO: ALWAYS combine the outputs, `i`, as these are used for subsequent layers.
                 for (idx, j) in (into..i + 1).enumerate() {
                     match self.loopaccumulation {
                         feedback::Accumulation::Add => {

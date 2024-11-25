@@ -1,7 +1,5 @@
 // Copyright (C) 2024 Hallvard Høyland Lavik
 
-extern crate neurons;
-
 use neurons::{activation, network, objective, optimizer, tensor};
 
 use std::fs::File;
