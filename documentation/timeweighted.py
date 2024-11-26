@@ -8,19 +8,19 @@ from matplotlib.font_manager import FontProperties
 
 _COLOUR = {
     "REGULAR": "black",
-    "FB1x2": "forestgreen",
-    "FB1x3": "darkmagenta",
-    "FB1x4": "palevioletred",
-    "FB2x2": "tomato",
-    "FB2x3": "cornflowerblue",
-    "FB2x4": "darkorange",
+    "FB1x2": "#ec1d24",
+    "FB1x3": "#05a55d",
+    "FB1x4": "#fff204",
+    "FB2x2": "#5d2c91",
+    "FB2x3": "#f58320",
+    "FB2x4": "#0066b3",
 }
 
 font = FontProperties(fname="./output/fonts/cmunrm.ttf")
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 
-graph = f"./output/compare/weighted/"
+graph = "./output/compare/weighted/"
 os.makedirs(graph, exist_ok=True)
 
 for problem in os.listdir("./output/timing/"):
@@ -49,7 +49,11 @@ for problem in os.listdir("./output/timing/"):
             for configuration in data.keys():
                 if which not in configuration or skip not in configuration:
                     continue
-                name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x").replace("REGULAR", "Regular")
+                name = configuration.replace(f"-{skip}-{which}", "")\
+                    .replace("REGULAR", "FFN")\
+                    .replace("FB1", "COMBINE")\
+                    .replace("FB2", "COUPLE")\
+                    .replace("x", " x")
 
                 _time = float(np.mean(times[configuration]['train']))
 
@@ -98,17 +102,17 @@ for problem in os.listdir("./output/timing/"):
             ax.set_xlabel('Time-weighted epoch', fontproperties=font)
 
             if "ftir-mlp" in problem and which == "REGRESSION":
-                ax.set_ylim(top=1000)
+                ax.set_ylim(top=800)
             elif "bike" in problem and which == "REGRESSION":
-                ax.set_ylim(top=200)
+                ax.set_ylim(top=150)
             else:
-                ax.set_ylim(top=2000
-                            if max(ax.get_ylim()) > 2000
+                ax.set_ylim(top=1500
+                            if max(ax.get_ylim()) > 1500
                             else max(ax.get_ylim()))
             ax.set_ylim(bottom=0)
 
         ax_loss[0].legend(prop=font)
-        if ax_loss[0].get_ylim()[1] in (200, 1000, 2000):
+        if ax_loss[0].get_ylim()[1] in (150, 800, 1500):
             ax_loss[0].set_ylabel('Avg. validation loss\n(capped for visibility)', fontproperties=font)
         else:
             ax_loss[0].set_ylabel('Avg. validation loss', fontproperties=font)

@@ -61,7 +61,7 @@ for problem in os.listdir("./output/timing/"):
             with open(tex, "a") as file:
                 file.write(f"""
     \\end{{tabular}}
-    \\caption[Time differences of {problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')} models for {which.lower()}.]{{Time differences of {problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')} models for {which.lower()}. All times are in milliseconds. The mean and standard deviation are calculated over 5 runs. The training times are obtained from one epoch.}}
+    \\caption[Time differences of {problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')} models for {which.lower()}.]{{Time differences of {problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')} models for {which.lower()}. All times are in milliseconds. The mean and standard deviation are calculated over five runs. The training times are obtained from one epoch.}}
     \\label{{tab:times-{problem}-{which.lower()}}}
 \\end{{table}}
 """)
