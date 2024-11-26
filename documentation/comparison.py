@@ -67,9 +67,9 @@ for problem in os.listdir("./output/compare/"):
 
         if which == "REGRESSION":
             ax_acc = None
-            fig, ax_loss = plt.subplots(1, 2, sharey=True)
+            fig, ax_loss = plt.subplots(1, 2, sharey=True, figsize=(8, 4))
         else:
-            fig, ax = plt.subplots(2, 2, sharex=True)
+            fig, ax = plt.subplots(2, 2, sharex=True, figsize=(8, 5))
             ax_acc = [ax[0,0], ax[0,1]]
             ax_acc[1].sharey(ax_acc[0])
             ax_loss = [ax[1,0], ax[1,1]]
