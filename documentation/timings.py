@@ -41,7 +41,11 @@ for problem in os.listdir("./output/timing/"):
                 if which not in configuration or skip not in configuration:
                     continue
                 exists = True
-                name = configuration.replace(f"-{skip}-{which}", "").replace("x", " x").replace("REGULAR", "Regular")
+                name = configuration.replace(f"-{skip}-{which}", "")\
+                    .replace("REGULAR", "FFN")\
+                    .replace("FB1", "COMBINE")\
+                    .replace("FB2", "COUPLE")\
+                    .replace("x", " x")
 
                 data[configuration]['train'] = [i * 1000 for i in data[configuration]['train']]
                 data[configuration]['validate'] = [i * 1000 for i in data[configuration]['validate']]
