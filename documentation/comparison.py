@@ -151,7 +151,7 @@ for problem in os.listdir("./output/compare/"):
                     metrics = f"\\shortstack[l]{{\\\\ {fmt(float(accr[-1]))} $\\pm$ {fmt(float(astd[-1]))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}}}"
                 else:
                     metrics = f"{fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}"
-                string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
+                string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{\\footnotesize {name}}}\\\\{{\\footnotesize {'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
 
                 if skip == "true":
                     probed = {

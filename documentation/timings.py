@@ -52,7 +52,7 @@ for problem in os.listdir("./output/timing/"):
 
                 train = f"{fmt(float(np.mean(data[configuration]['train'])))} $\\pm$ {fmt(float(np.std(data[configuration]['train'])))}"
                 validation = f"{fmt(float(np.mean(data[configuration]['validate'])))} $\\pm$ {fmt(float(np.std(data[configuration]['validate'])))}"
-                string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{{name}}}\\\\{{{'w. bypassing skip' if skip == 'true' else ''}}}}} & {train} & {validation} \\\\"
+                string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{\\footnotesize {name}}}\\\\{{\\footnotesize {'w. bypassing skip' if skip == 'true' else ''}}}}} & {train} & {validation} \\\\"
 
                 with open(tex, "a") as file:
                     file.write(string + "\n \\hline \n")
