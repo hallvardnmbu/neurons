@@ -234,11 +234,11 @@ for problem in os.listdir("./output/compare/"):
 
         fig.suptitle(f"{problem.upper().replace('-MLP', ' dense').replace('-CNN', ' convolutional')}\n{which.capitalize()}", fontproperties=font)
         if ax_acc is not None:
-            ax_acc[0].set_title("Without skip", fontproperties=font)
-            ax_acc[1].set_title("With skip", fontproperties=font)
+            ax_acc[0].set_title("Without bypassing skip", fontproperties=font)
+            ax_acc[1].set_title("With bypassing skip", fontproperties=font)
         else:
-            ax_loss[0].set_title("Without skip", fontproperties=font)
-            ax_loss[1].set_title("With skip", fontproperties=font)
+            ax_loss[0].set_title("Without bypassing skip", fontproperties=font)
+            ax_loss[1].set_title("With bypassing skip", fontproperties=font)
         plt.tight_layout()
         fig.savefig(f"{graph}{problem.lower()}-{which.lower()}.png")
         plt.close(fig)
