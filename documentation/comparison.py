@@ -26,7 +26,7 @@ probe = "./output/compare/probed/"
 os.makedirs(probe, exist_ok=True)
 
 
-def fmt(num: float) -> str:
+def fmt(num) -> str:
     if abs(num) >= 1000:
         return f"{num:.2e}"
     return f"{num:.4f}"
@@ -47,15 +47,15 @@ for problem in os.listdir("./output/compare/"):
             file.write("""
 \\begin{table}[ht]
     \\centering
-    \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
+    \\begin{tabular}{|>{\\columncolor{gray!05}}l|""" + ("l|l|l|" if which == "REGRESSION" else "c|c|c|") + """}
         \\hline
         \\rowcolor{white}
-        \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize ORIGINAL} & \\textbf{\\footnotesize SKIP OFF} & \\textbf{\\footnotesize FEEDBACK OFF} \\\\
+        \\textbf{\\footnotesize MODEL} & \\textbf{\\footnotesize ORIGINAL} & \\textbf{\\footnotesize SKIP OFF} & \\textbf{\\footnotesize FEEDBACK OFF} \\\\
 """)
             if which == "CLASSIFICATION":
                 file.write("""
         \\rowcolor{white}
-        & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{90pt}{0.5pt} \\\\ {\\footnotesize Loss}} \\\\
+        & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{78pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{78pt}{0.5pt} \\\\ {\\footnotesize Loss}} & \\shortstack[l]{{\\footnotesize Accuracy} \\\\ \\rule{78pt}{0.5pt} \\\\ {\\footnotesize Loss}} \\\\
         \\hline
 """)
             else:
@@ -148,9 +148,9 @@ for problem in os.listdir("./output/compare/"):
                 lstd = lstd[~np.isnan(lstd)]
 
                 if which == "CLASSIFICATION":
-                    metrics = f"\\shortstack[l]{{\\\\ {fmt(float(accr[-1]))} $\\pm$ {fmt(float(astd[-1]))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}}}"
+                    metrics = f"\\shortstack[l]{{\\\\ {fmt(float(accr[-1]))} $\\pm$ {fmt(float(astd[-1]))} \\\\ \\rule{{78pt}}{{0.5pt}} \\\\ {fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}}}"
                 else:
-                    metrics = f"{fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}"
+                    metrics = f"{{\\footnotesize {fmt(float(loss[-1]))} $\\pm$ {fmt(float(lstd[-1]))}}}"
                 string = f"\\shortstack[l]{{\\\\ {{}} \\\\ \\textbf{{\\footnotesize {name}}}\\\\{{\\footnotesize {'w. bypassing skip' if skip == 'true' else ''}}}}} & {metrics} & "
 
                 if skip == "true":
@@ -167,9 +167,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} & "
+                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{78pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} & "
                     else:
-                        string += f"{fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))} & "
+                        string += f"{{\\footnotesize {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} & "
                 else:
                     string += " & "
 
@@ -187,9 +187,9 @@ for problem in os.listdir("./output/compare/"):
                     loss = probed["tst-loss"]
 
                     if which == "CLASSIFICATION":
-                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{90pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} \\\\"
+                        string += f"\\shortstack[l]{{\\\\ {fmt(np.mean(accr))} $\\pm$ {fmt(np.std(accr))} \\\\ \\rule{{78pt}}{{0.5pt}} \\\\ {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} \\\\"
                     else:
-                        string += f"{fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))} \\\\"
+                        string += f"{{\\footnotesize {fmt(np.mean(loss))} $\\pm$ {fmt(np.std(loss))}}} \\\\"
                 else:
                     string += " \\\\"
 

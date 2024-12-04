@@ -32,7 +32,7 @@ for problem in os.listdir("./output/timing/"):
     \\begin{tabular}{|>{\\columncolor{gray!05}}l|l|l|l|}
         \\hline
         \\rowcolor{white}
-        \\textbf{\\footnotesize ARCHITECTURE} & \\textbf{\\footnotesize TRAIN} & \\textbf{\\footnotesize VALIDATE} \\\\ \n \\hline \n
+        \\textbf{\\footnotesize MODEL} & \\textbf{\\footnotesize TRAIN} & \\textbf{\\footnotesize VALIDATE} \\\\ \n \\hline \n
 """)
 
         exists = False

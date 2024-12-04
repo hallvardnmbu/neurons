@@ -1,33 +1,33 @@
 
 \begin{table}[ht]
     \centering
-    \begin{tabular}{|>{\columncolor{gray!05}}l|l|l|l|}
+    \begin{tabular}{|>{\columncolor{gray!05}}l|c|c|c|}
         \hline
         \rowcolor{white}
-        \textbf{\footnotesize ARCHITECTURE} & \textbf{\footnotesize ORIGINAL} & \textbf{\footnotesize SKIP OFF} & \textbf{\footnotesize FEEDBACK OFF} \\
+        \textbf{\footnotesize MODEL} & \textbf{\footnotesize ORIGINAL} & \textbf{\footnotesize SKIP OFF} & \textbf{\footnotesize FEEDBACK OFF} \\
 
         \rowcolor{white}
-        & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{90pt}{0.5pt} \\ {\footnotesize Loss}} & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{90pt}{0.5pt} \\ {\footnotesize Loss}} & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{90pt}{0.5pt} \\ {\footnotesize Loss}} \\
+        & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{78pt}{0.5pt} \\ {\footnotesize Loss}} & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{78pt}{0.5pt} \\ {\footnotesize Loss}} & \shortstack[l]{{\footnotesize Accuracy} \\ \rule{78pt}{0.5pt} \\ {\footnotesize Loss}} \\
         \hline
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize FFN}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0055 \\ \rule{90pt}{0.5pt} \\ 0.1842 $\pm$ 0.0824} & \shortstack[l]{\\ 0.9920 $\pm$ 0.0046 \\ \rule{90pt}{0.5pt} \\ 0.0392 $\pm$ 0.0256} &  \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize FFN}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0055 \\ \rule{78pt}{0.5pt} \\ 0.1842 $\pm$ 0.0824} & \shortstack[l]{\\ 0.9920 $\pm$ 0.0046 \\ \rule{78pt}{0.5pt} \\ 0.0392 $\pm$ 0.0256} &  \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x2}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9121 $\pm$ 0.0604 \\ \rule{90pt}{0.5pt} \\ 0.7358 $\pm$ 0.6316} & \shortstack[l]{\\ 0.9621 $\pm$ 0.0425 \\ \rule{90pt}{0.5pt} \\ 0.3167 $\pm$ 0.4536} & \shortstack[l]{\\ 0.5747 $\pm$ 0.2902 \\ \rule{90pt}{0.5pt} \\ 4.3425 $\pm$ 3.8608} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x2}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9121 $\pm$ 0.0604 \\ \rule{78pt}{0.5pt} \\ 0.7358 $\pm$ 0.6316} & \shortstack[l]{\\ 0.9621 $\pm$ 0.0425 \\ \rule{78pt}{0.5pt} \\ 0.3167 $\pm$ 0.4536} & \shortstack[l]{\\ 0.5747 $\pm$ 0.2902 \\ \rule{78pt}{0.5pt} \\ 4.3425 $\pm$ 3.8608} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x3}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.8425 $\pm$ 0.1723 \\ \rule{90pt}{0.5pt} \\ 0.5985 $\pm$ 0.4549} & \shortstack[l]{\\ 0.9161 $\pm$ 0.1338 \\ \rule{90pt}{0.5pt} \\ 0.3156 $\pm$ 0.4050} & \shortstack[l]{\\ 0.3770 $\pm$ 0.3241 \\ \rule{90pt}{0.5pt} \\ 3.1353 $\pm$ 2.6770} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x3}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.8425 $\pm$ 0.1723 \\ \rule{78pt}{0.5pt} \\ 0.5985 $\pm$ 0.4549} & \shortstack[l]{\\ 0.9161 $\pm$ 0.1338 \\ \rule{78pt}{0.5pt} \\ 0.3156 $\pm$ 0.4050} & \shortstack[l]{\\ 0.3770 $\pm$ 0.3241 \\ \rule{78pt}{0.5pt} \\ 3.1353 $\pm$ 2.6770} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x2}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9615 $\pm$ 0.0000 \\ \rule{90pt}{0.5pt} \\ 0.2245 $\pm$ 0.0000} & \shortstack[l]{\\ 0.9839 $\pm$ 0.0111 \\ \rule{90pt}{0.5pt} \\ 0.0641 $\pm$ 0.0491} & \shortstack[l]{\\ 0.4011 $\pm$ 0.3155 \\ \rule{90pt}{0.5pt} \\ 4.1851 $\pm$ 3.3476} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x2}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9615 $\pm$ 0.0000 \\ \rule{78pt}{0.5pt} \\ 0.2245 $\pm$ 0.0000} & \shortstack[l]{\\ 0.9839 $\pm$ 0.0111 \\ \rule{78pt}{0.5pt} \\ 0.0641 $\pm$ 0.0491} & \shortstack[l]{\\ 0.4011 $\pm$ 0.3155 \\ \rule{78pt}{0.5pt} \\ 4.1851 $\pm$ 3.3476} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x3}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9725 $\pm$ 0.0000 \\ \rule{90pt}{0.5pt} \\ 0.1814 $\pm$ 0.0000} & \shortstack[l]{\\ 0.9736 $\pm$ 0.0134 \\ \rule{90pt}{0.5pt} \\ 0.1677 $\pm$ 0.0972} & \shortstack[l]{\\ 0.2609 $\pm$ 0.1850 \\ \rule{90pt}{0.5pt} \\ 3.1678 $\pm$ 0.2361} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x3}\\{\footnotesize w. bypassing skip}} & \shortstack[l]{\\ 0.9725 $\pm$ 0.0000 \\ \rule{78pt}{0.5pt} \\ 0.1814 $\pm$ 0.0000} & \shortstack[l]{\\ 0.9736 $\pm$ 0.0134 \\ \rule{78pt}{0.5pt} \\ 0.1677 $\pm$ 0.0972} & \shortstack[l]{\\ 0.2609 $\pm$ 0.1850 \\ \rule{78pt}{0.5pt} \\ 3.1678 $\pm$ 0.2361} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize FFN}\\{\footnotesize }} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0000 \\ \rule{90pt}{0.5pt} \\ 0.2360 $\pm$ 0.0019} &  &  \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize FFN}\\{\footnotesize }} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0000 \\ \rule{78pt}{0.5pt} \\ 0.2360 $\pm$ 0.0019} &  &  \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x2}\\{\footnotesize }} & \shortstack[l]{\\ 0.6662 $\pm$ 0.3952 \\ \rule{90pt}{0.5pt} \\ 1.1551 $\pm$ 1.3111} &  & \shortstack[l]{\\ 0.3506 $\pm$ 0.1860 \\ \rule{90pt}{0.5pt} \\ 2.4749 $\pm$ 0.7981} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x2}\\{\footnotesize }} & \shortstack[l]{\\ 0.6662 $\pm$ 0.3952 \\ \rule{78pt}{0.5pt} \\ 1.1551 $\pm$ 1.3111} &  & \shortstack[l]{\\ 0.3506 $\pm$ 0.1860 \\ \rule{78pt}{0.5pt} \\ 2.4749 $\pm$ 0.7981} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x3}\\{\footnotesize }} & \shortstack[l]{\\ 0.9643 $\pm$ 0.0143 \\ \rule{90pt}{0.5pt} \\ 0.2544 $\pm$ 0.0805} &  & \shortstack[l]{\\ 0.5023 $\pm$ 0.3557 \\ \rule{90pt}{0.5pt} \\ 3.4334 $\pm$ 3.7490} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COMBINE x3}\\{\footnotesize }} & \shortstack[l]{\\ 0.9643 $\pm$ 0.0143 \\ \rule{78pt}{0.5pt} \\ 0.2544 $\pm$ 0.0805} &  & \shortstack[l]{\\ 0.5023 $\pm$ 0.3557 \\ \rule{78pt}{0.5pt} \\ 3.4334 $\pm$ 3.7490} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x2}\\{\footnotesize }} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0000 \\ \rule{90pt}{0.5pt} \\ 0.2831 $\pm$ 0.0000} &  & \shortstack[l]{\\ 0.2414 $\pm$ 0.1895 \\ \rule{90pt}{0.5pt} \\ 2.9122 $\pm$ 0.4641} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x2}\\{\footnotesize }} & \shortstack[l]{\\ 0.9780 $\pm$ 0.0000 \\ \rule{78pt}{0.5pt} \\ 0.2831 $\pm$ 0.0000} &  & \shortstack[l]{\\ 0.2414 $\pm$ 0.1895 \\ \rule{78pt}{0.5pt} \\ 2.9122 $\pm$ 0.4641} \\
  \hline 
-\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x3}\\{\footnotesize }} & \shortstack[l]{\\ 0.9725 $\pm$ 0.0000 \\ \rule{90pt}{0.5pt} \\ 0.2137 $\pm$ 0.0000} &  & \shortstack[l]{\\ 0.0644 $\pm$ 0.0834 \\ \rule{90pt}{0.5pt} \\ 3.3675 $\pm$ 0.2097} \\
+\shortstack[l]{\\ {} \\ \textbf{\footnotesize COUPLE x3}\\{\footnotesize }} & \shortstack[l]{\\ 0.9725 $\pm$ 0.0000 \\ \rule{78pt}{0.5pt} \\ 0.2137 $\pm$ 0.0000} &  & \shortstack[l]{\\ 0.0644 $\pm$ 0.0834 \\ \rule{78pt}{0.5pt} \\ 3.3675 $\pm$ 0.2097} \\
  \hline 
 
     \end{tabular}
