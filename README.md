@@ -15,7 +15,12 @@
   </a>
 </div>
 <br>
-
+  
+<div align="center">
+  <a href=https://hdl.handle.net/11250/3176968">Thesis</a>
+</div>
+<br>
+  
 <b>neurons</b> is a neural network library written from scratch in Rust. It provides a flexible and efficient way to build, train, and evaluate neural networks. The library is designed to be modular, allowing for easy customization of network architectures, activation functions, objective functions, and optimization techniques.
 
 #### Jump to
