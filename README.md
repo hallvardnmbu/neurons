@@ -17,7 +17,7 @@
 <br>
   
 <div align="center">
-  <a href=https://hdl.handle.net/11250/3176968">Thesis</a>
+  <a href="https://hdl.handle.net/11250/3176968">Read the accompanying thesis.</a>
 </div>
 <br>
   
